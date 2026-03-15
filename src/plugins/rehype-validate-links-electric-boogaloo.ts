@@ -1,17 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
-
-type TSidebar = TSidebarItem[];
-
-type TSidebarItem =
-  | {
-      label: string;
-      slug: string;
-    }
-  | {
-      label: string;
-      items: TSidebarItem[];
-    };
+import type { TSidebarItem } from "./utils/types";
+import { testSidebarStructure } from "./tests/test-structures";
 
 function iterDir(dirPath: string): Array<string> {
   const entries = fs.readdirSync(dirPath);
@@ -110,5 +100,5 @@ function getIndexMdSidebarItems(directory: string): TSidebarItem[] {
 (() => {
   const path = "src/content/docs/reference";
   const items = getIndexMdSidebarItems(path);
-  console.log(JSON.stringify(items, null, 2));
+  testSidebarStructure(path, items);
 })();
