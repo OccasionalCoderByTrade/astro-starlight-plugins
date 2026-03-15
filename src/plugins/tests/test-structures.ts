@@ -13,12 +13,12 @@ export function testSidebarStructure(
       {
         label: "csci-323-algorithms",
         items: [
-          { label: "csci-323-algorithms", slug: "csci-323-algorithms/index" },
+          { label: "Overview", slug: "csci-323-algorithms/index" },
           {
             label: "complex",
             items: [
               {
-                label: "complex",
+                label: "Overview",
                 slug: "csci-323-algorithms/lectures/advanced/intermediate/complex/index",
               },
             ],
@@ -27,7 +27,7 @@ export function testSidebarStructure(
             label: "even-more-fundie",
             items: [
               {
-                label: "even-more-fundie",
+                label: "Overview",
                 slug: "csci-323-algorithms/lectures/fundamentals/even-more-fundie/index",
               },
             ],
@@ -40,14 +40,14 @@ export function testSidebarStructure(
         label: "csci-328-algorithms-for-big-data",
         items: [
           {
-            label: "csci-328-algorithms-for-big-data",
+            label: "Overview",
             slug: "csci-328-algorithms-for-big-data/index",
           },
           {
             label: "distributed",
             items: [
               {
-                label: "distributed",
+                label: "Overview",
                 slug: "csci-328-algorithms-for-big-data/systems/cloud/distributed/index",
               },
             ],
@@ -56,7 +56,7 @@ export function testSidebarStructure(
             label: "frameworks",
             items: [
               {
-                label: "frameworks",
+                label: "Overview",
                 slug: "csci-328-algorithms-for-big-data/systems/frameworks/index",
               },
             ],
@@ -68,11 +68,12 @@ export function testSidebarStructure(
       {
         label: "csci-340-operating-systems",
         items: [
+          { label: "Overview", slug: "csci-340-operating-systems/index" },
           {
             label: "concurrency",
             items: [
               {
-                label: "concurrency",
+                label: "Overview",
                 slug: "csci-340-operating-systems/concepts/concurrency/index",
               },
             ],
@@ -81,7 +82,7 @@ export function testSidebarStructure(
             label: "kernels",
             items: [
               {
-                label: "kernels",
+                label: "Overview",
                 slug: "csci-340-operating-systems/concepts/security/hardening/kernels/index",
               },
             ],
@@ -93,22 +94,22 @@ export function testSidebarStructure(
       {
         label: "reference",
         items: [
-          { label: "reference", slug: "reference/index" },
+          { label: "Overview", slug: "reference/index" },
           {
             label: "schemas",
             items: [
-              { label: "schemas", slug: "reference/schemas/index" },
+              { label: "Overview", slug: "reference/schemas/index" },
               {
                 label: "data",
                 items: [
-                  { label: "data", slug: "reference/schemas/data/index" },
+                  { label: "Overview", slug: "reference/schemas/data/index" },
                 ],
               },
               {
                 label: "rules",
                 items: [
                   {
-                    label: "rules",
+                    label: "Overview",
                     slug: "reference/schemas/validation/rules/index",
                   },
                 ],
