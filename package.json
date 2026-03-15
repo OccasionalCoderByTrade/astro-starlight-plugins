@@ -43,7 +43,8 @@
     "help": "astro --help",
     "check": "astro check",
     "prepublishOnly": "npm run build:lib",
-    "tree:index": "tree -P index.md src/content/docs"
+    "tree:index": "tree -P index.md src/content/docs",
+    "clean:empty-dirs": "find src/content/docs -type d -empty -delete"
   },
   "dependencies": {
     "glob": "^13.0.6",
