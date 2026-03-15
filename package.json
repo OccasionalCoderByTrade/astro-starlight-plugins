@@ -42,7 +42,7 @@
     "app:help": "astro --help",
     "app:check": "astro check",
     "lib:build": "tsup",
-    "prepublishOnly": "npm run build:lib",
+    "prepublishOnly": "npm run lib:build",
     "tree:index": "tree -P index.md src/content/docs",
     "tree:depth": "bash scripts/tree-depth.sh",
     "clean:empty-dirs": "find src/content/docs -type d -empty -delete"
