@@ -36,12 +36,12 @@
     "url": "https://github.com/OccasionalCoderByTrade/astro-starlight-plugins"
   },
   "scripts": {
-    "build:lib": "tsup",
-    "dev": "node scripts/sync-docs-to-public.js && astro dev --port 5600",
-    "build": "npm run build:lib && node scripts/sync-docs-to-public.js && astro build",
-    "preview": "astro build && astro preview --port 5600",
-    "help": "astro --help",
-    "check": "astro check",
+    "app:dev": "node scripts/sync-docs-to-public.js && rm -rf .astro/ && astro dev --port 5600",
+    "app:build": "rm -rf .astro/ && node scripts/sync-docs-to-public.js && astro build",
+    "app:preview": "astro build && astro preview --port 5600",
+    "app:help": "astro --help",
+    "app:check": "astro check",
+    "lib:build": "tsup",
     "prepublishOnly": "npm run build:lib",
     "tree:index": "tree -P index.md src/content/docs",
     "tree:depth": "bash scripts/tree-depth.sh",
