@@ -106,10 +106,12 @@ function getIndexMdSidebarItems(
   dirnameDeterminesLabel: boolean,
 ): TSidebarItem[] {
   const sidebar = collectSidebarItems(directory, directory);
+
+  return sidebar;
 }
 
 (() => {
   const path = "src/content/docs/reference";
   const items = getIndexMdSidebarItems(path, true);
-  // console.log(JSON.stringify(items, null, 2));
+  console.log(JSON.stringify(items, null, 2));
 })();
