@@ -3,13 +3,13 @@
   "type": "module",
   "version": "0.0.1",
   "scripts": {
-    "dev": "node scripts/sync-docs-to-public.js && astro dev --port 5500",
+    "dev": "node scripts/sync-docs-to-public.js && astro dev --port 5600",
     "build": "node scripts/sync-docs-to-public.js && astro build",
-    "preview": "astro build && astro preview --port 5500",
+    "preview": "astro build && astro preview --port 5600",
     "help": "astro --help",
     "check": "astro check"
   },
-  "dependencies": {
+  "devDependencies": {
     "@astrojs/check": "^0.9.6",
     "@astrojs/starlight": "^0.37.6",
     "@expressive-code/plugin-line-numbers": "^0.41.7",
@@ -21,9 +21,7 @@
     "rehype-raw": "^7.0.0",
     "remark-math": "^6.0.0",
     "sharp": "^0.34.2",
-    "typescript": "^5.9.3"
-  },
-  "devDependencies": {
+    "typescript": "^5.9.3",
     "@eslint/js": "^10.0.1",
     "@eslint/markdown": "^7.5.1",
     "@trivago/prettier-plugin-sort-imports": "^6.0.2",
