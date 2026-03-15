@@ -101,10 +101,7 @@ function collectSidebarItems(rootDir: string, dir: string): TSidebarItem[] {
   return [...sidebarSingleItems, ...sidebarGroupedItems];
 }
 
-function getIndexMdSidebarItems(
-  directory: string,
-  dirnameDeterminesLabel: boolean,
-): TSidebarItem[] {
+function getIndexMdSidebarItems(directory: string): TSidebarItem[] {
   const sidebar = collectSidebarItems(directory, directory);
 
   return sidebar;
@@ -112,6 +109,6 @@ function getIndexMdSidebarItems(
 
 (() => {
   const path = "src/content/docs/reference";
-  const items = getIndexMdSidebarItems(path, true);
+  const items = getIndexMdSidebarItems(path);
   console.log(JSON.stringify(items, null, 2));
 })();
