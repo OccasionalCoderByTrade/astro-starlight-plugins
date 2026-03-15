@@ -3,7 +3,7 @@
   "type": "module",
   "version": "0.1.0",
   "description": "Starlight plugins for automatic sidebar generation and link validation",
-  "license": "MIT",
+  "license": "ISC",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
