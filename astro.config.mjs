@@ -32,17 +32,13 @@ export default defineConfig({
       },
       plugins: [
         starlightIndexOnlySidebar({
+          maxDepthNesting: 1,
+          dirnameDeterminesLabels: false,
           directories: [
-            { label: "Reference", directory: "reference" },
-            { label: "Algorithms", directory: "csci-323-algorithms" },
-            {
-              label: "Operating Systems",
-              directory: "csci-340-operating-systems",
-            },
-            {
-              label: "Algorithms for Big Data",
-              directory: "csci-328-algorithms-for-big-data",
-            },
+            "reference",
+            "csci-323-algorithms",
+            "csci-340-operating-systems",
+            "csci-328-algorithms-for-big-data",
           ],
         }),
       ],

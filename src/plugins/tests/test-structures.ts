@@ -11,24 +11,24 @@ export function testSidebarStructure(
   const expected: Record<string, TSidebarItem[]> = {
     "src/content/docs/csci-323-algorithms": [
       {
-        label: "csci-323-algorithms",
+        label: "CSCI 323 Algorithms",
         items: [
-          { label: "Overview", slug: "csci-323-algorithms/index" },
+          { label: "Overview", slug: "csci-323-algorithms" },
           {
-            label: "complex",
+            label: "Complex",
             items: [
               {
                 label: "Overview",
-                slug: "csci-323-algorithms/lectures/advanced/intermediate/complex/index",
+                slug: "csci-323-algorithms/lectures/advanced/intermediate/complex",
               },
             ],
           },
           {
-            label: "even-more-fundie",
+            label: "Even More Fundie",
             items: [
               {
                 label: "Overview",
-                slug: "csci-323-algorithms/lectures/fundamentals/even-more-fundie/index",
+                slug: "csci-323-algorithms/lectures/fundamentals/even-more-fundie",
               },
             ],
           },
@@ -37,27 +37,27 @@ export function testSidebarStructure(
     ],
     "src/content/docs/csci-328-algorithms-for-big-data": [
       {
-        label: "csci-328-algorithms-for-big-data",
+        label: "CSCI 328 Algorithms For Big Data",
         items: [
           {
             label: "Overview",
-            slug: "csci-328-algorithms-for-big-data/index",
+            slug: "csci-328-algorithms-for-big-data",
           },
           {
-            label: "distributed",
+            label: "Distributed",
             items: [
               {
                 label: "Overview",
-                slug: "csci-328-algorithms-for-big-data/systems/cloud/distributed/index",
+                slug: "csci-328-algorithms-for-big-data/systems/cloud/distributed",
               },
             ],
           },
           {
-            label: "frameworks",
+            label: "Frameworks",
             items: [
               {
                 label: "Overview",
-                slug: "csci-328-algorithms-for-big-data/systems/frameworks/index",
+                slug: "csci-328-algorithms-for-big-data/systems/frameworks",
               },
             ],
           },
@@ -66,24 +66,24 @@ export function testSidebarStructure(
     ],
     "src/content/docs/csci-340-operating-systems": [
       {
-        label: "csci-340-operating-systems",
+        label: "CSCI 340 Operating Systems",
         items: [
-          { label: "Overview", slug: "csci-340-operating-systems/index" },
+          { label: "Overview", slug: "csci-340-operating-systems" },
           {
-            label: "concurrency",
+            label: "Concurrency",
             items: [
               {
                 label: "Overview",
-                slug: "csci-340-operating-systems/concepts/concurrency/index",
+                slug: "csci-340-operating-systems/concepts/concurrency",
               },
             ],
           },
           {
-            label: "kernels",
+            label: "Kernels",
             items: [
               {
                 label: "Overview",
-                slug: "csci-340-operating-systems/concepts/security/hardening/kernels/index",
+                slug: "csci-340-operating-systems/concepts/security/hardening/kernels",
               },
             ],
           },
@@ -92,25 +92,25 @@ export function testSidebarStructure(
     ],
     "src/content/docs/reference": [
       {
-        label: "reference",
+        label: "Reference",
         items: [
-          { label: "Overview", slug: "reference/index" },
+          { label: "Overview", slug: "reference" },
           {
-            label: "schemas",
+            label: "Schemas",
             items: [
-              { label: "Overview", slug: "reference/schemas/index" },
+              { label: "Overview", slug: "reference/schemas" },
               {
-                label: "data",
+                label: "Data",
                 items: [
-                  { label: "Overview", slug: "reference/schemas/data/index" },
+                  { label: "Overview", slug: "reference/schemas/data" },
                 ],
               },
               {
-                label: "rules",
+                label: "Rules",
                 items: [
                   {
                     label: "Overview",
-                    slug: "reference/schemas/validation/rules/index",
+                    slug: "reference/schemas/validation/rules",
                   },
                 ],
               },

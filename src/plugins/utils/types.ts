@@ -5,7 +5,9 @@ export type TSidebarItem =
       label: string;
       slug: string;
     }
-  | {
-      label: string;
-      items: TSidebarItem[];
-    };
+  | TGroupedItem;
+
+export type TGroupedItem = {
+  label: string;
+  items: TSidebarItem[];
+};
