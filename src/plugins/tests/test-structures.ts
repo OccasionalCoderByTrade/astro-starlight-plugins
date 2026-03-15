@@ -11,23 +11,23 @@ export function testSidebarStructure(
   const expected: Record<string, TSidebarItem[]> = {
     "src/content/docs/csci-323-algorithms": [
       {
-        label: "CSCI 323 - Algorithms",
+        label: "csci-323-algorithms",
         items: [
-          { label: "Overview", slug: "csci-323-algorithms/index" },
+          { label: "csci-323-algorithms", slug: "csci-323-algorithms/index" },
           {
-            label: "Complex",
+            label: "complex",
             items: [
               {
-                label: "Overview",
+                label: "complex",
                 slug: "csci-323-algorithms/lectures/advanced/intermediate/complex/index",
               },
             ],
           },
           {
-            label: "Even More Fundie",
+            label: "even-more-fundie",
             items: [
               {
-                label: "Overview",
+                label: "even-more-fundie",
                 slug: "csci-323-algorithms/lectures/fundamentals/even-more-fundie/index",
               },
             ],
@@ -37,23 +37,26 @@ export function testSidebarStructure(
     ],
     "src/content/docs/csci-328-algorithms-for-big-data": [
       {
-        label: "CSCI 328 - Algorithms for Big Data",
+        label: "csci-328-algorithms-for-big-data",
         items: [
-          { label: "Overview", slug: "csci-328-algorithms-for-big-data/index" },
           {
-            label: "Distributed",
+            label: "csci-328-algorithms-for-big-data",
+            slug: "csci-328-algorithms-for-big-data/index",
+          },
+          {
+            label: "distributed",
             items: [
               {
-                label: "Overview",
+                label: "distributed",
                 slug: "csci-328-algorithms-for-big-data/systems/cloud/distributed/index",
               },
             ],
           },
           {
-            label: "Frameworks",
+            label: "frameworks",
             items: [
               {
-                label: "Overview",
+                label: "frameworks",
                 slug: "csci-328-algorithms-for-big-data/systems/frameworks/index",
               },
             ],
@@ -63,22 +66,22 @@ export function testSidebarStructure(
     ],
     "src/content/docs/csci-340-operating-systems": [
       {
-        label: "CSCI 340 - Operating Systems",
+        label: "csci-340-operating-systems",
         items: [
           {
-            label: "Concurrency",
+            label: "concurrency",
             items: [
               {
-                label: "Overview",
+                label: "concurrency",
                 slug: "csci-340-operating-systems/concepts/concurrency/index",
               },
             ],
           },
           {
-            label: "Kernels",
+            label: "kernels",
             items: [
               {
-                label: "Overview",
+                label: "kernels",
                 slug: "csci-340-operating-systems/concepts/security/hardening/kernels/index",
               },
             ],
@@ -88,24 +91,24 @@ export function testSidebarStructure(
     ],
     "src/content/docs/reference": [
       {
-        label: "Reference",
+        label: "reference",
         items: [
-          { label: "Overview", slug: "reference/index" },
+          { label: "reference", slug: "reference/index" },
           {
-            label: "Schemas",
+            label: "schemas",
             items: [
-              { label: "Overview", slug: "reference/schemas/index" },
+              { label: "schemas", slug: "reference/schemas/index" },
               {
-                label: "Data",
+                label: "data",
                 items: [
-                  { label: "Overview", slug: "reference/schemas/data/index" },
+                  { label: "data", slug: "reference/schemas/data/index" },
                 ],
               },
               {
-                label: "Rules",
+                label: "rules",
                 items: [
                   {
-                    label: "Overview",
+                    label: "rules",
                     slug: "reference/schemas/validation/rules/index",
                   },
                 ],
