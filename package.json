@@ -42,7 +42,8 @@
     "preview": "astro build && astro preview --port 5600",
     "help": "astro --help",
     "check": "astro check",
-    "prepublishOnly": "npm run build:lib"
+    "prepublishOnly": "npm run build:lib",
+    "tree:index": "tree -P index.md src/content/docs"
   },
   "dependencies": {
     "glob": "^13.0.6",
