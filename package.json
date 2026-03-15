@@ -1,27 +1,82 @@
 {
-  "name": "astro-markdown-template",
+  "name": "starlight-cannoli-plugins",
   "type": "module",
-  "version": "0.0.1",
+  "version": "0.1.0",
+  "description": "Starlight plugins for automatic sidebar generation and link validation",
+  "license": "MIT",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./starlight-index-only-sidebar": {
+      "import": "./dist/plugins/starlight-index-only-sidebar.js",
+      "types": "./dist/plugins/starlight-index-only-sidebar.d.ts"
+    },
+    "./rehype-validate-links": {
+      "import": "./dist/plugins/rehype-validate-links.js",
+      "types": "./dist/plugins/rehype-validate-links.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "keywords": [
+    "astro",
+    "starlight",
+    "plugin",
+    "sidebar",
+    "rehype",
+    "link-validation"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/OccasionalCoderByTrade/astro-starlight-plugins"
+  },
   "scripts": {
+    "build:lib": "tsup",
     "dev": "node scripts/sync-docs-to-public.js && astro dev --port 5600",
-    "build": "node scripts/sync-docs-to-public.js && astro build",
+    "build": "npm run build:lib && node scripts/sync-docs-to-public.js && astro build",
     "preview": "astro build && astro preview --port 5600",
     "help": "astro --help",
-    "check": "astro check"
+    "check": "astro check",
+    "prepublishOnly": "npm run build:lib"
+  },
+  "dependencies": {
+    "glob": "^13.0.6",
+    "unist-util-visit": "^5.0.0",
+    "yaml": "^2.4.0"
+  },
+  "peerDependencies": {
+    "@astrojs/starlight": ">=0.30.0",
+    "astro": ">=5.0.0"
+  },
+  "peerDependenciesMeta": {
+    "astro": {
+      "optional": false
+    },
+    "@astrojs/starlight": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.6",
     "@astrojs/starlight": "^0.37.6",
     "@expressive-code/plugin-line-numbers": "^0.41.7",
     "@hpcc-js/wasm": "^2.33.1",
+    "@types/hast": "^2.3.10",
     "astro": "^5.6.1",
-    "glob": "^13.0.6",
+    "hast": "^1.0.0",
     "rehype-graphviz": "^0.3.0",
     "rehype-mathjax": "^7.1.0",
     "rehype-raw": "^7.0.0",
     "remark-math": "^6.0.0",
     "sharp": "^0.34.2",
+    "tsup": "^8.3.0",
     "typescript": "^5.9.3",
+    "vfile": "^6.0.0",
     "@eslint/js": "^10.0.1",
     "@eslint/markdown": "^7.5.1",
     "@trivago/prettier-plugin-sort-imports": "^6.0.2",

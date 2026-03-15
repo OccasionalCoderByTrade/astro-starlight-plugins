@@ -1,5 +1,7 @@
-# build output
+# library build output
 dist/
+# Astro site build output
+site-dist/
 # generated types
 .astro/
 

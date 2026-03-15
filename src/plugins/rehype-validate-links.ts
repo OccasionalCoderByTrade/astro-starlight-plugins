@@ -141,6 +141,7 @@ export function rehypeValidateLinks() {
 
       validateLink(link);
 
+      node.properties = node.properties || {};
       node.properties[attributeName] = link.site_absolute_href;
     });
   };

@@ -7,11 +7,12 @@ import rehypeGraphviz from "rehype-graphviz";
 import rehypeMathjax from "rehype-mathjax";
 import remarkMath from "remark-math";
 
-import rehypeValidateLinks from "./src/plugins/rehype-validate-links";
-import starlightIndexOnlySidebar from "./src/plugins/starlight-index-only-sidebar";
+import { rehypeValidateLinks } from "./src/plugins/rehype-validate-links.ts";
+import { starlightIndexOnlySidebar } from "./src/plugins/starlight-index-only-sidebar.ts";
 
 // https://astro.build/config
 export default defineConfig({
+  outDir: "./site-dist",
   markdown: {
     remarkPlugins: [
       remarkMath, // adds support for math

@@ -216,7 +216,7 @@ function buildIndexSidebar(
   });
 }
 
-export default function starlightIndexOnlySidebar(options: TIndexOnlySidebarPluginOptions) {
+export function starlightIndexOnlySidebar(options: TIndexOnlySidebarPluginOptions) {
   return {
     name: "index-only-sidebar",
     hooks: {
