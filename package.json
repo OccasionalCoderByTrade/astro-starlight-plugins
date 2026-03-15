@@ -81,6 +81,7 @@
     "globals": "^17.4.0",
     "hast": "^1.0.0",
     "jiti": "^2.6.1",
+    "lodash": "^4.17.23",
     "rehype-graphviz": "^0.3.0",
     "rehype-mathjax": "^7.1.0",
     "rehype-raw": "^7.0.0",

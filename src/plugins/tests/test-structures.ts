@@ -1,4 +1,8 @@
+// @ts-expect-error no types available for lodash
+import _ from "lodash";
 import type { TSidebarItem } from "../utils/types";
+
+const { isEqual } = _;
 
 export function testSidebarStructure(
   dir_root: string,
@@ -112,4 +116,20 @@ export function testSidebarStructure(
       },
     ],
   };
+
+  const expectedResult = expected[dir_root];
+
+  if (!expectedResult) {
+    console.warn(`No test case found for directory: ${dir_root}`);
+    return;
+  }
+
+  if (isEqual(sidebar, expectedResult)) {
+    console.log(`✓ Test passed for: ${dir_root}`);
+  } else {
+    console.error(`✗ Test failed for: ${dir_root}`);
+    console.error("Expected:", JSON.stringify(expectedResult, null, 2));
+    console.error("Got:", JSON.stringify(sidebar, null, 2));
+    process.exit(1);
+  }
 }
