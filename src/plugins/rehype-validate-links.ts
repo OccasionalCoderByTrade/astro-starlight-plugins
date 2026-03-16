@@ -1,5 +1,6 @@
 import { existsSync } from "fs";
 import { sync as globSync } from "glob";
+import { minimatch } from "minimatch";
 import type { Element, Root } from "hast";
 import { dirname, join, relative, resolve } from "path";
 import { visit } from "unist-util-visit";
@@ -12,22 +13,43 @@ type TLink = {
   project_absolute_href: string; // can be a glob pattern if it's a markdown link without extension
   site_absolute_href: string;
   fragment: string;
+  skipValidation: boolean; // set to true if href starts with ?
 };
 
+type TRehypeValidateLinksOptions = {
+  skipPatterns?: string[]; // glob patterns to skip validation (e.g. '/csci-320-331-obrenic/grade-calculator', '**/grade-*')
+};
+
+function matchesSkipPattern(path: string, patterns: string[] | undefined): boolean {
+  if (!patterns || patterns.length === 0) {
+    return false;
+  }
+
+  return patterns.some((pattern) => minimatch(path, pattern));
+}
+
 function getResolvedLink(href: string, currentFilePath: string): TLink | null {
+  // Check if href starts with ? (skip validation marker)
+  let skipValidation = false;
+  let processedHref = href;
+  if (href.startsWith("?")) {
+    skipValidation = true;
+    processedHref = href.slice(1); // strip the ?
+  }
+
   try {
-    new URL(href);
+    new URL(processedHref);
     return null; // constructed successfully, it's an external link
   } catch {
     // if exception, then it's not an external resource
   }
 
   // skip empty links
-  if (!href) {
+  if (!processedHref) {
     return null;
   }
 
-  const fragmentMatch = href.split("#");
+  const fragmentMatch = processedHref.split("#");
   const withoutFragment = fragmentMatch[0];
   const fragment = fragmentMatch[1] || "";
 
@@ -76,6 +98,7 @@ function getResolvedLink(href: string, currentFilePath: string): TLink | null {
     project_absolute_href: finalProjectAbsoluteHref,
     site_absolute_href: siteAbsoluteHref,
     fragment: fragment,
+    skipValidation: skipValidation,
   };
 }
 
@@ -111,7 +134,7 @@ function validateLink(link: TLink): void {
 /**
  * Rehype plugin to validate all internal links and convert them to absolute paths
  */
-export function rehypeValidateLinks() {
+export function rehypeValidateLinks(options?: TRehypeValidateLinksOptions) {
   return (tree: Root, file: VFile) => {
     const filePath = file.path;
 
@@ -122,7 +145,7 @@ export function rehypeValidateLinks() {
       return;
     }
 
-    visit(tree, "element", (node: Element) => {
+    visit(tree, "element", (node: Element, index: number | undefined, parent) => {
       let resourcePath: string | undefined;
       let attributeName: string | null = null;
 
@@ -138,6 +161,49 @@ export function rehypeValidateLinks() {
 
       const link = getResolvedLink(resourcePath, filePath);
       if (!link) return;
+
+      // Check if link has skipValidation flag (? prefix in href)
+      if (link.skipValidation) {
+        node.properties = node.properties || {};
+        node.properties[attributeName] = link.site_absolute_href;
+        return;
+      }
+
+      // Check if element has data-no-link-check attribute
+      if (node.properties?.["data-no-link-check"] !== undefined) {
+        node.properties = node.properties || {};
+        node.properties[attributeName] = link.site_absolute_href;
+        return;
+      }
+
+      // Check if link matches skip patterns
+      if (matchesSkipPattern(link.site_absolute_href, options?.skipPatterns)) {
+        node.properties = node.properties || {};
+        node.properties[attributeName] = link.site_absolute_href;
+        return;
+      }
+
+      // Check if next sibling is an HTML comment with "no-link-check"
+      if (
+        index !== undefined &&
+        parent &&
+        "children" in parent &&
+        Array.isArray(parent.children)
+      ) {
+        const nextNode = parent.children[index + 1];
+        if (
+          nextNode &&
+          "type" in nextNode &&
+          nextNode.type === "comment" &&
+          "value" in nextNode &&
+          typeof nextNode.value === "string" &&
+          nextNode.value.includes("no-link-check")
+        ) {
+          node.properties = node.properties || {};
+          node.properties[attributeName] = link.site_absolute_href;
+          return;
+        }
+      }
 
       validateLink(link);
 
