@@ -20,6 +20,10 @@ img.note-svg {
   }
 }
 
+.katex-html svg {
+  height: inherit;
+}
+
 /************ Starlight Additions/Overrides ************/
 
 .sl-container:where(.astro-7nkwcw3z) {
@@ -111,17 +115,14 @@ mjx-container[jax="SVG"] {
   overflow-x: auto;
 
   &[display="true"] {
-    margin-top: 0.7em !important;
-    margin-bottom: 0.7em !important;
-    padding-top: 0.3em;
-    padding-bottom: 0.3em;
+    margin: 0.5em 0 !important;
+    padding: 0.5em 0 !important;
   }
+}
 
-  > svg {
-    display: unset;
-    max-width: unset;
-    height: unset;
-  }
+.katex-display {
+  margin: 0.5em 0 !important;
+  padding: 0.5em 0 !important;
 }
 
 /********** TikZ SVG Styling **********/
