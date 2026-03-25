@@ -1,10 +1,3 @@
-$info-color: #3b82f6;
-$warning-color: #f59e0b;
-
-html {
-  scroll-behavior: smooth;
-}
-
 // invert img.note-svg when on dark mode
 img.note-svg {
   color-scheme: light dark;
@@ -309,54 +302,6 @@ $axis-spacings: (
         #{$property}: #{$accumulated}rem !important;
       }
     }
-  }
-}
-
-/************ Custom Styles ************/
-
-.highlight-green,
-.highlight-red {
-  padding: 5px;
-}
-
-.highlight-green {
-  background: #7de37d34;
-}
-
-.highlight-red {
-  background: #f7535b46;
-}
-
-.admin-only {
-  display: none;
-}
-
-.note-indicator {
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background-color: $info-color;
-  margin-right: 6px;
-  vertical-align: middle;
-  opacity: 0.6;
-}
-
-div.note {
-  display: none;
-  border: 3px solid $warning-color;
-  border-left: 6px solid $warning-color;
-  padding: 12px;
-  border-radius: 4px;
-  margin: 10px 0;
-
-  &::before {
-    content: "Personal Note";
-    display: block;
-    font-weight: bold;
-    color: $info-color;
-    margin-bottom: 8px;
-    font-size: 0.95em;
   }
 }
 
