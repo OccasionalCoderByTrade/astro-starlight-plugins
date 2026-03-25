@@ -19,6 +19,10 @@
       "import": "./dist/plugins/rehype-validate-links.js",
       "types": "./dist/plugins/rehype-validate-links.d.ts"
     },
+    "./astro-normalize-paths": {
+      "import": "./dist/plugins/astro-normalize-paths.js",
+      "types": "./dist/plugins/astro-normalize-paths.d.ts"
+    },
     "./styles": "./src/styles/",
     "./styles/*": "./src/styles/*"
   },

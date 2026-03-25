@@ -1,12 +1,10 @@
 import { existsSync } from "fs";
 import { sync as globSync } from "glob";
-import { minimatch } from "minimatch";
 import type { Element, Root } from "hast";
 import { dirname, join, relative, resolve } from "path";
 import { visit } from "unist-util-visit";
 import type { VFile } from "vfile";
-
-const PROJECT_DOCS_DIR = "src/content/docs";
+import { PROJECT_DOCS_DIR, matchesSkipPattern } from "./utils/path-utils.js";
 
 type TLink = {
   original_href: string;
@@ -19,14 +17,6 @@ type TLink = {
 type TRehypeValidateLinksOptions = {
   skipPatterns?: string[]; // glob patterns to skip validation (e.g. '/csci-320-331-obrenic/grade-calculator', '**/grade-*')
 };
-
-function matchesSkipPattern(path: string, patterns: string[] | undefined): boolean {
-  if (!patterns || patterns.length === 0) {
-    return false;
-  }
-
-  return patterns.some((pattern) => minimatch(path, pattern));
-}
 
 function getResolvedLink(href: string, currentFilePath: string): TLink | null {
   // Check if href starts with ? (skip validation marker)
@@ -132,7 +122,8 @@ function validateLink(link: TLink): void {
 }
 
 /**
- * Rehype plugin to validate all internal links and convert them to absolute paths
+ * Rehype plugin to validate all internal links (checks validity only, no path normalization).
+ * This plugin verifies that link targets exist; path normalization is handled by separate integrations.
  */
 export function rehypeValidateLinks(options?: TRehypeValidateLinksOptions) {
   return (tree: Root, file: VFile) => {
@@ -145,70 +136,27 @@ export function rehypeValidateLinks(options?: TRehypeValidateLinksOptions) {
       return;
     }
 
-    visit(tree, "element", (node: Element, index: number | undefined, parent) => {
-      let resourcePath: string | undefined;
-      let attributeName: string | null = null;
+    visit(tree, "element", (node: Element) => {
+      // Only validate <a> elements (links), not <img> elements
+      if (node.tagName !== "a") return;
 
-      if (node.tagName === "a") {
-        resourcePath = node.properties?.href as string | undefined;
-        attributeName = "href";
-      } else if (node.tagName === "img") {
-        resourcePath = node.properties?.src as string | undefined;
-        attributeName = "src";
-      }
+      const href = node.properties?.href as string | undefined;
+      if (!href) return;
 
-      if (!resourcePath || !attributeName) return;
-
-      const link = getResolvedLink(resourcePath, filePath);
+      const link = getResolvedLink(href, filePath);
       if (!link) return;
 
       // Check if link has skipValidation flag (? prefix in href)
-      if (link.skipValidation) {
-        node.properties = node.properties || {};
-        node.properties[attributeName] = link.site_absolute_href;
-        return;
-      }
+      if (link.skipValidation) return;
 
       // Check if element has data-no-link-check attribute
-      if (node.properties?.["data-no-link-check"] !== undefined) {
-        node.properties = node.properties || {};
-        node.properties[attributeName] = link.site_absolute_href;
-        return;
-      }
+      if (node.properties?.["data-no-link-check"] !== undefined) return;
 
       // Check if link matches skip patterns
-      if (matchesSkipPattern(link.site_absolute_href, options?.skipPatterns)) {
-        node.properties = node.properties || {};
-        node.properties[attributeName] = link.site_absolute_href;
-        return;
-      }
+      if (matchesSkipPattern(link.site_absolute_href, options?.skipPatterns)) return;
 
-      // Check if next sibling is an HTML comment with "no-link-check"
-      if (
-        index !== undefined &&
-        parent &&
-        "children" in parent &&
-        Array.isArray(parent.children)
-      ) {
-        const nextNode = parent.children[index + 1];
-        if (
-          nextNode &&
-          "type" in nextNode &&
-          nextNode.type === "comment" &&
-          "value" in nextNode &&
-          typeof nextNode.value === "string" &&
-          nextNode.value.includes("no-link-check")
-        ) {
-          node.properties = node.properties || {};
-          node.properties[attributeName] = link.site_absolute_href;
-          return;
-        }
-      }
-
+      // Validate that the link target exists
       validateLink(link);
-
-      node.properties = node.properties || {};
-      node.properties[attributeName] = link.site_absolute_href;
     });
   };
 }

@@ -9,6 +9,7 @@ import remarkMath from "remark-math";
 
 import { rehypeValidateLinks } from "./src/plugins/rehype-validate-links.ts";
 import { starlightIndexOnlySidebar } from "./src/plugins/starlight-index-only-sidebar.ts";
+import { astroNormalizePaths } from "./src/plugins/astro-normalize-paths.ts";
 
 // https://astro.build/config
 export default defineConfig({
@@ -24,6 +25,7 @@ export default defineConfig({
     ],
   },
   integrations: [
+    astroNormalizePaths(),
     starlight({
       title: "My Grand Amazing Site",
       tableOfContents: {
