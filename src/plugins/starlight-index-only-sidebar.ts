@@ -3,12 +3,37 @@ import { join } from "path";
 import { getIndexMdSidebarItems } from "./utils/sidebar-builder-utils";
 import type { TGroupedItem } from "./utils/types";
 
+/**
+ * Configuration options for sidebar generation behavior.
+ */
 type TOptions = {
+  /**
+   * Controls how deep the nested group structure can go, where the root directory is level 0.
+   * Once this depth is reached, no further child groups are created; instead, any index.md or index.mdx
+   * files found deeper in the subtree are flattened and included as slug items directly at the current level.
+   * @default 100
+   */
   maxDepthNesting?: number;
+
+  /**
+   * When true, all labels (both group labels and slug item labels) are derived from the raw directory name.
+   * When false, the label for a slug item is read from the title field in the index.md or index.mdx file's
+   * frontmatter; group labels are still derived from the raw directory name.
+   * @default true
+   */
   dirnameDeterminesLabels?: boolean;
 };
 
+/**
+ * Options for the starlightIndexOnlySidebar plugin.
+ * Automatically generates a sidebar configuration by scanning for index.md/index.mdx files in specified directories.
+ */
 type TIndexOnlySidebarPluginOptions = TOptions & {
+  /**
+   * Array of directory names (relative to src/content/docs) to scan for sidebar generation.
+   * Each directory will become a top-level group in the sidebar.
+   * @example ["reference", "guides", "api-docs"]
+   */
   directories: string[];
 };
 
@@ -41,6 +66,19 @@ function normalizeItems(items: TSidebarItem[]): TSidebarItem[] {
   });
 }
 
+/**
+ * Starlight plugin that automatically generates a sidebar configuration by scanning the filesystem
+ * for index.md/index.mdx files in specified directories.
+ *
+ * @param pluginOptions - Configuration options for the sidebar generation
+ * @returns A Starlight plugin object
+ * @example
+ * starlightIndexOnlySidebar({
+ *   maxDepthNesting: 1,
+ *   dirnameDeterminesLabels: true,
+ *   directories: ["reference", "guides"],
+ * })
+ */
 export function starlightIndexOnlySidebar(
   pluginOptions: TIndexOnlySidebarPluginOptions,
 ) {
