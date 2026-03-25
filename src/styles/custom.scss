@@ -1,11 +1,35 @@
+$info-color: #3b82f6;
+$warning-color: #f59e0b;
+
 html {
   scroll-behavior: smooth;
+}
+
+// invert img.note-svg when on dark mode
+img.note-svg {
+  color-scheme: light dark;
+  padding-top: 1em;
+  padding-bottom: 1em;
+
+  html[data-theme="light"] & {
+    filter: none;
+  }
+
+  html:not([data-theme="light"]) & {
+    filter: invert(1) hue-rotate(180deg);
+  }
 }
 
 /************ Starlight Additions/Overrides ************/
 
 .sl-container:where(.astro-7nkwcw3z) {
   max-width: 50rem;
+}
+
+.main-pane {
+  table > thead > tr > th {
+    border-bottom: 1px solid hsl(228, 6.2%, 47.3%);
+  }
 }
 
 starlight-toc {
@@ -59,23 +83,20 @@ starlight-toc {
 }
 
 /************ Details/Summary Styles ************/
-.main-pane {
-  details {
-    background: hsla(225.4, 16.5%, 48.8%, 0.11);
-    border-radius: 4px;
-    padding-top: 4px;
-    padding-bottom: 4px;
-    display: block;
-  }
+.main-pane details {
+  background: var(--sl-color-bg-nav);
+  border-radius: 4px;
+  padding: 0.3rem 0.6rem;
+  display: block;
 
-  details[open] {
+  &[open] {
     max-width: 100%;
 
     > div.details-wrapper {
-      overflow-x: auto;
-      max-height: 75vh;
-      overflow-y: auto;
-      padding-right: 1rem;
+      overflow: auto;
+      max-height: 67vh;
+      padding-right: 0.8rem;
+      padding-left: 0.8rem;
     }
 
     p > img {
@@ -87,8 +108,19 @@ starlight-toc {
 
 /********** MathJax/LaTeX Styling **********/
 mjx-container[jax="SVG"] {
+  overflow-x: auto;
+
+  &[display="true"] {
+    margin-top: 0.7em !important;
+    margin-bottom: 0.7em !important;
+    padding-top: 0.3em;
+    padding-bottom: 0.3em;
+  }
+
   > svg {
     display: unset;
+    max-width: unset;
+    height: unset;
   }
 }
 
@@ -171,6 +203,15 @@ div > div[class="page"] > svg {
 
 .flex-wrap {
   flex-wrap: wrap !important;
+
+  .flex-fill {
+    flex: 1 1 auto;
+    margin-top: unset;
+  }
+
+  .flex-fill.flex-code {
+    min-width: 0;
+  }
 }
 
 .flex-grow-1 {
@@ -209,6 +250,25 @@ $spacings: (
   gap-col: column-gap,
 );
 
+$axis-spacings: (
+  px: (
+    padding-left,
+    padding-right,
+  ),
+  py: (
+    padding-top,
+    padding-bottom,
+  ),
+  mx: (
+    margin-left,
+    margin-right,
+  ),
+  my: (
+    margin-top,
+    margin-bottom,
+  ),
+);
+
 @each $class, $property in $spacings {
   .#{$class}-0 {
     #{$property}: 0 !important;
@@ -223,6 +283,111 @@ $spacings: (
 
     .#{$class}-#{$i} {
       #{$property}: #{$accumulated}rem !important;
+    }
+  }
+}
+
+/* Axis-specific spacing utilities (-x and -y) */
+@each $class, $properties in $axis-spacings {
+  .#{$class}-0 {
+    @each $property in $properties {
+      #{$property}: 0 !important;
+    }
+  }
+
+  $scalar: 0.125;
+  $accumulated: 0;
+
+  @for $i from 1 through 6 {
+    $scalar: $scalar + ($i % 2) * $scalar;
+    $accumulated: $accumulated + $scalar;
+
+    .#{$class}-#{$i} {
+      @each $property in $properties {
+        #{$property}: #{$accumulated}rem !important;
+      }
+    }
+  }
+}
+
+/************ Custom Styles ************/
+
+.highlight-green,
+.highlight-red {
+  padding: 5px;
+}
+
+.highlight-green {
+  background: #7de37d34;
+}
+
+.highlight-red {
+  background: #f7535b46;
+}
+
+.admin-only {
+  display: none;
+}
+
+.note-indicator {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: $info-color;
+  margin-right: 6px;
+  vertical-align: middle;
+  opacity: 0.6;
+}
+
+div.note {
+  display: none;
+  border: 3px solid $warning-color;
+  border-left: 6px solid $warning-color;
+  padding: 12px;
+  border-radius: 4px;
+  margin: 10px 0;
+
+  &::before {
+    content: "Personal Note";
+    display: block;
+    font-weight: bold;
+    color: $info-color;
+    margin-bottom: 8px;
+    font-size: 0.95em;
+  }
+}
+
+/********** Toggle Checkbox Styles **********/
+#toggle-all-details-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+
+  input[type="checkbox"] {
+    position: relative;
+    appearance: none;
+    width: 1.2em;
+    height: 1.2em;
+    border: 2px solid currentColor;
+    border-radius: 2px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s ease;
+
+    &:checked {
+      background-color: var(--sl-color-accent);
+      border-color: var(--sl-color-accent);
+
+      &::after {
+        content: "✓";
+        color: white;
+        font-size: 0.8em;
+        font-weight: bold;
+      }
     }
   }
 }
