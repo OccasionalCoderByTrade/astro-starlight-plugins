@@ -1,7 +1,7 @@
 {
   "name": "starlight-cannoli-plugins",
   "type": "module",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "Starlight plugins for automatic sidebar generation and link validation",
   "license": "ISC",
   "main": "./dist/index.js",
@@ -23,12 +23,11 @@
       "import": "./dist/plugins/astro-normalize-paths.js",
       "types": "./dist/plugins/astro-normalize-paths.d.ts"
     },
-    "./styles": "./src/styles/",
-    "./styles/*": "./src/styles/*"
+    "./styles": "./dist/styles/",
+    "./styles/*": "./dist/styles/*"
   },
   "files": [
-    "dist",
-    "src/styles"
+    "dist"
   ],
   "keywords": [
     "astro",
@@ -48,7 +47,7 @@
     "app:preview": "astro build && astro preview --port 5600",
     "app:help": "astro --help",
     "app:check": "astro check",
-    "lib:build": "tsup",
+    "lib:build": "tsup && cp -r src/styles dist/",
     "prepublishOnly": "npm run lib:build",
     "tree:index": "tree -P index.md src/content/docs",
     "tree:depth": "bash scripts/tree-depth.sh",
