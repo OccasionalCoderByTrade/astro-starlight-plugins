@@ -41,7 +41,11 @@ export function normalizePath(
 
   // Convert to absolute site path
   const siteRoot = resolve(siteRootPath);
-  return "/" + resolve(resolvedPath).slice(siteRoot.length).replace(/\\/g, "/");
+  const relativePath = resolve(resolvedPath)
+    .slice(siteRoot.length)
+    .replace(/\\/g, "/")
+    .replace(/^\/+/, ""); // Remove leading slashes to avoid double slash
+  return "/" + relativePath;
 }
 
 export { PROJECT_DOCS_DIR };
