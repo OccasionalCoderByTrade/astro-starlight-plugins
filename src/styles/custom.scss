@@ -81,10 +81,18 @@ starlight-toc {
 
 /************ Details/Summary Styles ************/
 .main-pane details {
-  background: var(--sl-color-bg-nav);
+  background: rgba(162, 171, 173, 0.071);
   border-radius: 4px;
-  padding: 0.3rem 0.6rem;
+  padding: 0.5em 0;
   display: block;
+
+  summary {
+    padding-left: 1.1em;
+  }
+
+  html[data-theme="light"] & {
+    background: rgba(162, 171, 173, 0.08);
+  }
 
   &[open] {
     max-width: 100%;
@@ -92,8 +100,7 @@ starlight-toc {
     > div.details-wrapper {
       overflow: auto;
       max-height: 67vh;
-      padding-right: 0.8rem;
-      padding-left: 0.8rem;
+      padding: 0 1em;
     }
 
     p > img {
