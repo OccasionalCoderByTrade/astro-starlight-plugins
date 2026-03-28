@@ -38,8 +38,8 @@ export default defineConfig([
     language: "markdown/gfm",
     extends: ["markdown/recommended"],
     rules: {
-      "cannoli/require-frontmatter": "error",
-      "cannoli/no-h1-headers": "error",
+      // "cannoli/require-frontmatter": "error",
+      // "cannoli/no-h1-headers": "error",
       "markdown/no-missing-label-refs": "off",
       // "markdown/no-duplicate-headings": "error",
     },

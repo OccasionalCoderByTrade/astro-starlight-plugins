@@ -54,6 +54,7 @@
     "clean:empty-dirs": "find src/content/docs -type d -empty -delete"
   },
   "dependencies": {
+    "eslint-cannoli-plugins": "^1.0.12",
     "glob": "^13.0.6",
     "minimatch": "^10.2.4",
     "unist-util-visit": "^5.0.0",
@@ -84,7 +85,6 @@
     "@typescript-eslint/parser": "^8.56.1",
     "astro": "^5.6.1",
     "eslint": "^10.0.2",
-    "eslint-md-cannoli-plugins": "^1.0.2",
     "globals": "^17.4.0",
     "hast": "^1.0.0",
     "jiti": "^2.6.1",
