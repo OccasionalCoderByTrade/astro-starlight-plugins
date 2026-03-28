@@ -66,17 +66,17 @@ Roman starting at iv:
 ## Mixed Nesting: Numeric > Alpha > Roman
 
 %n. First top-level item
-    %a. First sub-item
-        %nn. First sub-sub-item
-        %nn. Second sub-sub-item
-        %nn. Third sub-sub-item
-    %a. Second sub-item
-        %nn. First sub-sub-item
-        %nn. Second sub-sub-item
-    %a. Third sub-item
+   %a. First sub-item
+      %nn. First sub-sub-item
+      %nn. Second sub-sub-item
+      %nn. Third sub-sub-item
+   %a. Second sub-item
+      %nn. First sub-sub-item
+      %nn. Second sub-sub-item
+   %a. Third sub-item
 %n. Second top-level item
-    %a. First sub-item
-    %a. Second sub-item
+   %a. First sub-item
+   %a. Second sub-item
 %n. Third top-level item
 
 ---
@@ -84,15 +84,15 @@ Roman starting at iv:
 ## Mixed Nesting: Alpha > Numeric > Roman
 
 %a. First alphabetical item
-    %n. First numeric child
-        %nn. Roman grandchild one
-        %nn. Roman grandchild two
-    %n. Second numeric child
-        %nn. Roman grandchild one
-        %nn. Roman grandchild two
-        %nn. Roman grandchild three
+   %n. First numeric child
+      %nn. Roman grandchild one
+      %nn. Roman grandchild two
+   %n. Second numeric child
+      %nn. Roman grandchild one
+      %nn. Roman grandchild two
+      %nn. Roman grandchild three
 %a. Second alphabetical item
-    %n. Only numeric child
+   %n. Only numeric child
 %a. Third alphabetical item
 
 ---
@@ -100,15 +100,15 @@ Roman starting at iv:
 ## Mixed Nesting: Roman > Alpha > Numeric
 
 %nn. First roman item
-    %a. Alpha child one
-        %n. Numeric grandchild
-        %n. Numeric grandchild
-    %a. Alpha child two
-        %n. Numeric grandchild
+   %a. Alpha child one
+      %n. Numeric grandchild
+      %n. Numeric grandchild
+   %a. Alpha child two
+      %n. Numeric grandchild
 %nn. Second roman item
-    %a. Alpha child one
-    %a. Alpha child two
-    %a. Alpha child three
+   %a. Alpha child one
+   %a. Alpha child two
+   %a. Alpha child three
 %nn. Third roman item
 
 ---
@@ -117,25 +117,25 @@ Roman starting at iv:
 
 %n. This item has a continuation paragraph.
 
-    The continuation paragraph belongs to this list item because it is
-    indented to align with the text above. It can be as long as needed.
+   The continuation paragraph belongs to this list item because it is
+   indented to align with the text above. It can be as long as needed.
 
 %n. This item also has a continuation paragraph, plus a code block.
 
-    Here is some explanatory text in the continuation.
+   Here is some explanatory text in the continuation.
 
-    ```js
-    const x = 42;
-    console.log(x);
-    ```
+   ```js
+   const x = 42;
+   console.log(x);
+   ```
 
 %n. And this item has two continuation paragraphs.
 
-    First continuation. Lorem ipsum dolor sit amet, consectetur
-    adipiscing elit. Sed do eiusmod tempor incididunt ut labore.
+   First continuation. Lorem ipsum dolor sit amet, consectetur
+   adipiscing elit. Sed do eiusmod tempor incididunt ut labore.
 
-    Second continuation. Ut enim ad minim veniam, quis nostrud
-    exercitation ullamco laboris nisi ut aliquip ex ea commodo.
+   Second continuation. Ut enim ad minim veniam, quis nostrud
+   exercitation ullamco laboris nisi ut aliquip ex ea commodo.
 
 ---
 
@@ -145,14 +145,14 @@ Roman starting at iv:
 
 %a. This item contains a blockquote:
 
-    > "The only way to do great work is to love what you do."
-    > — Steve Jobs
+   > "The only way to do great work is to love what you do."
+   > — Steve Jobs
 
 %a. This item contains a nested blockquote:
 
-    > Outer quote text here.
-    >
-    > > Inner quote, nested one level deeper.
+   > Outer quote text here.
+   >
+   > > Inner quote, nested one level deeper.
 
 %a. Back to a normal item.
 
@@ -162,19 +162,19 @@ Roman starting at iv:
 
 %n. This item introduces a comparison table:
 
-    | Feature     | Option A | Option B |
-    |-------------|----------|----------|
-    | Speed       | Fast     | Slow     |
-    | Cost        | High     | Low      |
-    | Reliability | High     | Medium   |
+   | Feature     | Option A | Option B |
+   |-------------|----------|----------|
+   | Speed       | Fast     | Slow     |
+   | Cost      | High     | Low      |
+   | Reliability | High     | Medium   |
 
 %n. This item introduces a second table:
 
-    | Name    | Role      | Department  |
-    |---------|-----------|-------------|
-    | Alice   | Engineer  | Backend     |
-    | Bob     | Designer  | Frontend    |
-    | Charlie | Manager   | Operations  |
+   | Name   | Role      | Department  |
+   |---------|-----------|-------------|
+   | Alice   | Engineer  | Backend     |
+   | Bob     | Designer  | Frontend   |
+   | Charlie | Manager   | Operations  |
 
 %n. Final item with no table.
 
@@ -184,45 +184,45 @@ Roman starting at iv:
 
 %a. Alphabetical item with an unordered child list:
 
-    - Bullet one
-    - Bullet two
-    - Bullet three
+   - Bullet one
+   - Bullet two
+   - Bullet three
 
 %a. Alphabetical item with a standard ordered child list:
 
-    1. First
-    2. Second
-    3. Third
+   1. First
+   2. Second
+   3. Third
 
 %a. Alphabetical item with a task list child:
 
-    - [ ] Unchecked task
-    - [x] Checked task
-    - [ ] Another unchecked task
+   - [ ] Unchecked task
+   - [x] Checked task
+   - [ ] Another unchecked task
 
 ---
 
 ## Standard Lists Containing Auto-List Children
 
 - Unordered item one
-    %n. Numeric child one
-    %n. Numeric child two
-    %n. Numeric child three
+   %n. Numeric child one
+   %n. Numeric child two
+   %n. Numeric child three
 - Unordered item two
-    %a. Alpha child one
-    %a. Alpha child two
+   %a. Alpha child one
+   %a. Alpha child two
 - Unordered item three
-    %nn. Roman child one
-    %nn. Roman child two
+   %nn. Roman child one
+   %nn. Roman child two
 
 1. Standard ordered item one
-    %a. Alpha child one
-        %nn. Roman grandchild
-        %nn. Roman grandchild
-    %a. Alpha child two
+   %a. Alpha child one
+      %nn. Roman grandchild
+      %nn. Roman grandchild
+   %a. Alpha child two
 2. Standard ordered item two
-    %n. Numeric child
-    %n. Numeric child
+   %n. Numeric child
+   %n. Numeric child
 3. Standard ordered item three
 
 ---
@@ -232,15 +232,15 @@ Roman starting at iv:
 %n. This item has **bold text**, _italic text_, and `inline code`.
 
 %n. This item contains a [hyperlink](https://example.com) and an
-    image reference: ![Alt text](./image.png)
+   image reference: ![Alt text](./image.png)
 
 %n. This item has ~~strikethrough~~ and ==highlighted text== and a
-    footnote reference.[^1]
+   footnote reference.[^1]
 
 %a. An alphabetical item with **bold** and a child:
 
-    %n. Numeric child with _italic_ text
-    %n. Numeric child with `code` and a [link](https://example.com)
+   %n. Numeric child with _italic_ text
+   %n. Numeric child with `code` and a [link](https://example.com)
 
 %a. An alphabetical item with an inline `code span` in the label itself.
 
@@ -249,32 +249,32 @@ Roman starting at iv:
 ## Deeply Nested: Four Levels
 
 %n. Level one — numeric
-    %a. Level two — alpha
-        %nn. Level three — roman
-            - Level four — unordered bullet
-            - Another unordered bullet
-        %nn. Back to roman
-            - Bullet under second roman item
-    %a. Back to alpha at level two
-        %nn. Roman under second alpha
-        %nn. Second roman under second alpha
+   %a. Level two — alpha
+      %nn. Level three — roman
+         - Level four — unordered bullet
+         - Another unordered bullet
+      %nn. Back to roman
+         - Bullet under second roman item
+   %a. Back to alpha at level two
+      %nn. Roman under second alpha
+      %nn. Second roman under second alpha
 %n. Back to numeric level one
-    %a. Alpha under second numeric
-    %a. Second alpha under second numeric
+   %a. Alpha under second numeric
+   %a. Second alpha under second numeric
 
 ---
 
 ## Deeply Nested: Four Levels Reversed
 
 %a. Level one — alpha
-    %nn. Level two — roman
-        %n. Level three — numeric
-            %a. Level four — alpha
-            %a. Second alpha at level four
-        %n. Second numeric at level three
-            %a. Alpha under second numeric
-    %nn. Second roman at level two
-        %n. Numeric child
+   %nn. Level two — roman
+      %n. Level three — numeric
+         %a. Level four — alpha
+         %a. Second alpha at level four
+      %n. Second numeric at level three
+         %a. Alpha under second numeric
+   %nn. Second roman at level two
+      %n. Numeric child
 %a. Second alpha at level one
 
 ---
@@ -310,27 +310,27 @@ Roman starting at iv:
 :::tip[Installation Steps]
 %n. Install dependencies
 
-    ```sh
-    npm install
-    ```
+   ```sh
+   npm install
+   ```
 
 %n. Configure your project
 
-    %a. Edit `astro.config.mjs`
-    %a. Edit `src/env.d.ts`
+   %a. Edit `astro.config.mjs`
+   %a. Edit `src/env.d.ts`
 
 %n. Run the dev server
 
-    ```sh
-    npm run dev
-    ```
+   ```sh
+   npm run dev
+   ```
 :::
 
 :::caution
 %nn. First warning point
 %nn. Second warning point
-    %a. Sub-point alpha
-    %a. Sub-point bravo
+   %a. Sub-point alpha
+   %a. Sub-point bravo
 %nn. Third warning point
 :::
 
@@ -341,17 +341,17 @@ Roman starting at iv:
 Term One
 :   A definition that contains a numeric list:
 
-    %n. First point of the definition
-    %n. Second point
-    %n. Third point
+   %n. First point of the definition
+   %n. Second point
+   %n. Third point
 
 Term Two
 :   A definition that contains an alpha list:
 
-    %a. First aspect
-    %a. Second aspect
-        %nn. Roman sub-point
-        %nn. Roman sub-point
+   %a. First aspect
+   %a. Second aspect
+      %nn. Roman sub-point
+      %nn. Roman sub-point
 
 Term Three
 :   A simple definition with no nested list.
