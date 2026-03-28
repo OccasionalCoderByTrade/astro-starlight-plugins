@@ -1,7 +1,21 @@
-# Auto-List Syntax Reference
+# Demonstration of `%n.`, `%nn.`, and `%a.` list markers
 
-A demonstration of `%n.`, `%nn.`, and `%a.` list markers used extensively
-across different contexts and nesting combinations.
+These three tokens extend Markdown's ordered list syntax with unambiguous
+sigil-based markers for the three most common list numbering styles.
+
+`%n.` declares an auto-numbered decimal list item (1, 2, 3, …). `%nn.`
+declares an auto-numbered roman numeral list item (i, ii, iii, …). `%a.`
+declares an auto-numbered alphabetical list item (a, b, c, …). In each case,
+the author writes the same marker for every item in the list — the renderer
+handles incrementing the counter automatically, just as it does for standard
+Markdown `1.` lists.
+
+The `%` prefix was chosen specifically to avoid collisions with existing
+Markdown syntax and to sidestep the ambiguity problems that plague approaches
+which mirror the display format in the source (such as writing `a.` for an
+alpha item, which is indistinguishable from a sentence beginning with the
+letter "a"). Because `%n.`, `%nn.`, and `%a.` cannot occur naturally in
+prose, no heuristics or lookahead are required to parse them reliably.
 
 ---
 
