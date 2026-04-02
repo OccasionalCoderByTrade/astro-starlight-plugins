@@ -1,0 +1,181 @@
+/********** Starlight Overrides **********/
+
+.sl-container:where(.astro-7nkwcw3z) {
+  max-width: 50rem;
+}
+
+.main-pane {
+  table > thead > tr > th {
+    border-bottom: 1px solid hsl(228, 6.2%, 47.3%);
+  }
+}
+
+starlight-toc {
+  a {
+    transition: transform 0.2s ease;
+    transform-origin: left;
+
+    span {
+      position: relative;
+      display: inline-block;
+      transition: color 0.2s ease;
+
+      &::before {
+        content: "";
+        position: absolute;
+        left: -8px;
+        top: 0;
+        bottom: 0;
+        width: 3px;
+        background-color: transparent;
+        border-radius: 2px;
+        transition: background-color 0.2s ease;
+      }
+    }
+  }
+
+  a[aria-current="true"] {
+    transform: scale(1.04);
+
+    span {
+      &::before {
+        background-color: var(--sl-color-text-accent);
+      }
+    }
+  }
+}
+
+#starlight__search mark {
+  color: hsl(339.8, 63.4%, 60.4%);
+}
+
+#starlight__mobile-toc {
+  > .dropdown {
+    border-bottom: 1px solid hsla(0, 0%, 100%, 0.6);
+  }
+}
+
+.expressive-code .copy > button {
+  height: 2rem;
+  width: 2rem;
+}
+
+/************ Details/Summary Styles ************/
+.main-pane details {
+  background: rgba(162, 171, 173, 0.071);
+  border-radius: 4px;
+  padding: 0.5em 0;
+  display: block;
+
+  summary {
+    padding-left: 1.1em;
+  }
+
+  html[data-theme="light"] & {
+    background: rgba(162, 171, 173, 0.08);
+  }
+
+  &[open] {
+    max-width: 100%;
+
+    > div.details-wrapper {
+      overflow: auto;
+      max-height: 67vh;
+      padding: 0 1em;
+    }
+
+    p > img {
+      height: auto;
+      width: auto;
+    }
+  }
+}
+
+/********** MathJax/LaTeX Styling **********/
+mjx-container[jax="SVG"] {
+  overflow-x: auto;
+
+  &[display="true"] {
+    margin: 0.5em 0 !important;
+    padding: 0.5em 0 !important;
+  }
+}
+
+.katex-display {
+  overflow-x: auto;
+  margin: 0.5em 0 !important;
+  padding: 0.5em 0 !important;
+}
+
+.katex-html svg {
+  height: inherit;
+}
+
+/********** TikZ SVG Styling **********/
+script[type="text/tikz"] {
+  display: block;
+}
+
+div > div[class="page"] > svg {
+  color-scheme: light dark;
+
+  html[data-theme="light"] & {
+    stroke: currentColor;
+    fill: currentColor;
+  }
+
+  html:not([data-theme="light"]) & {
+    stroke: white;
+    fill: white;
+    filter: invert(1) hue-rotate(180deg);
+  }
+}
+
+/********** Toggle Checkbox Styles **********/
+#toggle-all-details-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+
+  input[type="checkbox"] {
+    position: relative;
+    appearance: none;
+    width: 1.2em;
+    height: 1.2em;
+    border: 2px solid currentColor;
+    border-radius: 2px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s ease;
+
+    &:checked {
+      background-color: var(--sl-color-accent);
+      border-color: var(--sl-color-accent);
+
+      &::after {
+        content: "✓";
+        color: white;
+        font-size: 0.8em;
+        font-weight: bold;
+      }
+    }
+  }
+}
+
+// invert img.note-svg when on dark mode
+img.note-svg {
+  color-scheme: light dark;
+  padding-top: 1em;
+  padding-bottom: 1em;
+
+  html[data-theme="light"] & {
+    filter: none;
+  }
+
+  html:not([data-theme="light"]) & {
+    filter: invert(1) hue-rotate(180deg);
+  }
+}

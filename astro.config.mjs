@@ -3,23 +3,41 @@ import starlight from "@astrojs/starlight";
 import { pluginLineNumbers } from "@expressive-code/plugin-line-numbers";
 
 import { defineConfig } from "astro/config";
+import addClasses from "rehype-class-names";
 import rehypeGraphviz from "rehype-graphviz";
-import rehypeMathjax from "rehype-mathjax";
+import rehypeKatex from "rehype-katex";
 import remarkMath from "remark-math";
+import {
+  astroNormalizePaths,
+  rehypeValidateLinks,
+  starlightIndexOnlySidebar,
+} from "./src";
 
-import { rehypeValidateLinks } from "./src/plugins/rehype-validate-links.ts";
-import { starlightIndexOnlySidebar } from "./src/plugins/starlight-index-only-sidebar.ts";
-import { astroNormalizePaths } from "./src/plugins/astro-normalize-paths.ts";
+// Common Config Items
+const SITE_NAME = "My Grand Amazing Site";
+const STARLIGHT_SIDEBAR_CONFIG = starlightIndexOnlySidebar({
+  maxDepthNesting: 1,
+  dirnameDeterminesLabels: false,
+  directories: [
+    "reference",
+    "csci-323-algorithms",
+    "csci-340-operating-systems",
+    "csci-328-algorithms-for-big-data",
+  ],
+});
 
 // https://astro.build/config
 export default defineConfig({
-  outDir: "./site-dist",
   markdown: {
     remarkPlugins: [
       remarkMath, // adds support for math
     ],
     rehypePlugins: [
-      rehypeMathjax, // co-dependent with remark-math
+      rehypeKatex, // co-dependent with remark-math
+      [
+        addClasses,
+        { ".katex": "not-content", "mjx-container>svg": "not-content" },
+      ],
       rehypeGraphviz, // Graphviz diagram support
       rehypeValidateLinks, // validate links and convert to absolute paths
     ],
@@ -27,24 +45,13 @@ export default defineConfig({
   integrations: [
     astroNormalizePaths(),
     starlight({
-      title: "My Grand Amazing Site",
+      title: SITE_NAME,
       tableOfContents: {
         minHeadingLevel: 2, // h1 not included since it conflicts with frontmatter title
         maxHeadingLevel: 6, // include up to h6 in table of contents
       },
-      plugins: [
-        starlightIndexOnlySidebar({
-          maxDepthNesting: 1,
-          dirnameDeterminesLabels: false,
-          directories: [
-            "reference",
-            "csci-323-algorithms",
-            "csci-340-operating-systems",
-            "csci-328-algorithms-for-big-data",
-          ],
-        }),
-      ],
-      customCss: ["./src/styles/custom.scss"],
+      plugins: [STARLIGHT_SIDEBAR_CONFIG],
+      customCss: ["/src/styles/main.scss", "katex/dist/katex.min.css"],
       expressiveCode: {
         plugins: [pluginLineNumbers()],
         defaultProps: {
@@ -67,4 +74,9 @@ export default defineConfig({
       ],
     }),
   ],
+  vite: {
+    ssr: {
+      noExternal: ["katex"],
+    },
+  },
 });

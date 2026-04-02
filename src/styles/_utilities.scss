@@ -1,0 +1,21 @@
+// Pre-built Bootstrap utilities
+@use "bootstrap-utilities";
+
+/********** Custom Class Utilities (not in Bootstrap) **********/
+.visibility-hidden {
+  visibility: hidden !important;
+}
+
+.visible {
+  display: block !important;
+}
+
+/* Custom flex utilities */
+.flex-fill {
+  flex: 1 1 auto;
+  margin-top: unset;
+
+  &.flex-code {
+    min-width: 0;
+  }
+}

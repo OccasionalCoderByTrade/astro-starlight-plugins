@@ -1,3 +1,7 @@
+---
+title: "Auto-List Syntax Reference"
+---
+
 # Demonstration of `%n.`, `%nn.`, and `%a.` list markers
 
 These three tokens extend Markdown's ordered list syntax with unambiguous
@@ -232,7 +236,7 @@ Roman starting at iv:
 %n. This item has **bold text**, _italic text_, and `inline code`.
 
 %n. This item contains a [hyperlink](https://example.com) and an
-   image reference: ![Alt text](./image.png)
+   image reference: ![Alt text](../csci-340-operating-systems/assets/image.png)
 
 %n. This item has ~~strikethrough~~ and ==highlighted text== and a
    footnote reference.[^1]
