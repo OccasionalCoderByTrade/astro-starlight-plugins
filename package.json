@@ -55,7 +55,6 @@
     "clean:empty-dirs": "find src/content/docs -type d -empty -delete"
   },
   "dependencies": {
-    "bootstrap": "^5.3.8",
     "eslint-cannoli-plugins": "^1.0.12",
     "glob": "^13.0.6",
     "minimatch": "^10.2.4",
@@ -86,6 +85,7 @@
     "@typescript-eslint/eslint-plugin": "^8.56.1",
     "@typescript-eslint/parser": "^8.56.1",
     "astro": "^5.6.1",
+    "bootstrap": "^5.3.8",
     "eslint": "^10.0.2",
     "globals": "^17.4.0",
     "hast": "^1.0.0",
