@@ -63,7 +63,7 @@
     "clean:empty-dirs": "find src/content/docs -type d -empty -delete"
   },
   "dependencies": {
-    "eslint-cannoli-plugins": "^1.0.12",
+    "eslint-cannoli-plugins": "^1.0.13",
     "glob": "^13.0.6",
     "minimatch": "^10.2.4",
     "unist-util-visit": "^5.0.0",

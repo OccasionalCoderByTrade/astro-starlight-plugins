@@ -1,7 +1,7 @@
 import js from "@eslint/js";
 import markdown from "@eslint/markdown";
 
-import { noH1Headers, requireFrontmatter } from "eslint-md-cannoli-plugins";
+import cannoli from "eslint-cannoli-plugins";
 import { defineConfig } from "eslint/config";
 import globals from "globals";
 import tseslint from "typescript-eslint";
@@ -28,12 +28,7 @@ export default defineConfig([
     plugins: {
       // @ts-expect-error - Type 'typeof plugin' is not assignable to type 'Plugin'.
       markdown,
-      cannoli: {
-        rules: {
-          "require-frontmatter": requireFrontmatter,
-          "no-h1-headers": noH1Headers,
-        },
-      },
+      cannoli,
     },
     language: "markdown/gfm",
     extends: ["markdown/recommended"],
