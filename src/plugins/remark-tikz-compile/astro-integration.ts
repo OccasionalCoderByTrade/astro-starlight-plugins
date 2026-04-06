@@ -15,10 +15,7 @@ function hashTikzCode(code: string): string {
     .map((line) => line.trim())
     .join("\n")
     .trim();
-  return createHash("md5")
-    .update(normalized)
-    .digest("hex")
-    .slice(0, 16);
+  return createHash("md5").update(normalized).digest("hex").slice(0, 16);
 }
 
 export interface AstroTikzCompileOptions {
@@ -39,21 +36,31 @@ export function createAstroTikzIntegration(options?: AstroTikzCompileOptions) {
     name: "astro-tikz-compile",
     hooks: {
       "astro:build:start": async () => {
-        console.log("[astro-tikz-compile] Build start, scanning for tikzcompile blocks");
+        console.log(
+          "[astro-tikz-compile] Build start, scanning for tikzcompile blocks",
+        );
 
         try {
           await scanAndCompileTikz(contentDir, svgOutputDir);
         } catch (err) {
-          console.error("[astro-tikz-compile] Error during TikZ compilation:", err);
+          console.error(
+            "[astro-tikz-compile] Error during TikZ compilation:",
+            err,
+          );
         }
       },
       "astro:build:done": async ({ dir }: any) => {
-        console.log("[astro-tikz-compile] Build done, updating HTML references");
+        console.log(
+          "[astro-tikz-compile] Build done, updating HTML references",
+        );
 
         try {
           await updateHtmlReferences(dir.pathname, contentDir, svgOutputDir);
         } catch (err) {
-          console.error("[astro-tikz-compile] Error updating HTML references:", err);
+          console.error(
+            "[astro-tikz-compile] Error updating HTML references:",
+            err,
+          );
         }
       },
     },
@@ -62,7 +69,7 @@ export function createAstroTikzIntegration(options?: AstroTikzCompileOptions) {
 
 async function scanAndCompileTikz(
   dir: string,
-  svgOutputDir: string
+  svgOutputDir: string,
 ): Promise<void> {
   const entries = await readdir(dir, { withFileTypes: true });
 
@@ -81,9 +88,16 @@ async function scanAndCompileTikz(
   }
 }
 
+/**
+ * Calculate line number from string position (0-indexed)
+ */
+function getLineNumber(content: string, position: number): number {
+  return content.substring(0, position).split("\n").length;
+}
+
 async function processMarkdownFile(
   filePath: string,
-  svgOutputDir: string
+  svgOutputDir: string,
 ): Promise<void> {
   const content = await readFile(filePath, "utf-8");
 
@@ -93,15 +107,17 @@ async function processMarkdownFile(
 
   for (const match of matches) {
     const tikzCode = match[1];
+    const lineNumber = getLineNumber(content, match.index || 0);
     try {
       const result = compileTikzToSvg(tikzCode, svgOutputDir);
+      const status = result.wasCompiled ? "compiled" : "used cache";
       console.log(
-        `[astro-tikz-compile] ${filePath}: compiled to ${result.hash}.svg`
+        `[astro-tikz-compile] ${filePath}:${lineNumber}: ${status} ${result.hash}.svg`,
       );
     } catch (err) {
       console.error(
-        `[astro-tikz-compile] Failed to compile TikZ in ${filePath}:`,
-        err
+        `[astro-tikz-compile] Failed to compile TikZ in ${filePath}:${lineNumber}:`,
+        err,
       );
     }
   }
@@ -110,7 +126,7 @@ async function processMarkdownFile(
 async function updateHtmlReferences(
   buildDir: string,
   contentDir: string,
-  svgOutputDir: string
+  svgOutputDir: string,
 ): Promise<void> {
   // Collect all TikZ code blocks in order (with their computed hashes)
   const tikzHashes: string[] = [];
@@ -123,14 +139,13 @@ async function updateHtmlReferences(
     }
   }
 
-
   // Update HTML files with new hashes
   await updateHtmlDirWithHashes(buildDir, tikzHashes);
 }
 
 async function scanMarkdownForHashes(
   dir: string,
-  hashes: string[]
+  hashes: string[],
 ): Promise<void> {
   const entries = await readdir(dir, { withFileTypes: true });
 
@@ -139,7 +154,10 @@ async function scanMarkdownForHashes(
 
     if (entry.isDirectory()) {
       await scanMarkdownForHashes(fullPath, hashes);
-    } else if (entry.isFile() && (entry.name.endsWith(".md") || entry.name.endsWith(".mdx"))) {
+    } else if (
+      entry.isFile() &&
+      (entry.name.endsWith(".md") || entry.name.endsWith(".mdx"))
+    ) {
       const content = await readFile(fullPath, "utf-8");
       const tikzBlockRegex = /```tikzcompile\n([\s\S]*?)\n```/g;
       const matches = content.matchAll(tikzBlockRegex);
@@ -155,7 +173,7 @@ async function scanMarkdownForHashes(
 
 async function updateHtmlDirWithHashes(
   dir: string,
-  hashes: string[]
+  hashes: string[],
 ): Promise<void> {
   let hashIndex = 0;
 
@@ -179,7 +197,7 @@ async function updateHtmlDirWithHashes(
             return `src="/static/tex-svgs/${hashes[hashIndex++]}.svg"`;
           }
           return arguments[0];
-        }
+        },
       );
 
       if (modified) {

@@ -16,6 +16,7 @@ import {
 } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { createCompilationErrorMessage } from "./error-parser.js";
 
 function hashTikzCode(code: string): string {
   // Normalize by trimming each line (removes leading/trailing whitespace)
@@ -38,7 +39,10 @@ function hashTikzCode(code: string): string {
 function buildLatexSource(tikzCode: string): string {
   return [
     "\\documentclass[tikz,border=10pt]{standalone}",
+    "\\usepackage{amsmath}",
     "\\usepackage{tikz}",
+    "\\usetikzlibrary{shapes.geometric,shapes.multipart,positioning,arrows.meta,calc}",
+    "\\pagecolor{white}",
     "\\begin{document}",
     tikzCode.trim(),
     "\\end{document}",
@@ -90,10 +94,9 @@ export function compileTikzToSvg(
         { stdio: "pipe", cwd: workDir, encoding: "utf-8" },
       );
     } catch (latexErr: any) {
-      throw new Error(
-        `[remark-tikz-compile] LaTeX compilation failed (hash: ${hash}).\n` +
-          `LaTeX source:\n${latexSource}\n\nError: ${latexErr.message}\nStderr: ${latexErr.stderr ?? ""}Stdout: ${latexErr.stdout ?? ""}`,
-      );
+      const errorOutput = latexErr.stderr ?? latexErr.stdout ?? latexErr.message ?? "";
+      const userMessage = createCompilationErrorMessage(latexSource, errorOutput);
+      throw new Error(userMessage);
     }
 
     try {
