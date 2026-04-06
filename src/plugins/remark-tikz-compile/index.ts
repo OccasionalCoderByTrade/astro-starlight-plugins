@@ -12,7 +12,7 @@
  *   }
  */
 import { resolve } from "node:path";
-import { compileTikzToSvg } from "./compile.js";
+import { compileLatexToSvg } from "./compile.js";
 
 export interface RemarkTikzCompileOptions {
   /**
@@ -29,10 +29,10 @@ function traverseTree(node: any, svgOutputDir: string, depth: number = 0): void 
   if (Array.isArray(node.children)) {
     for (let i = 0; i < node.children.length; i++) {
       const child = node.children[i];
-      if (child.type === "code" && child.lang === "tikzcompile") {
+      if (child.type === "code" && (child.lang === "tex" || child.lang === "latex") && child.meta?.includes("compile")) {
         try {
           // Compile and get the result
-          const result = compileTikzToSvg(child.value, svgOutputDir);
+          const result = compileLatexToSvg(child.value, svgOutputDir);
           // Replace with paragraph containing image
           node.children[i] = {
             type: "paragraph",
@@ -66,5 +66,5 @@ export default function remarkTikzCompile(options?: RemarkTikzCompileOptions) {
   };
 }
 
-export { compileTikzToSvg };
+export { compileLatexToSvg };
 export { starlightTikzCompile } from "./starlight-plugin.js";

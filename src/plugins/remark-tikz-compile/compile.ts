@@ -1,9 +1,12 @@
 /**
- * TikZ compilation utilities for converting LaTeX TikZ code to SVG.
+ * LaTeX compilation utilities for converting LaTeX code to SVG.
  *
  * External dependencies required on PATH:
  *   - latex     (e.g. texlive-latex-base on Debian, MacTeX on macOS)
  *   - dvisvgm   (e.g. texlive-extra-utils on Debian, included in MacTeX)
+ *
+ * Users should include their own \usepackage{} and \usetikzlibrary{} commands
+ * in their LaTeX code blocks for maximum flexibility.
  */
 import { createHash } from "node:crypto";
 import { execSync } from "node:child_process";
@@ -18,7 +21,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { createCompilationErrorMessage } from "./error-parser.js";
 
-function hashTikzCode(code: string): string {
+function hashLatexCode(code: string): string {
   // Normalize by trimming each line (removes leading/trailing whitespace)
   // then trimming the overall string. This makes the hash robust to formatting
   // differences while preserving significant internal whitespace (e.g., in \verb{...})
@@ -36,15 +39,23 @@ function hashTikzCode(code: string): string {
     .slice(0, 16);
 }
 
-function buildLatexSource(tikzCode: string): string {
+function buildLatexSource(latexCode: string): string {
+  // Extract \usepackage and \usetikzlibrary commands from user code
+  // (they must come before \begin{document})
+  const packageRegex = /\\usepackage\{[^}]+\}|\\usetikzlibrary\{[^}]+\}/g;
+  const packages = latexCode.match(packageRegex) || [];
+
+  // Remove package declarations from the code
+  const codeWithoutPackages = latexCode
+    .replace(packageRegex, "")
+    .trim();
+
   return [
-    "\\documentclass[tikz,border=10pt]{standalone}",
-    "\\usepackage{amsmath}",
-    "\\usepackage{tikz}",
-    "\\usetikzlibrary{shapes.geometric,shapes.multipart,positioning,arrows.meta,calc}",
+    "\\documentclass[border=10pt]{standalone}",
+    ...packages,
     "\\pagecolor{white}",
     "\\begin{document}",
-    tikzCode.trim(),
+    codeWithoutPackages,
     "\\end{document}",
   ].join("\n");
 }
@@ -56,18 +67,18 @@ export interface CompilationResult {
 }
 
 /**
- * Compile TikZ code to SVG.
+ * Compile LaTeX code to SVG.
  *
- * @param tikzCode - The TikZ code to compile (e.g., `\begin{tikzpicture}...\end{tikzpicture}`)
+ * @param latexCode - The LaTeX code to compile (e.g., TikZ, pgfplots, etc.)
  * @param svgOutputDir - The directory where SVG files should be written
  * @returns Result object with hash, svgPath, and whether compilation occurred
  * @throws Error if compilation fails
  */
-export function compileTikzToSvg(
-  tikzCode: string,
+export function compileLatexToSvg(
+  latexCode: string,
   svgOutputDir: string,
 ): CompilationResult {
-  const hash = hashTikzCode(tikzCode);
+  const hash = hashLatexCode(latexCode);
   const svgPath = join(svgOutputDir, `${hash}.svg`);
 
   // If already compiled, return early
@@ -83,7 +94,7 @@ export function compileTikzToSvg(
   const texFile = join(workDir, `${hash}.tex`);
   const dviFile = join(workDir, `${hash}.dvi`);
   const svgTempFile = join(workDir, `${hash}.svg`);
-  const latexSource = buildLatexSource(tikzCode);
+  const latexSource = buildLatexSource(latexCode);
 
   try {
     writeFileSync(texFile, latexSource, "utf-8");

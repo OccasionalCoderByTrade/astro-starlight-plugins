@@ -6,7 +6,7 @@
  */
 import { readdir, readFile, writeFile } from "node:fs/promises";
 import { resolve, join, extname } from "node:path";
-import { compileTikzToSvg } from "./compile.js";
+import { compileLatexToSvg } from "./compile.js";
 import { createHash } from "node:crypto";
 
 function hashTikzCode(code: string): string {
@@ -37,7 +37,7 @@ export function createAstroTikzIntegration(options?: AstroTikzCompileOptions) {
     hooks: {
       "astro:build:start": async () => {
         console.log(
-          "[astro-tikz-compile] Build start, scanning for tikzcompile blocks",
+          "[astro-tikz-compile] Build start, scanning for tex/latex compile blocks",
         );
 
         try {
@@ -101,15 +101,15 @@ async function processMarkdownFile(
 ): Promise<void> {
   const content = await readFile(filePath, "utf-8");
 
-  // Match tikzcompile blocks: ```tikzcompile\n...\n```
-  const tikzBlockRegex = /```tikzcompile\n([\s\S]*?)\n```/g;
+  // Match tex/latex compile blocks: ```tex compile\n...\n``` or ```latex compile\n...\n```
+  const tikzBlockRegex = /```(?:tex|latex)\s+compile\n([\s\S]*?)\n```/g;
   const matches = content.matchAll(tikzBlockRegex);
 
   for (const match of matches) {
     const tikzCode = match[1];
     const lineNumber = getLineNumber(content, match.index || 0);
     try {
-      const result = compileTikzToSvg(tikzCode, svgOutputDir);
+      const result = compileLatexToSvg(tikzCode, svgOutputDir);
       const status = result.wasCompiled ? "compiled" : "used cache";
       console.log(
         `[astro-tikz-compile] ${filePath}:${lineNumber}: ${status} ${result.hash}.svg`,
@@ -159,7 +159,7 @@ async function scanMarkdownForHashes(
       (entry.name.endsWith(".md") || entry.name.endsWith(".mdx"))
     ) {
       const content = await readFile(fullPath, "utf-8");
-      const tikzBlockRegex = /```tikzcompile\n([\s\S]*?)\n```/g;
+      const tikzBlockRegex = /```(?:tex|latex)\s+compile\n([\s\S]*?)\n```/g;
       const matches = content.matchAll(tikzBlockRegex);
 
       for (const match of matches) {
