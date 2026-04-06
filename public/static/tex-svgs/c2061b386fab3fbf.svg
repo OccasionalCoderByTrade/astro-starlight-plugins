@@ -20,13 +20,13 @@
 <text class='f0' x='-54.980849' y='-26.966503' transform='matrix(1 0 0 1 53.16513 -24.9429)'>B</text>
 <text class='f0' x='-54.980849' y='-26.966503' transform='matrix(1 0 0 1 53.09595 31.75073)'>C</text>
 <text class='f0' x='-54.980849' y='-26.966503' transform='matrix(1 0 0 1 109.582 3.4039)'>D</text>
-<path d='M-47.72656-30.59375L-5.6914-51.6133' stroke='#000' fill='none' stroke-width='.3985' stroke-miterlimit='10'/>
-<path d='M-8.437501-52.914077C-7.457027-51.800802-6.398437-51.57033-5.515622-51.703143C-6.148434-51.074238-6.601564-50.089862-6.296871-48.636743' stroke='#000' fill='none' stroke-width='.3985' stroke-miterlimit='10' stroke-linecap='round' stroke-linejoin='round'/>
-<path d='M-47.72656-23.33984L-5.7617-2.3555' stroke='#000' fill='none' stroke-width='.3985' stroke-miterlimit='10'/>
-<path d='M-6.367188-5.332027C-6.671871-3.878904-6.218749-2.894531-5.58203-2.265625C-6.468749-2.394531-7.523441-2.167971-8.503905-1.054692' stroke='#000' fill='none' stroke-width='.3985' stroke-miterlimit='10' stroke-linecap='round' stroke-linejoin='round'/>
-<path d='M8.7617-51.7891L50.7262-30.80469' stroke='#000' fill='none' stroke-width='.3985' stroke-miterlimit='10'/>
-<path d='M50.121112-33.781251C49.816422-32.328124 50.269546-31.343751 50.902357-30.714843C50.019545-30.847658 48.960952-30.617187 47.980483-29.503901' stroke='#000' fill='none' stroke-width='.3985' stroke-miterlimit='10' stroke-linecap='round' stroke-linejoin='round'/>
-<path d='M8.832-2.1758L50.7262-23.12891' stroke='#000' fill='none' stroke-width='.3985' stroke-miterlimit='10'/>
-<path d='M47.980479-24.429689C48.960946-23.316407 50.019543-23.08594 50.902356-23.218753C50.269544-22.585939 49.816416-21.60547 50.121103-20.152348' stroke='#000' fill='none' stroke-width='.3985' stroke-miterlimit='10' stroke-linecap='round' stroke-linejoin='round'/>
+<path d='M-47.72656-30.59375L-5.7461-51.5859' stroke='#000' fill='none' stroke-width='.3985' stroke-miterlimit='10'/>
+<path d='M-7.527347-52.476589C-7.171871-51.988313-5.789063-51.675814-5.476564-51.71878C-5.69922-51.496123-6.28125-50.207062-6.101562-49.625034' stroke='#000' fill='none' stroke-width='.318769' stroke-miterlimit='10' stroke-linecap='round' stroke-linejoin='round'/>
+<path d='M-47.72656-23.33984L-5.8164-2.3828' stroke='#000' fill='none' stroke-width='.3985' stroke-miterlimit='10'/>
+<path d='M-6.171874-4.339839C-6.347653-3.761718-5.769531-2.468751-5.546876-2.246095C-5.859375-2.292969-7.238283-1.98047-7.597655-1.492184' stroke='#000' fill='none' stroke-width='.318769' stroke-miterlimit='10' stroke-linecap='round' stroke-linejoin='round'/>
+<path d='M8.7617-51.7891L50.6722-30.83203' stroke='#000' fill='none' stroke-width='.3985' stroke-miterlimit='10'/>
+<path d='M50.316372-32.792928C50.136687-32.214804 50.714815-30.921835 50.93747-30.69918C50.628875-30.742149 49.246059-30.429649 48.890598-29.941369' stroke='#000' fill='none' stroke-width='.318772' stroke-miterlimit='10' stroke-linecap='round' stroke-linejoin='round'/>
+<path d='M8.832-2.1758L50.6722-23.10156' stroke='#000' fill='none' stroke-width='.3985' stroke-miterlimit='10'/>
+<path d='M48.890594-23.992221C49.246064-23.503946 50.628877-23.191445 50.937471-23.234414C50.714816-23.01176 50.136692-21.718791 50.316377-21.140667' stroke='#000' fill='none' stroke-width='.318772' stroke-miterlimit='10' stroke-linecap='round' stroke-linejoin='round'/>
 </g>
 </svg>

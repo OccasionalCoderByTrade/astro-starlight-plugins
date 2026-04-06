@@ -24,11 +24,11 @@ text.f1 {font-family:cmr10;font-size:9.96264px}
 </style>
 <g id='page1'>
 <rect x='-58.716942' y='-58.717485' width='192.131832' height='98.721375' fill='#fff'/>
-<path d='M-45.878905-2.714844H123.8045' stroke='#000' fill='none' stroke-width='.3985'/>
-<path d='M121.9296-5.10547C122.3085-3.671875 123.152253-2.992187 124.003816-2.714844C123.152253-2.4375 122.3085-1.757812 121.9296-.32422' stroke='#000' fill='none' stroke-width='.3985' stroke-linecap='round' stroke-linejoin='round'/>
+<path d='M-45.878905-2.714844H123.7425' stroke='#000' fill='none' stroke-width='.3985'/>
+<path d='M122.5468-4.30859C122.64836-3.710937 123.742115-2.8125 124.042896-2.714844C123.742115-2.613281 122.64836-1.71875 122.5468-1.12109' stroke='#000' fill='none' stroke-width='.31879' stroke-linecap='round' stroke-linejoin='round'/>
 <text class='f0' x='-45.879542' y='-2.714765' transform='matrix(1 0 0 1 173.6005 2.14474)'>x</text>
-<path d='M-45.878905 39.80464V-44.83596' stroke='#000' fill='none' stroke-width='.3985' stroke-miterlimit='10'/>
-<path d='M-48.26953-42.96483C-46.835936-43.34374-46.160155-44.187491-45.878905-45.035147C-45.601561-44.187491-44.921874-43.34374-43.48828-42.96483' stroke='#000' fill='none' stroke-width='.3985' stroke-miterlimit='10' stroke-linecap='round' stroke-linejoin='round'/>
+<path d='M-45.878905 39.80464V-44.77736' stroke='#000' fill='none' stroke-width='.3985' stroke-miterlimit='10'/>
+<path d='M-47.47265-43.58205C-46.874999-43.67971-45.980467-44.777364-45.878905-45.074239C-45.781249-44.777364-44.882811-43.67971-44.28515-43.58205' stroke='#000' fill='none' stroke-width='.31879' stroke-miterlimit='10' stroke-linecap='round' stroke-linejoin='round'/>
 <text class='f1' x='-45.879542' y='-2.714765' transform='matrix(1 0 0 1 -12.8374 -48.53074)'>sin<tspan x='-33.64761'>(</tspan></text>
 <text class='f0' x='-29.773236' y='-2.714765' transform='matrix(1 0 0 1 -12.8374 -48.53074)'>x</text>
 <text class='f1' x='-24.079304' y='-2.714765' transform='matrix(1 0 0 1 -12.8374 -48.53074)'>)</text>

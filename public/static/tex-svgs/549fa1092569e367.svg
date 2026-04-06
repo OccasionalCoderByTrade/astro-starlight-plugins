@@ -22,11 +22,11 @@ text.f1 {font-family:cmr10;font-size:9.96264px}
 </style>
 <g id='page1'>
 <rect x='-62.03908' y='-58.717663' width='122.801216' height='123.334853' fill='#fff'/>
-<path d='M-61.83983 7.722656H51.14847' stroke='#000' fill='none' stroke-width='.3985'/>
-<path d='M49.27732 5.33203C49.65623 6.765625 50.499979 7.445313 51.347635 7.722656C50.499979 8 49.65623 8.679688 49.27732 10.11328' stroke='#000' fill='none' stroke-width='.3985' stroke-linecap='round' stroke-linejoin='round'/>
+<path d='M-61.83983 7.722656H51.08987' stroke='#000' fill='none' stroke-width='.3985'/>
+<path d='M49.89452 6.12891C49.99608 6.726563 51.089833 7.621094 51.390614 7.722656C51.089833 7.820313 49.99608 8.71875 49.89452 9.31641' stroke='#000' fill='none' stroke-width='.31879' stroke-linecap='round' stroke-linejoin='round'/>
 <text class='f0' x='-5.145226' y='7.722445' transform='matrix(1 0 0 1 60.21343 2.14474)'>x</text>
-<path d='M-5.144531 64.41794V-48.57426' stroke='#000' fill='none' stroke-width='.3985' stroke-miterlimit='10'/>
-<path d='M-7.53516-46.69921C-6.101563-47.07811-5.425781-47.921863-5.144531-48.773426C-4.867188-47.921863-4.1875-47.07811-2.75391-46.69921' stroke='#000' fill='none' stroke-width='.3985' stroke-miterlimit='10' stroke-linecap='round' stroke-linejoin='round'/>
+<path d='M-5.144531 64.41794V-48.51176' stroke='#000' fill='none' stroke-width='.3985' stroke-miterlimit='10'/>
+<path d='M-6.73828-47.3164C-6.140625-47.41797-5.246094-48.511717-5.144531-48.812499C-5.046875-48.511717-4.148438-47.41797-3.55078-47.3164' stroke='#000' fill='none' stroke-width='.31879' stroke-miterlimit='10' stroke-linecap='round' stroke-linejoin='round'/>
 <text class='f0' x='-5.145226' y='7.722445' transform='matrix(1 0 0 1 -2.621 -62.15064)'>y</text>
 <path d='M26.01957-20.62496C26.01957-22.17966 24.75777-23.44136 23.20317-23.44136C21.64457-23.44136 20.38277-22.17966 20.38277-20.62496C20.38277-19.06636 21.64457-17.80466 23.20317-17.80466C24.75777-17.80466 26.01957-19.06636 26.01957-20.62496Z' fill='#f00'/>
 <path d='M26.01957-20.62496C26.01957-22.17966 24.75777-23.44136 23.20317-23.44136C21.64457-23.44136 20.38277-22.17966 20.38277-20.62496C20.38277-19.06636 21.64457-17.80466 23.20317-17.80466C24.75777-17.80466 26.01957-19.06636 26.01957-20.62496Z' stroke='#000' fill='none' stroke-width='.3985' stroke-miterlimit='10'/>

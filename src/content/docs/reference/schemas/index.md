@@ -7,3 +7,8 @@ Schemas are a way to define the structure of data. They can be used to validate 
 <img src="images/img-1.svg" alt="image 1" />
 
 ![image 2](img-2.svg)
+
+```python hellothere
+def hello():
+    print("Hello, World!")
+```

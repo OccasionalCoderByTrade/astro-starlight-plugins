@@ -110,7 +110,7 @@ async function processMarkdownFile(
     const lineNumber = getLineNumber(content, match.index || 0);
     try {
       const result = compileLatexToSvg(tikzCode, svgOutputDir);
-      const status = result.wasCompiled ? "compiled" : "used cache";
+      const status = result.wasCompiled ? "compiled" : "used cached";
       console.log(
         `[astro-tikz-compile] ${filePath}:${lineNumber}: ${status} ${result.hash}.svg`,
       );

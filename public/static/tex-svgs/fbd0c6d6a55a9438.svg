@@ -30,9 +30,9 @@ text.f1 {font-family:cmr10;font-size:9.96264px}
 <path d='M28.8594-33.3125H40.4844V-61.8398H28.8594ZM40.4844-48.378907H28.8594' stroke='#000' fill='none' stroke-width='.3985' stroke-miterlimit='10'/>
 <text class='f1' x='-53.536269' y='-47.575665' transform='matrix(1 0 0 1 85.7171 -4.3224)'>3</text>
 <text class='f0' x='-53.536269' y='-47.575665' transform='matrix(1 0 0 1 85.7171 10.1894)'>∅</text>
-<path d='M-45.03516-47.57422H-17.0859' stroke='#000' fill='none' stroke-width='.3985' stroke-miterlimit='10'/>
-<path d='M-18.96091-49.96484C-18.582-48.531251-17.73825-47.85547-16.886687-47.57422C-17.73825-47.296876-18.582-46.621095-18.96091-45.18359' stroke='#000' fill='none' stroke-width='.3985' stroke-miterlimit='10' stroke-linecap='round' stroke-linejoin='round'/>
-<path d='M.3125-47.57422H28.2617' stroke='#000' fill='none' stroke-width='.3985' stroke-miterlimit='10'/>
-<path d='M26.39062-49.96484C26.76953-48.531251 27.613281-47.85547 28.460937-47.57422C27.613281-47.296876 26.76953-46.621095 26.39062-45.18359' stroke='#000' fill='none' stroke-width='.3985' stroke-miterlimit='10' stroke-linecap='round' stroke-linejoin='round'/>
+<path d='M-45.03516-47.57422H-17.1484' stroke='#000' fill='none' stroke-width='.3985' stroke-miterlimit='10'/>
+<path d='M-18.34379-49.16797C-18.24223-48.570314-17.148477-47.675782-16.847696-47.57422C-17.148477-47.476564-18.24223-46.578126-18.34379-45.98047' stroke='#000' fill='none' stroke-width='.31879' stroke-miterlimit='10' stroke-linecap='round' stroke-linejoin='round'/>
+<path d='M.3125-47.57422H28.2031' stroke='#000' fill='none' stroke-width='.3985' stroke-miterlimit='10'/>
+<path d='M27.00783-49.16797C27.10549-48.570314 28.203143-47.675782 28.500018-47.57422C28.203143-47.476564 27.10549-46.578126 27.00783-45.98047' stroke='#000' fill='none' stroke-width='.31879' stroke-miterlimit='10' stroke-linecap='round' stroke-linejoin='round'/>
 </g>
 </svg>

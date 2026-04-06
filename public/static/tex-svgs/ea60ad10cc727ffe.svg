@@ -46,14 +46,14 @@ text.f2 {font-family:cmr7;font-size:6.973848px}
 <path d='M115.6679 24.9219C115.6679 13.9453 106.7699 5.043 95.7889 5.043C84.8129 5.043 75.9099 13.9453 75.9099 24.9219C75.9099 35.9023 84.8129 44.8008 95.7889 44.8008C106.7699 44.8008 115.6679 35.9023 115.6679 24.9219Z' stroke='#000' fill='none' stroke-width='1.39478' stroke-miterlimit='10'/>
 <path d='M115.6679 24.9219C115.6679 13.9453 106.7699 5.043 95.7889 5.043C84.8129 5.043 75.9099 13.9453 75.9099 24.9219C75.9099 35.9023 84.8129 44.8008 95.7889 44.8008C106.7699 44.8008 115.6679 35.9023 115.6679 24.9219Z' stroke='#fff' fill='none' stroke-width='.59776' stroke-miterlimit='10'/>
 <text class='f1' x='-45.944104' y='-45.944104' transform='matrix(1 0 0 1 126.6516 73.3024)'>Accept</text>
-<path d='M-29.8516-45.945313H12.9648' stroke='#000' fill='none' stroke-width='.3985' stroke-miterlimit='10'/>
-<path d='M11.08986-48.33594C11.46877-46.902344 12.312518-46.222657 13.16408-45.945313C12.312518-45.664063 11.46877-44.988282 11.08986-43.55469' stroke='#000' fill='none' stroke-width='.3985' stroke-miterlimit='10' stroke-linecap='round' stroke-linejoin='round'/>
+<path d='M-29.8516-45.945313H12.9023' stroke='#000' fill='none' stroke-width='.3985' stroke-miterlimit='10'/>
+<path d='M11.70707-47.53906C11.80863-46.941407 12.902383-46.042969 13.203165-45.945313C12.902383-45.843751 11.80863-44.949219 11.70707-44.35156' stroke='#000' fill='none' stroke-width='.31879' stroke-miterlimit='10' stroke-linecap='round' stroke-linejoin='round'/>
 <text class='f0' x='-45.944104' y='-45.944104' transform='matrix(1 0 0 1 35.0668 -3.5198)'>a</text>
-<path d='M36.4844-45.945313H83.8319' stroke='#000' fill='none' stroke-width='.3985' stroke-miterlimit='10'/>
-<path d='M81.957-48.33594C82.33591-46.902344 83.179659-46.222657 84.031222-45.945313C83.179659-45.664063 82.33591-44.988282 81.957-43.55469' stroke='#000' fill='none' stroke-width='.3985' stroke-miterlimit='10' stroke-linecap='round' stroke-linejoin='round'/>
+<path d='M36.4844-45.945313H83.7699' stroke='#000' fill='none' stroke-width='.3985' stroke-miterlimit='10'/>
+<path d='M82.57421-47.53906C82.67577-46.941407 83.769521-46.042969 84.070302-45.945313C83.769521-45.843751 82.67577-44.949219 82.57421-44.35156' stroke='#000' fill='none' stroke-width='.31879' stroke-miterlimit='10' stroke-linecap='round' stroke-linejoin='round'/>
 <text class='f0' x='-45.944104' y='-45.944104' transform='matrix(1 0 0 1 104.1627 -3.5198)'>b</text>
-<path d='M95.7889-34.3828V4.4453' stroke='#000' fill='none' stroke-width='.3985' stroke-miterlimit='10'/>
-<path d='M98.1797 2.57422C96.746108 2.95312 96.070327 3.796875 95.789077 4.644531C95.511733 3.796875 94.832046 2.95312 93.39845 2.57422' stroke='#000' fill='none' stroke-width='.3985' stroke-miterlimit='10' stroke-linecap='round' stroke-linejoin='round'/>
+<path d='M95.7889-34.3828V4.3867' stroke='#000' fill='none' stroke-width='.3985' stroke-miterlimit='10'/>
+<path d='M97.38283 3.1914C96.785171 3.29297 95.890639 4.386717 95.789077 4.687498C95.691421 4.386717 94.792983 3.29297 94.19533 3.1914' stroke='#000' fill='none' stroke-width='.31879' stroke-miterlimit='10' stroke-linecap='round' stroke-linejoin='round'/>
 <text class='f0' x='-45.944104' y='-45.944104' transform='matrix(1 0 0 1 145.2539 33.3198)'></text>
 </g>
 </svg>
