@@ -11,6 +11,7 @@ import {
   astroNormalizePaths,
   rehypeValidateLinks,
   starlightIndexOnlySidebar,
+  starlightTikzCompile,
 } from "./src";
 
 // Common Config Items
@@ -50,7 +51,10 @@ export default defineConfig({
         minHeadingLevel: 2, // h1 not included since it conflicts with frontmatter title
         maxHeadingLevel: 6, // include up to h6 in table of contents
       },
-      plugins: [STARLIGHT_SIDEBAR_CONFIG],
+      plugins: [
+        STARLIGHT_SIDEBAR_CONFIG,
+        starlightTikzCompile({ svgOutputDir: "public/static/tex-svgs" }),
+      ],
       customCss: ["/src/styles/main.scss", "katex/dist/katex.min.css"],
       expressiveCode: {
         plugins: [pluginLineNumbers()],

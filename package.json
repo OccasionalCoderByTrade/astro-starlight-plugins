@@ -23,6 +23,14 @@
       "import": "./dist/plugins/astro-normalize-paths.js",
       "types": "./dist/plugins/astro-normalize-paths.d.ts"
     },
+    "./remark-tikz-compile": {
+      "import": "./dist/plugins/remark-tikz-compile.js",
+      "types": "./dist/plugins/remark-tikz-compile.d.ts"
+    },
+    "./starlight-tikz-compile": {
+      "import": "./dist/plugins/starlight-tikz-compile.js",
+      "types": "./dist/plugins/starlight-tikz-compile.d.ts"
+    },
     "./styles": "./dist/styles/",
     "./styles/*": "./dist/styles/*"
   },
