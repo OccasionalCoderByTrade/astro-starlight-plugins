@@ -33,10 +33,7 @@ function hashLatexCode(code: string): string {
   // MD5 truncated to 16 chars (8 bytes, 64 bits) is fast and provides
   // ~2^32 collision resistance (4 billion diagrams) which is more than sufficient
   // for build caching of non-adversarial content.
-  return createHash("md5")
-    .update(normalized)
-    .digest("hex")
-    .slice(0, 16);
+  return createHash("md5").update(normalized).digest("hex").slice(0, 16);
 }
 
 function buildLatexSource(latexCode: string): string {
@@ -46,16 +43,20 @@ function buildLatexSource(latexCode: string): string {
   const packages = latexCode.match(packageRegex) || [];
 
   // Remove package declarations from the code
-  const codeWithoutPackages = latexCode
-    .replace(packageRegex, "")
-    .trim();
+  const codeWithoutPackages = latexCode.replace(packageRegex, "").trim();
 
   return [
-    "\\documentclass[border=10pt]{standalone}",
+    "\\documentclass[border=0.5in]{standalone}",
     ...packages,
+    "\\usepackage{xcolor}",
     "\\pagecolor{white}",
     "\\begin{document}",
+    "\\Large",
+    "\\fboxsep=2pt\\relax",
+    "\\fboxrule=0.5pt\\relax",
+    "\\fbox{",
     codeWithoutPackages,
+    "}",
     "\\end{document}",
   ].join("\n");
 }
@@ -105,13 +106,18 @@ export function compileLatexToSvg(
         { stdio: "pipe", cwd: workDir, encoding: "utf-8" },
       );
     } catch (latexErr: any) {
-      const errorOutput = latexErr.stderr ?? latexErr.stdout ?? latexErr.message ?? "";
-      const userMessage = createCompilationErrorMessage(latexSource, errorOutput);
+      // execSync puts output in stdout when stdio is "pipe"
+      const errorOutput =
+        latexErr.stdout || latexErr.stderr || latexErr.message || "";
+      const userMessage = createCompilationErrorMessage(
+        latexSource,
+        errorOutput,
+      );
       throw new Error(userMessage);
     }
 
     try {
-      execSync(`dvisvgm "${dviFile}" -o "${svgTempFile}"`, {
+      execSync(`dvisvgm --bbox=min "${dviFile}" -o "${svgTempFile}"`, {
         stdio: "pipe",
         cwd: workDir,
         encoding: "utf-8",

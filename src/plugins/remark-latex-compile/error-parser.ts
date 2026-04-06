@@ -21,40 +21,68 @@ export function parseLatexError(latexOutput: string): ParsedLatexError {
   let mainError = "";
   let errorLineNum: number | undefined;
 
-  // Find the first error line (starts with "!")
+  // Strategy 1: Look for "Undefined control sequence" which is very common
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-
-    if (line.startsWith("!")) {
-      mainError = line.substring(1).trim();
-
-      // Collect context: the error line and a few lines after
+    if (line.includes("Undefined control sequence")) {
+      mainError = "Undefined control sequence";
       errorLines.push(line);
-      for (let j = i + 1; j < Math.min(i + 5, lines.length); j++) {
-        const contextLine = lines[j];
-        if (contextLine.trim()) {
-          errorLines.push(contextLine);
-        }
-        // Stop collecting after we hit the source line (starts with "l.")
-        if (contextLine.startsWith("l.")) {
+
+      // Try to find the actual command on the line starting with "l."
+      for (let j = Math.max(0, i - 3); j <= Math.min(i + 3, lines.length - 1); j++) {
+        if (lines[j].startsWith("l.")) {
+          const match = lines[j].match(/^l\.(\d+)\s*(.*)/);
+          if (match) {
+            errorLineNum = parseInt(match[1], 10);
+            const sourceLine = match[2].trim();
+            if (sourceLine) {
+              mainError = `Undefined control sequence: ${sourceLine}`;
+            }
+          }
+          errorLines.push(lines[j]);
           break;
         }
       }
-
-      // Extract line number if present (format: "l.123 ...")
-      for (let j = i; j < Math.min(i + 10, lines.length); j++) {
-        const lineMatch = lines[j].match(/^l\.(\d+)/);
-        if (lineMatch) {
-          errorLineNum = parseInt(lineMatch[1], 10);
-          break;
-        }
-      }
-
       break;
     }
   }
 
-  // If no "!" error found, look for other common error patterns
+  // Strategy 2: Find the first error line (starts with "!")
+  if (!mainError) {
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+
+      if (line.startsWith("!")) {
+        mainError = line.substring(1).trim();
+
+        // Collect context: the error line and a few lines after
+        errorLines.push(line);
+        for (let j = i + 1; j < Math.min(i + 5, lines.length); j++) {
+          const contextLine = lines[j];
+          if (contextLine.trim()) {
+            errorLines.push(contextLine);
+          }
+          // Stop collecting after we hit the source line (starts with "l.")
+          if (contextLine.startsWith("l.")) {
+            break;
+          }
+        }
+
+        // Extract line number if present (format: "l.123 ...")
+        for (let j = i; j < Math.min(i + 10, lines.length); j++) {
+          const lineMatch = lines[j].match(/^l\.(\d+)/);
+          if (lineMatch) {
+            errorLineNum = parseInt(lineMatch[1], 10);
+            break;
+          }
+        }
+
+        break;
+      }
+    }
+  }
+
+  // Strategy 3: Look for emergency stop or fatal error
   if (!mainError) {
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
@@ -78,18 +106,14 @@ export function parseLatexError(latexOutput: string): ParsedLatexError {
     }
   }
 
-  // Last resort: check if there's any indication of what went wrong
+  // Strategy 4: Look for other specific error patterns
   if (!mainError && latexOutput.length > 0) {
-    // Try to find any line with meaningful error-like content
     for (const line of lines) {
       if (
-        line.length > 20 &&
-        (line.includes("undefined") ||
-          line.includes("Undefined") ||
-          line.includes("error") ||
-          line.includes("Error") ||
-          line.includes("Misplaced") ||
-          line.includes("unknown"))
+        line.includes("error") ||
+        line.includes("Error") ||
+        line.includes("Misplaced") ||
+        line.includes("Missing")
       ) {
         mainError = line.trim();
         errorLines.push(mainError);
@@ -145,8 +169,12 @@ export function createCompilationErrorMessage(
   const parsed = parseLatexError(rawError);
   const formatted = formatLatexError(parsed);
 
+  // ANSI color codes for terminal output
+  const RED = "\x1b[31m";
+  const RESET = "\x1b[0m";
+
   return (
-    `[remark-latex-compile] LaTeX compilation failed\n\n` +
+    `${RED}[remark-latex-compile] LaTeX compilation failed${RESET}\n\n` +
     `${formatted}\n\n` +
     `LaTeX source:\n${latexSource}`
   );

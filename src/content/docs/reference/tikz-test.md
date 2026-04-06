@@ -324,17 +324,22 @@ title: "LaTeX Compilation Examples"
 ```tex compile
 \usepackage{tikz}
 
-\begin{tikzpicture}[level distance=1.5cm, sibling distance=1.2cm]
-  \node {50}
-    child { node {30}
-      child { node {20} }
-      child { node {40} }
-    }
-    child { node {70}
-      child { node {60} }
-      child { node {80} }
-    };
+\begin{tikzpicture}[
+  level 1/.style={sibling distance=4cm},
+  level 2/.style={sibling distance=2cm},
+  every node/.style={draw, circle, minimum size=6mm}
+]
+\node {8}
+  child {node {4}
+    child {node {2}}
+    child {node {6}}
+  }
+  child {node {12}
+    child {node {10}}
+    child {node {14}}
+  };
 \end{tikzpicture}
+
 ```
 
 ### Complexity Analysis
