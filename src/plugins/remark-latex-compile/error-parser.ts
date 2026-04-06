@@ -146,7 +146,7 @@ export function createCompilationErrorMessage(
   const formatted = formatLatexError(parsed);
 
   return (
-    `[remark-tikz-compile] LaTeX compilation failed\n\n` +
+    `[remark-latex-compile] LaTeX compilation failed\n\n` +
     `${formatted}\n\n` +
     `LaTeX source:\n${latexSource}`
   );

@@ -1,7 +1,7 @@
 /**
- * Astro integration for remark-tikz-compile.
+ * Astro integration for remark-latex-compile.
  *
- * This integration handles compiling TikZ diagrams from markdown source files
+ * This integration handles compiling LaTeX diagrams from markdown source files
  * during the build process, since Starlight's content loader bypasses the standard Astro markdown pipeline.
  */
 import { readdir, readFile, writeFile } from "node:fs/promises";
@@ -9,7 +9,7 @@ import { resolve, join, extname } from "node:path";
 import { compileLatexToSvg } from "./compile.js";
 import { createHash } from "node:crypto";
 
-function hashTikzCode(code: string): string {
+function hashLatexCode(code: string): string {
   const normalized = code
     .split("\n")
     .map((line) => line.trim())
@@ -18,12 +18,12 @@ function hashTikzCode(code: string): string {
   return createHash("md5").update(normalized).digest("hex").slice(0, 16);
 }
 
-export interface AstroTikzCompileOptions {
+export interface AstroLatexCompileOptions {
   svgOutputDir?: string;
   contentDir?: string;
 }
 
-export function createAstroTikzIntegration(options?: AstroTikzCompileOptions) {
+export function createAstroLatexIntegration(options?: AstroLatexCompileOptions) {
   const svgOutputDir = options?.svgOutputDir
     ? resolve(options.svgOutputDir)
     : resolve("public/static/tex-svgs");
@@ -33,32 +33,32 @@ export function createAstroTikzIntegration(options?: AstroTikzCompileOptions) {
     : resolve("src/content/docs");
 
   return {
-    name: "astro-tikz-compile",
+    name: "astro-latex-compile",
     hooks: {
       "astro:build:start": async () => {
         console.log(
-          "[astro-tikz-compile] Build start, scanning for tex/latex compile blocks",
+          "[astro-latex-compile] Build start, scanning for tex/latex compile blocks",
         );
 
         try {
-          await scanAndCompileTikz(contentDir, svgOutputDir);
+          await scanAndCompileLatex(contentDir, svgOutputDir);
         } catch (err) {
           console.error(
-            "[astro-tikz-compile] Error during TikZ compilation:",
+            "[astro-latex-compile] Error during LaTeX compilation:",
             err,
           );
         }
       },
       "astro:build:done": async ({ dir }: any) => {
         console.log(
-          "[astro-tikz-compile] Build done, updating HTML references",
+          "[astro-latex-compile] Build done, updating HTML references",
         );
 
         try {
           await updateHtmlReferences(dir.pathname, contentDir, svgOutputDir);
         } catch (err) {
           console.error(
-            "[astro-tikz-compile] Error updating HTML references:",
+            "[astro-latex-compile] Error updating HTML references:",
             err,
           );
         }
@@ -67,7 +67,7 @@ export function createAstroTikzIntegration(options?: AstroTikzCompileOptions) {
   };
 }
 
-async function scanAndCompileTikz(
+async function scanAndCompileLatex(
   dir: string,
   svgOutputDir: string,
 ): Promise<void> {
@@ -78,7 +78,7 @@ async function scanAndCompileTikz(
 
     if (entry.isDirectory()) {
       // Recurse into subdirectories
-      await scanAndCompileTikz(fullPath, svgOutputDir);
+      await scanAndCompileLatex(fullPath, svgOutputDir);
     } else if (entry.isFile()) {
       const ext = extname(entry.name);
       if (ext === ".md" || ext === ".mdx") {
@@ -102,21 +102,21 @@ async function processMarkdownFile(
   const content = await readFile(filePath, "utf-8");
 
   // Match tex/latex compile blocks: ```tex compile\n...\n``` or ```latex compile\n...\n```
-  const tikzBlockRegex = /```(?:tex|latex)\s+compile\n([\s\S]*?)\n```/g;
-  const matches = content.matchAll(tikzBlockRegex);
+  const latexBlockRegex = /```(?:tex|latex)\s+compile\n([\s\S]*?)\n```/g;
+  const matches = content.matchAll(latexBlockRegex);
 
   for (const match of matches) {
-    const tikzCode = match[1];
+    const latexCode = match[1];
     const lineNumber = getLineNumber(content, match.index || 0);
     try {
-      const result = compileLatexToSvg(tikzCode, svgOutputDir);
+      const result = compileLatexToSvg(latexCode, svgOutputDir);
       const status = result.wasCompiled ? "compiled" : "used cached";
       console.log(
-        `[astro-tikz-compile] ${filePath}:${lineNumber}: ${status} ${result.hash}.svg`,
+        `[astro-latex-compile] ${filePath}:${lineNumber}: ${status} ${result.hash}.svg`,
       );
     } catch (err) {
       console.error(
-        `[astro-tikz-compile] Failed to compile TikZ in ${filePath}:${lineNumber}:`,
+        `[astro-latex-compile] Failed to compile LaTeX in ${filePath}:${lineNumber}:`,
         err,
       );
     }
@@ -128,19 +128,19 @@ async function updateHtmlReferences(
   contentDir: string,
   svgOutputDir: string,
 ): Promise<void> {
-  // Collect all TikZ code blocks in order (with their computed hashes)
-  const tikzHashes: string[] = [];
+  // Collect all LaTeX code blocks in order (with their computed hashes)
+  const latexHashes: string[] = [];
 
   const entries = await readdir(contentDir, { withFileTypes: true });
   for (const entry of entries) {
     const fullPath = join(contentDir, entry.name);
     if (entry.isDirectory()) {
-      await scanMarkdownForHashes(fullPath, tikzHashes);
+      await scanMarkdownForHashes(fullPath, latexHashes);
     }
   }
 
   // Update HTML files with new hashes
-  await updateHtmlDirWithHashes(buildDir, tikzHashes);
+  await updateHtmlDirWithHashes(buildDir, latexHashes);
 }
 
 async function scanMarkdownForHashes(
@@ -159,12 +159,12 @@ async function scanMarkdownForHashes(
       (entry.name.endsWith(".md") || entry.name.endsWith(".mdx"))
     ) {
       const content = await readFile(fullPath, "utf-8");
-      const tikzBlockRegex = /```(?:tex|latex)\s+compile\n([\s\S]*?)\n```/g;
-      const matches = content.matchAll(tikzBlockRegex);
+      const latexBlockRegex = /```(?:tex|latex)\s+compile\n([\s\S]*?)\n```/g;
+      const matches = content.matchAll(latexBlockRegex);
 
       for (const match of matches) {
-        const tikzCode = match[1];
-        const hash = hashTikzCode(tikzCode);
+        const latexCode = match[1];
+        const hash = hashLatexCode(latexCode);
         hashes.push(hash);
       }
     }
@@ -202,7 +202,7 @@ async function updateHtmlDirWithHashes(
 
       if (modified) {
         await writeFile(fullPath, content, "utf-8");
-        console.log(`[astro-tikz-compile] Updated ${fullPath}`);
+        console.log(`[astro-latex-compile] Updated ${fullPath}`);
       }
     }
   }

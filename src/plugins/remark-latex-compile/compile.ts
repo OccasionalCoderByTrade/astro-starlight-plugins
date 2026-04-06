@@ -118,7 +118,7 @@ export function compileLatexToSvg(
       });
     } catch (dvisvgmErr: any) {
       throw new Error(
-        `[remark-tikz-compile] DVI to SVG conversion failed (hash: ${hash}).\n` +
+        `[remark-latex-compile] DVI to SVG conversion failed (hash: ${hash}).\n` +
           `Error: ${dvisvgmErr.message}\nStderr: ${dvisvgmErr.stderr ?? ""}Stdout: ${dvisvgmErr.stdout ?? ""}`,
       );
     }

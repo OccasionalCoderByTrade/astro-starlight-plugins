@@ -1,15 +1,15 @@
 /**
- * Standalone test for TikZ compilation.
- * Run with: npx tsx src/plugins/tests/remark-tikz-compile.ts
+ * Standalone test for LaTeX compilation.
+ * Run with: npx tsx src/plugins/tests/remark-latex-compile.ts
  */
-import { compileTikzToSvg } from "../remark-tikz-compile/compile.js";
+import { compileLatexToSvg } from "../remark-latex-compile/compile.js";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 
-const testOutputDir = resolve("test-tikz-output");
+const testOutputDir = resolve("test-latex-output");
 
 async function test() {
-  console.log("[test] Starting TikZ compilation tests...");
+  console.log("[test] Starting LaTeX compilation tests...");
   console.log("[test] Output directory:", testOutputDir);
 
   const testCases = [
@@ -31,7 +31,7 @@ async function test() {
   for (const testCase of testCases) {
     try {
       console.log(`\n[test] Compiling: ${testCase.name}`);
-      const result = compileTikzToSvg(testCase.code, testOutputDir);
+      const result = compileLatexToSvg(testCase.code, testOutputDir);
       console.log(`[test]   Hash: ${result.hash}`);
       console.log(`[test]   SVG Path: ${result.svgPath}`);
       console.log(`[test]   Was compiled: ${result.wasCompiled}`);
@@ -46,7 +46,7 @@ async function test() {
 
       // Test idempotency - compile again and verify it's cached
       console.log(`[test] Testing idempotency...`);
-      const result2 = compileTikzToSvg(testCase.code, testOutputDir);
+      const result2 = compileLatexToSvg(testCase.code, testOutputDir);
       console.log(`[test]   Was compiled (2nd run): ${result2.wasCompiled}`);
       if (!result2.wasCompiled) {
         console.log(`[test]   ✓ Correctly skipped recompilation`);

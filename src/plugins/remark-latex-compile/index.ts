@@ -1,20 +1,20 @@
 /**
- * Remark plugin that compiles fenced `tikzcompile` code blocks to SVG.
+ * Remark plugin that compiles fenced `tex compile` or `latex compile` code blocks to SVG.
  *
  * Usage:
- *   import { remarkTikzCompile } from "...";
+ *   import { remarkLatexCompile } from "...";
  *
  *   // In astro.config.mjs:
  *   markdown: {
  *     remarkPlugins: [
- *       [remarkTikzCompile, { svgOutputDir: "public/static/tex-svgs" }],
+ *       [remarkLatexCompile, { svgOutputDir: "public/static/tex-svgs" }],
  *     ],
  *   }
  */
 import { resolve } from "node:path";
 import { compileLatexToSvg } from "./compile.js";
 
-export interface RemarkTikzCompileOptions {
+export interface RemarkLatexCompileOptions {
   /**
    * Directory where SVG files should be written.
    * @default "public/static/tex-svgs"
@@ -40,12 +40,12 @@ function traverseTree(node: any, svgOutputDir: string, depth: number = 0): void 
               {
                 type: "image",
                 url: `/static/tex-svgs/${result.hash}.svg`,
-                alt: "TikZ diagram",
+                alt: "LaTeX diagram",
               },
             ],
           };
         } catch (err) {
-          console.error(`[remarkTikzCompile] Failed to compile TikZ code block:`, err);
+          console.error(`[remarkLatexCompile] Failed to compile LaTeX code block:`, err);
           // Leave code block as-is if compilation fails
         }
       } else {
@@ -56,7 +56,7 @@ function traverseTree(node: any, svgOutputDir: string, depth: number = 0): void 
   }
 }
 
-export default function remarkTikzCompile(options?: RemarkTikzCompileOptions) {
+export default function remarkLatexCompile(options?: RemarkLatexCompileOptions) {
   const svgOutputDir = options?.svgOutputDir
     ? resolve(options.svgOutputDir)
     : resolve("public/static/tex-svgs");
@@ -67,4 +67,4 @@ export default function remarkTikzCompile(options?: RemarkTikzCompileOptions) {
 }
 
 export { compileLatexToSvg };
-export { starlightTikzCompile } from "./starlight-plugin.js";
+export { starlightLatexCompile } from "./starlight-plugin.js";

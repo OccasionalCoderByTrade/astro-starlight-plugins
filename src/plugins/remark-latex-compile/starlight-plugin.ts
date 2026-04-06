@@ -1,24 +1,24 @@
 /**
- * Starlight plugin wrapper for remark-tikz-compile.
+ * Starlight plugin wrapper for remark-latex-compile.
  *
- * This plugin hooks into Starlight's config:setup to inject the remark-tikz-compile
+ * This plugin hooks into Starlight's config:setup to inject the remark-latex-compile
  * plugin and the build-time Astro integration for scanning markdown files.
  */
 import type { HookParameters } from "@astrojs/starlight/types";
-import type { RemarkTikzCompileOptions } from "./index.js";
-import remarkTikzCompile from "./index.js";
-import { createAstroTikzIntegration } from "./astro-integration.js";
+import type { RemarkLatexCompileOptions } from "./index.js";
+import remarkLatexCompile from "./index.js";
+import { createAstroLatexIntegration } from "./astro-integration.js";
 
-export type StarlightTikzCompileOptions = RemarkTikzCompileOptions;
+export type StarlightLatexCompileOptions = RemarkLatexCompileOptions;
 
-export function starlightTikzCompile(options?: StarlightTikzCompileOptions) {
+export function starlightLatexCompile(options?: StarlightLatexCompileOptions) {
   return {
-    name: "starlight-tikz-compile",
+    name: "starlight-latex-compile",
     hooks: {
       "config:setup": (hook: HookParameters<"config:setup">) => {
         // Inject remark plugin for non-Starlight markdown processing
         hook.addIntegration({
-          name: "tikz-compile-remark-integration",
+          name: "latex-compile-remark-integration",
           hooks: {
             "astro:config:setup": ({ updateConfig, config }: any) => {
               const existingPlugins = (
@@ -29,7 +29,7 @@ export function starlightTikzCompile(options?: StarlightTikzCompileOptions) {
 
               updateConfig({
                 markdown: {
-                  remarkPlugins: [...existingPlugins, [remarkTikzCompile, options ?? {}]],
+                  remarkPlugins: [...existingPlugins, [remarkLatexCompile, options ?? {}]],
                 },
               });
             },
@@ -38,7 +38,7 @@ export function starlightTikzCompile(options?: StarlightTikzCompileOptions) {
 
         // Add build-time scanner for Starlight content
         hook.addIntegration(
-          createAstroTikzIntegration({
+          createAstroLatexIntegration({
             svgOutputDir: options?.svgOutputDir,
           })
         );
@@ -47,4 +47,4 @@ export function starlightTikzCompile(options?: StarlightTikzCompileOptions) {
   };
 }
 
-export default starlightTikzCompile;
+export default starlightLatexCompile;
