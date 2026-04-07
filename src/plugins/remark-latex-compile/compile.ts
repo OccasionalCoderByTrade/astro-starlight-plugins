@@ -2,11 +2,16 @@
  * LaTeX compilation utilities for converting LaTeX code to SVG.
  *
  * External dependencies required on PATH:
- *   - latex     (e.g. texlive-latex-base on Debian, MacTeX on macOS)
+ *   - pdflatex  (e.g. texlive-latex-base on Debian, MacTeX on macOS)
  *   - dvisvgm   (e.g. texlive-extra-utils on Debian, included in MacTeX)
  *
- * Users should include their own \usepackage{} and \usetikzlibrary{} commands
- * in their LaTeX code blocks for maximum flexibility.
+ * Users can optionally separate preamble from content using %--- separator:
+ *   \usepackage{amsmath}
+ *   %---
+ *   $\begin{pmatrix} ... \end{pmatrix}$
+ *
+ * Spaces between % and --- are optional. Content without separator is treated
+ * entirely as document content.
  */
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
@@ -20,6 +25,12 @@ import {
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { createCompilationErrorMessage } from "./error-parser.js";
+
+export interface CompilationResult {
+  hash: string;
+  svgPath: string;
+  wasCompiled: boolean;
+}
 
 function hashLatexCode(code: string): string {
   // Normalize by trimming each line (removes leading/trailing whitespace)
@@ -37,28 +48,25 @@ function hashLatexCode(code: string): string {
 }
 
 function buildLatexSource(latexCode: string): string {
-  // Extract \usepackage and \usetikzlibrary commands from user code
-  // (they must come before \begin{document})
-  const packageRegex = /\\usepackage\{[^}]+\}|\\usetikzlibrary\{[^}]+\}/g;
-  const packages = latexCode.match(packageRegex) || [];
+  // Split on %--- separator (with optional spaces/tabs, not newlines): preamble %--- content
+  const separatorRegex = /%[ \t]*---/;
+  const parts = latexCode.split(separatorRegex);
+  let preamble = "";
+  let content = latexCode.trim();
 
-  // Remove package declarations from the code
-  const codeWithoutPackages = latexCode.replace(packageRegex, "").trim();
+  if (parts.length === 2) {
+    preamble = parts[0].trim();
+    content = parts[1].trim();
+  }
 
   return [
     "\\documentclass[border=4pt]{standalone}",
-    ...packages,
+    preamble,
     "\\begin{document}",
     "\\Large",
-    codeWithoutPackages,
+    content,
     "\\end{document}",
   ].join("\n");
-}
-
-export interface CompilationResult {
-  hash: string;
-  svgPath: string;
-  wasCompiled: boolean;
 }
 
 /**
