@@ -6,7 +6,7 @@ description: A comprehensive reference page showcasing various Markdown elements
 ## Links
 
 - [Auto Lists](./auto-list-syntax)
-- [Tikz Test](./tikz-test)
+- [Tex Test](./tex-test)
 
 ```python hellothere
 def hello():
