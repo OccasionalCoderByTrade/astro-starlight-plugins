@@ -289,6 +289,17 @@ title: "LaTeX Compilation Examples"
 \end{tikzpicture}
 ```
 
+
+#### Matrix
+
+```tex compile
+\usepackage{amsmath}
+
+$\begin{pmatrix} 1 & 2 \\ 3 & 4 \end{pmatrix}$
+$\begin{bmatrix} 1 & 2 \\ 3 & 4 \end{bmatrix}$
+$\begin{vmatrix} 1 & 2 \\ 3 & 4 \end{vmatrix}$
+```
+
 #### Matrix as Transformation
 
 ```tex compile

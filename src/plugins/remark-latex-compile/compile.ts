@@ -9,13 +9,13 @@
  * in their LaTeX code blocks for maximum flexibility.
  */
 import { createHash } from "node:crypto";
-import { execSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import {
   existsSync,
   mkdirSync,
-  copyFileSync,
   writeFileSync,
   rmSync,
+  mkdtempSync,
 } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -46,17 +46,11 @@ function buildLatexSource(latexCode: string): string {
   const codeWithoutPackages = latexCode.replace(packageRegex, "").trim();
 
   return [
-    "\\documentclass[border=0.5in]{standalone}",
+    "\\documentclass[border=4pt]{standalone}",
     ...packages,
-    "\\usepackage{xcolor}",
-    "\\pagecolor{white}",
     "\\begin{document}",
     "\\Large",
-    "\\fboxsep=2pt\\relax",
-    "\\fboxrule=0.5pt\\relax",
-    "\\fbox{",
     codeWithoutPackages,
-    "}",
     "\\end{document}",
   ].join("\n");
 }
@@ -89,26 +83,25 @@ export function compileLatexToSvg(
 
   mkdirSync(svgOutputDir, { recursive: true });
 
-  const workDir = join(tmpdir(), `tikz-compile-${hash}`);
-  mkdirSync(workDir, { recursive: true });
-
-  const texFile = join(workDir, `${hash}.tex`);
-  const dviFile = join(workDir, `${hash}.dvi`);
-  const svgTempFile = join(workDir, `${hash}.svg`);
+  const workDir = mkdtempSync(join(tmpdir(), "latex-compile-"));
+  const texFile = join(workDir, "diagram.tex");
+  const pdfFile = join(workDir, "diagram.pdf");
   const latexSource = buildLatexSource(latexCode);
 
   try {
     writeFileSync(texFile, latexSource, "utf-8");
 
-    try {
-      execSync(
-        `latex -interaction=nonstopmode -output-directory "${workDir}" "${texFile}"`,
-        { stdio: "pipe", cwd: workDir, encoding: "utf-8" },
-      );
-    } catch (latexErr: any) {
-      // execSync puts output in stdout when stdio is "pipe"
+    // Compile LaTeX to PDF
+    const latexResult = spawnSync("pdflatex", [
+      "-interaction=nonstopmode",
+      "-output-directory",
+      workDir,
+      texFile,
+    ]);
+
+    if (latexResult.status !== 0) {
       const errorOutput =
-        latexErr.stdout || latexErr.stderr || latexErr.message || "";
+        latexResult.stderr?.toString() || latexResult.stdout?.toString() || "";
       const userMessage = createCompilationErrorMessage(
         latexSource,
         errorOutput,
@@ -116,22 +109,25 @@ export function compileLatexToSvg(
       throw new Error(userMessage);
     }
 
-    try {
-      execSync(`dvisvgm --bbox=min "${dviFile}" -o "${svgTempFile}"`, {
-        stdio: "pipe",
-        cwd: workDir,
-        encoding: "utf-8",
-      });
-    } catch (dvisvgmErr: any) {
+    // Convert PDF to SVG
+    const dvisvgmResult = spawnSync("dvisvgm", [
+      "--pdf",
+      "--bbox=dvi",
+      pdfFile,
+      "-o",
+      svgPath,
+    ]);
+
+    if (dvisvgmResult.status !== 0) {
+      const errorOutput =
+        dvisvgmResult.stderr?.toString() ||
+        dvisvgmResult.stdout?.toString() ||
+        "";
       throw new Error(
-        `[remark-latex-compile] DVI to SVG conversion failed (hash: ${hash}).\n` +
-          `Error: ${dvisvgmErr.message}\nStderr: ${dvisvgmErr.stderr ?? ""}Stdout: ${dvisvgmErr.stdout ?? ""}`,
+        `[remark-latex-compile] PDF to SVG conversion failed (hash: ${hash}).\n` +
+          `Error: ${errorOutput}`,
       );
     }
-
-    copyFileSync(svgTempFile, svgPath);
-  } catch (err) {
-    throw err;
   } finally {
     try {
       rmSync(workDir, { recursive: true, force: true });

@@ -41,6 +41,11 @@ function traverseTree(node: any, svgOutputDir: string, depth: number = 0): void 
                 type: "image",
                 url: `/static/tex-svgs/${result.hash}.svg`,
                 alt: "LaTeX diagram",
+                data: {
+                  hProperties: {
+                    className: ["tex-compiled"],
+                  },
+                },
               },
             ],
           };
