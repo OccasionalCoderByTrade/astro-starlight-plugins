@@ -21,6 +21,19 @@ export interface RemarkLatexCompileOptions {
   svgOutputDir: string;
 }
 
+/**
+ * Extract class names from meta string.
+ * Looks for class="..." attribute in the meta string.
+ * Example: "compile class=\"bg-white rounded-1\"" returns ["bg-white", "rounded-1"]
+ */
+function extractClassesFromMeta(meta: string): string[] {
+  const classMatch = meta.match(/class="([^"]+)"/);
+  if (classMatch && classMatch[1]) {
+    return classMatch[1].split(/\s+/).filter(Boolean);
+  }
+  return [];
+}
+
 function traverseTree(
   node: Record<string, unknown>,
   svgOutputDir: string,
@@ -42,6 +55,13 @@ function traverseTree(
         try {
           // Compile and get the result
           const result = compileLatexToSvg(String(child.value), svgOutputDir);
+
+          // Extract custom classes from meta string
+          const customClasses = extractClassesFromMeta(
+            String(child.meta || ""),
+          );
+          const allClasses = ["tex-compiled", ...customClasses];
+
           // Replace with paragraph containing image
           children[i] = {
             type: "paragraph",
@@ -52,7 +72,7 @@ function traverseTree(
                 alt: "LaTeX diagram",
                 data: {
                   hProperties: {
-                    className: ["tex-compiled"],
+                    className: allClasses,
                   },
                 },
               },

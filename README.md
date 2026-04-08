@@ -99,6 +99,8 @@ export default defineConfig({
 
 **Markdown Syntax:**
 
+Use either ` ```tex compile ` or ` ```latex compile ` — both work identically:
+
 ````markdown
 ```tex compile
 \begin{tikzpicture}
@@ -124,6 +126,40 @@ Use `%---` to separate custom preamble from diagram content:
 \end{tikzpicture}
 ```
 ````
+
+**Complete Document Control:**
+
+If your code block contains both `\documentclass` and `\begin{document}`, the plugin treats it as a complete, self-contained LaTeX document and uses it as-is without checking for a `%---` separator for a preamble:
+
+````markdown
+```tex compile
+\documentclass[border=10pt]{standalone}
+\usepackage{tikz}
+\usepackage{amsmath}
+
+\begin{document}
+
+\begin{equation*}
+  E = mc^2
+\end{equation*}
+
+\end{document}
+```
+````
+
+**Custom CSS Classes:**
+
+Add custom CSS classes to the generated `<img>` that defines the compiled LaTeX diagram using `class="..."`:
+
+````markdown
+```tex compile class="bg-white rounded-1"
+\begin{tikzpicture}
+  \node {Custom styled diagram};
+\end{tikzpicture}
+```
+````
+
+The img element will have classes: `tex-compiled bg-white rounded-1` (note: the `tex-compiled` class is always included by default).
 
 ### Remark LaTeX Compile
 
