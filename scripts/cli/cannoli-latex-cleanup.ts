@@ -40,7 +40,7 @@ const docsDirPath = resolve(docsDir);
 
 async function scanMarkdownForHashes(
   dir: string,
-  hashes: Set<string>
+  hashes: Set<string>,
 ): Promise<void> {
   try {
     const entries = await readdir(dir, { withFileTypes: true });
@@ -55,7 +55,7 @@ async function scanMarkdownForHashes(
         (entry.name.endsWith(".md") || entry.name.endsWith(".mdx"))
       ) {
         const content = await readFile(fullPath, "utf-8");
-        const latexBlockRegex = /```(?:tex|latex)\s+compile\n([\s\S]*?)\n```/g;
+        const latexBlockRegex = /```(?:tex|latex)\s+compile\r?\n([\s\S]*?)\r?\n```/g;
         const matches = content.matchAll(latexBlockRegex);
 
         for (const match of matches) {
@@ -73,7 +73,7 @@ async function scanMarkdownForHashes(
 
 async function findOrphanedSvgs(
   svgPath: string,
-  usedHashes: Set<string>
+  usedHashes: Set<string>,
 ): Promise<string[]> {
   const orphaned: string[] = [];
 
