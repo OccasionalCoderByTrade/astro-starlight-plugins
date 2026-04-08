@@ -52,9 +52,17 @@ function traverseTree(
         (child.lang === "tex" || child.lang === "latex") &&
         String(child.meta || "").includes("compile")
       ) {
+        const position = child.position as Record<string, unknown> | undefined;
+        const lineNumber =
+          (position?.start as Record<string, unknown>)?.line || "?";
+
         try {
           // Compile and get the result
           const result = compileLatexToSvg(String(child.value), svgOutputDir);
+          const status = result.wasCompiled ? "compiled" : "used cached";
+          console.log(
+            `[remark-latex-compile] ${filePath}:${lineNumber}: ${status} ${result.hash}.svg`,
+          );
 
           // Extract custom classes from meta string
           const customClasses = extractClassesFromMeta(
@@ -83,12 +91,6 @@ function traverseTree(
           // In dev mode, log the error without the wrapper since Astro will also display it.
           // In build mode, the astro integration will catch and fail the build.
           if (process.env.NODE_ENV !== "production") {
-            // Dev mode: log with file path and line number for clarity
-            const position = child.position as
-              | Record<string, unknown>
-              | undefined;
-            const lineNumber =
-              (position?.start as Record<string, unknown>)?.line || "?";
             const errorMsg = err instanceof Error ? err.message : String(err);
             // Extract just the formatted error (after the wrapper line)
             const match = errorMsg.match(/\n\n([\s\S]+)/);
