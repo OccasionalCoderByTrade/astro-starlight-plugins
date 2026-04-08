@@ -1,7 +1,7 @@
 {
   "name": "starlight-cannoli-plugins",
   "type": "module",
-  "version": "1.2.13",
+  "version": "1.2.14",
   "description": "Starlight plugins for automatic sidebar generation and link validation",
   "license": "ISC",
   "main": "./dist/index.js",
@@ -71,8 +71,8 @@
   },
   "dependencies": {
     "eslint-cannoli-plugins": "^1.0.13",
-    "glob": "^13.0.6",
-    "minimatch": "^10.2.4",
+    "glob": "^11.0.0",
+    "minimatch": "^9.0.0",
     "unist-util-visit": "^5.0.0",
     "yaml": "^2.4.0"
   },
