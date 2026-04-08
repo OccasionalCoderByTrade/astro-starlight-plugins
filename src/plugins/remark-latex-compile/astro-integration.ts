@@ -23,7 +23,9 @@ export interface AstroLatexCompileOptions {
   contentDir?: string;
 }
 
-export function createAstroLatexIntegration(options?: AstroLatexCompileOptions) {
+export function createAstroLatexIntegration(
+  options?: AstroLatexCompileOptions,
+) {
   const svgOutputDir = options?.svgOutputDir
     ? resolve(options.svgOutputDir)
     : resolve("public/static/tex-svgs");
@@ -39,17 +41,9 @@ export function createAstroLatexIntegration(options?: AstroLatexCompileOptions) 
         console.log(
           "[astro-latex-compile] Build start, scanning for tex/latex compile blocks",
         );
-
-        try {
-          await scanAndCompileLatex(contentDir, svgOutputDir);
-        } catch (err) {
-          console.error(
-            "[astro-latex-compile] Error during LaTeX compilation:",
-            err,
-          );
-        }
+        await scanAndCompileLatex(contentDir, svgOutputDir);
       },
-      "astro:build:done": async ({ dir }: any) => {
+      "astro:build:done": async ({ dir }: { dir: { pathname: string } }) => {
         console.log(
           "[astro-latex-compile] Build done, updating HTML references",
         );
@@ -115,10 +109,10 @@ async function processMarkdownFile(
         `[astro-latex-compile] ${filePath}:${lineNumber}: ${status} ${result.hash}.svg`,
       );
     } catch (err) {
-      console.error(
-        `[astro-latex-compile] Failed to compile LaTeX in ${filePath}:${lineNumber}:`,
-        err,
-      );
+      // Add file path and line number to the error message
+      const error = err instanceof Error ? err : new Error(String(err));
+      error.message = `\n${filePath}:${lineNumber}\n${error.message}`;
+      throw error;
     }
   }
 }
@@ -140,7 +134,7 @@ async function updateHtmlReferences(
   }
 
   // Update HTML files with new hashes
-  await updateHtmlDirWithHashes(buildDir, latexHashes);
+  await updateHtmlDirWithHashes(buildDir, latexHashes, svgOutputDir);
 }
 
 async function scanMarkdownForHashes(
@@ -174,6 +168,7 @@ async function scanMarkdownForHashes(
 async function updateHtmlDirWithHashes(
   dir: string,
   hashes: string[],
+  svgOutputDir: string,
 ): Promise<void> {
   let hashIndex = 0;
 
@@ -183,22 +178,24 @@ async function updateHtmlDirWithHashes(
     const fullPath = join(dir, entry.name);
 
     if (entry.isDirectory()) {
-      await updateHtmlDirWithHashes(fullPath, hashes);
+      await updateHtmlDirWithHashes(fullPath, hashes, svgOutputDir);
     } else if (entry.isFile() && entry.name.endsWith(".html")) {
       let content = await readFile(fullPath, "utf-8");
       let modified = false;
 
+      // Extract the HTML URL path from svgOutputDir (e.g., "/static/tex-svgs" from "public/static/tex-svgs")
+      const pathSegments = svgOutputDir.split("/").slice(-2).join("/");
+      const htmlPath = `/${pathSegments}`;
+      const svgRegex = new RegExp(`src="${htmlPath}/[a-f0-9]+\\.svg"`, "g");
+
       // Replace each image src pointing to tex-svgs with the next computed hash
-      content = content.replace(
-        /src="\/static\/tex-svgs\/[a-f0-9]+\.svg"/g,
-        () => {
-          if (hashIndex < hashes.length) {
-            modified = true;
-            return `src="/static/tex-svgs/${hashes[hashIndex++]}.svg"`;
-          }
-          return arguments[0];
-        },
-      );
+      content = content.replace(svgRegex, (match: string) => {
+        if (hashIndex < hashes.length) {
+          modified = true;
+          return `src="${htmlPath}/${hashes[hashIndex++]}.svg"`;
+        }
+        return match;
+      });
 
       if (modified) {
         await writeFile(fullPath, content, "utf-8");

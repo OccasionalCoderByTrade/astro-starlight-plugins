@@ -22,19 +22,29 @@ export interface RemarkLatexCompileOptions {
   svgOutputDir?: string;
 }
 
-function traverseTree(node: any, svgOutputDir: string, depth: number = 0): void {
+function traverseTree(
+  node: Record<string, unknown>,
+  svgOutputDir: string,
+  filePath: string,
+  depth: number = 0,
+): void {
   if (!node) return;
 
   // Process children first (bottom-up traversal for safe replacement)
-  if (Array.isArray(node.children)) {
-    for (let i = 0; i < node.children.length; i++) {
-      const child = node.children[i];
-      if (child.type === "code" && (child.lang === "tex" || child.lang === "latex") && child.meta?.includes("compile")) {
+  const children = node.children as Array<Record<string, unknown>>;
+  if (Array.isArray(children)) {
+    for (let i = 0; i < children.length; i++) {
+      const child = children[i];
+      if (
+        child.type === "code" &&
+        (child.lang === "tex" || child.lang === "latex") &&
+        String(child.meta || "").includes("compile")
+      ) {
         try {
           // Compile and get the result
-          const result = compileLatexToSvg(child.value, svgOutputDir);
+          const result = compileLatexToSvg(String(child.value), svgOutputDir);
           // Replace with paragraph containing image
-          node.children[i] = {
+          children[i] = {
             type: "paragraph",
             children: [
               {
@@ -50,24 +60,43 @@ function traverseTree(node: any, svgOutputDir: string, depth: number = 0): void 
             ],
           };
         } catch (err) {
-          console.error(`[remarkLatexCompile] Failed to compile LaTeX code block:`, err);
-          // Leave code block as-is if compilation fails
+          // Don't throw—leave code block as-is so page renders.
+          // In dev mode, log the error without the wrapper since Astro will also display it.
+          // In build mode, the astro integration will catch and fail the build.
+          if (process.env.NODE_ENV !== "production") {
+            // Dev mode: log with file path and line number for clarity
+            const position = child.position as
+              | Record<string, unknown>
+              | undefined;
+            const lineNumber =
+              (position?.start as Record<string, unknown>)?.line || "?";
+            const errorMsg = err instanceof Error ? err.message : String(err);
+            // Extract just the formatted error (after the wrapper line)
+            const match = errorMsg.match(/\n\n([\s\S]+)/);
+            const details = match ? match[1] : errorMsg;
+            console.error(`\n${filePath}:${lineNumber}\n${details}`);
+          }
         }
       } else {
         // Recurse into non-code children
-        traverseTree(child, svgOutputDir, depth + 1);
+        traverseTree(child, svgOutputDir, filePath, depth + 1);
       }
     }
   }
 }
 
-export default function remarkLatexCompile(options?: RemarkLatexCompileOptions) {
+export default function remarkLatexCompile(
+  options?: RemarkLatexCompileOptions,
+) {
   const svgOutputDir = options?.svgOutputDir
     ? resolve(options.svgOutputDir)
     : resolve("public/static/tex-svgs");
 
-  return (tree: any) => {
-    traverseTree(tree, svgOutputDir, 0);
+  return (tree: Record<string, unknown>, file: unknown) => {
+    // Get file path from file metadata, default to 'unknown' if not available
+    const fileObj = file as Record<string, unknown> | undefined;
+    const filePath = String(fileObj?.path || fileObj?.filename || "unknown");
+    traverseTree(tree, svgOutputDir, filePath, 0);
   };
 }
 
