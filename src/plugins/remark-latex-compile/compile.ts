@@ -116,6 +116,13 @@ export function compileLatexToSvg(
       texFile,
     ]);
 
+    if (latexResult.error) {
+      const code = (latexResult.error as NodeJS.ErrnoException).code;
+      throw new Error(
+        `[remark-latex-compile] pdflatex not found on PATH (${code}).`,
+      );
+    }
+
     if (latexResult.status !== 0) {
       const errorOutput =
         latexResult.stderr?.toString() || latexResult.stdout?.toString() || "";
@@ -134,6 +141,13 @@ export function compileLatexToSvg(
       "-o",
       svgPath,
     ]);
+
+    if (dvisvgmResult.error) {
+      const code = (dvisvgmResult.error as NodeJS.ErrnoException).code;
+      throw new Error(
+        `[remark-latex-compile] dvisvgm not found on PATH (${code}).`,
+      );
+    }
 
     if (dvisvgmResult.status !== 0) {
       const errorOutput =
