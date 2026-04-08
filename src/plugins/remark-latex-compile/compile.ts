@@ -38,7 +38,7 @@ export interface CompilationResult {
  * Capture group 1: the raw block content.
  */
 export const LATEX_BLOCK_REGEX =
-  /```(?:tex|latex)\s+compile\r?\n([\s\S]*?)\r?\n```/g;
+  /```(?:tex|latex)\s+compile[^\r\n]*\r?\n([\s\S]*?)\r?\n```/g;
 
 export function hashLatexCode(code: string): string {
   const normalized = code
