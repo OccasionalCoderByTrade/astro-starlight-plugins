@@ -57,7 +57,7 @@ Automatically compiles fenced `tex compile` and `latex compile` code blocks to S
 - Compiles LaTeX/TikZ code blocks to SVG automatically
 - Caches compiled SVGs by content hash (no recompilation if unchanged)
 - Comprehensive error reporting with line numbers and formatted LaTeX source
-- Supports custom preamble via `%---` separator in code blocks
+- Supports custom preamble via `% ===` separator in code blocks
 - Works seamlessly with Starlight's content pipeline
 - Requires `svgOutputDir` configuration (no defaults)
 
@@ -113,13 +113,13 @@ Use either ` ```tex compile ` or ` ```latex compile ` — both work identically:
 
 **Custom Preamble:**
 
-Use `%---` to separate custom preamble from diagram content:
+Use `% ===` to separate custom preamble from diagram content:
 
 ````markdown
 ```tex compile
 \usepackage{tikz-3dplot}
 
-%---
+% ===
 
 \begin{tikzpicture}
   % diagram code here
@@ -129,7 +129,7 @@ Use `%---` to separate custom preamble from diagram content:
 
 **Complete Document Control:**
 
-If your code block contains both `\documentclass` and `\begin{document}`, the plugin treats it as a complete, self-contained LaTeX document and uses it as-is without checking for a `%---` separator for a preamble:
+If your code block contains both `\documentclass` and `\begin{document}`, the plugin treats it as a complete, self-contained LaTeX document and uses it as-is without checking for a `% ===` separator for a preamble:
 
 ````markdown
 ```tex compile

@@ -5,12 +5,12 @@
  *   - pdflatex  (e.g. texlive-latex-base on Debian, MacTeX on macOS)
  *   - dvisvgm   (e.g. texlive-extra-utils on Debian, included in MacTeX)
  *
- * Users can optionally separate preamble from content using %--- separator:
+ * Users can optionally separate preamble from content using %=== separator:
  *   \usepackage{amsmath}
- *   %---
+ *   %===
  *   $\begin{pmatrix} ... \end{pmatrix}$
  *
- * Spaces between % and --- are optional. Content without separator is treated
+ * Spaces between % and === are optional. Content without separator is treated
  * entirely as document content.
  */
 import { createHash } from "node:crypto";
@@ -56,8 +56,8 @@ function buildLatexSource(latexCode: string): string {
     return latexCode.trim();
   }
 
-  // Split on %--- separator (with optional spaces/tabs, not newlines): preamble %--- content
-  const separatorRegex = /%[ \t]*---/;
+  // Split on %=== separator (with optional spaces/tabs, not newlines): preamble %=== content
+  const separatorRegex = /%[ \t]*===/;
   const parts = latexCode.split(separatorRegex);
   let preamble = "";
   let content = latexCode.trim();

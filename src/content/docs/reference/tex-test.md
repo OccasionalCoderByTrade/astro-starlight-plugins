@@ -11,7 +11,7 @@ title: "LaTeX Compilation Examples"
 ```tex compile
 \usepackage{tikz}
 
-%---
+%===
 
 \usetikzlibrary{positioning,arrows.meta}
 
@@ -32,7 +32,7 @@ title: "LaTeX Compilation Examples"
 ```tex compile
 \usepackage{tikz}
 
-%---
+%===
 
 \usetikzlibrary{positioning}
 
@@ -55,7 +55,7 @@ title: "LaTeX Compilation Examples"
 ```tex compile
 \usepackage{tikz}
 
-%---
+%===
 
 \begin{tikzpicture}[level distance=1.5cm, sibling distance=1cm]
   \node (root) {$A$}
@@ -75,7 +75,7 @@ title: "LaTeX Compilation Examples"
 ```tex compile
 \usepackage{tikz}
 
-%---
+%===
 
 \begin{tikzpicture}
   \node (a) at (0,0) {A};
@@ -95,7 +95,7 @@ title: "LaTeX Compilation Examples"
 ```tex compile
 \usepackage{tikz}
 
-%---
+%===
 
 \begin{tikzpicture}
   \node (v1) at (0,0) {1};
@@ -118,7 +118,7 @@ title: "LaTeX Compilation Examples"
 ```tex compile
 \usepackage{tikz}
 
-%---
+%===
 
 \begin{tikzpicture}
   \draw [thick] (0,0) rectangle (1,4);
@@ -139,7 +139,7 @@ title: "LaTeX Compilation Examples"
 ```tex compile
 \usepackage{tikz}
 
-%---
+%===
 
 \usetikzlibrary{shapes.multipart,positioning}
 
@@ -158,7 +158,7 @@ title: "LaTeX Compilation Examples"
 ```tex compile
 \usepackage{tikz}
 
-%---
+%===
 
 \usetikzlibrary{positioning}
 
@@ -185,7 +185,7 @@ title: "LaTeX Compilation Examples"
 ```tex compile
 \usepackage{tikz}
 
-%---
+%===
 
 \begin{tikzpicture}
   \draw [->] (-2,0) -- (2,0) node [right] {$x$};
@@ -201,7 +201,7 @@ title: "LaTeX Compilation Examples"
 ```tex compile
 \usepackage{tikz}
 
-%---
+%===
 
 \begin{tikzpicture}
   \draw [thick] (0,0) circle (1cm);
@@ -221,7 +221,7 @@ title: "LaTeX Compilation Examples"
 ```tex compile
 \usepackage{tikz}
 
-%---
+%===
 
 \begin{tikzpicture}
   \node (a) at (0,0) [circle, fill, inner sep=2pt] {};
@@ -241,7 +241,7 @@ title: "LaTeX Compilation Examples"
 ```tex compile
 \usepackage{tikz}
 
-%---
+%===
 
 \begin{tikzpicture}
   \draw [thick, ->] (0,0) -- (3,0) node [right] {$x$};
@@ -260,7 +260,7 @@ title: "LaTeX Compilation Examples"
 ```tex compile
 \usepackage{tikz}
 
-%---
+%===
 
 \begin{tikzpicture}
   \draw [->] (-2.5,0) -- (2.5,0) node [right] {$x$};
@@ -276,7 +276,7 @@ title: "LaTeX Compilation Examples"
 ```tex compile
 \usepackage{tikz}
 
-%---
+%===
 
 \begin{tikzpicture}
   \draw [->] (-0.5,0) -- (3,0);
@@ -292,7 +292,7 @@ title: "LaTeX Compilation Examples"
 ```tex compile
 \usepackage{tikz}
 
-%---
+%===
 
 \begin{tikzpicture}
   \draw [->] (0,0) -- (4,0) node [right] {$x$};
@@ -314,7 +314,7 @@ title: "LaTeX Compilation Examples"
 ```tex compile
 \usepackage{tikz}
 
-%---
+%===
 
 \begin{tikzpicture}
   \draw [thick, ->] (-1,0) -- (4,0) node [right] {$x_1$};
@@ -330,7 +330,7 @@ title: "LaTeX Compilation Examples"
 ```tex compile
 \usepackage{amsmath}
 
-%---
+%===
 
 $\begin{pmatrix} 1 & 2 \\ 3 & 4 \end{pmatrix}$
 $\begin{bmatrix} 1 & 2 \\ 3 & 4 \end{bmatrix}$
@@ -343,7 +343,7 @@ $\begin{vmatrix} 1 & 2 \\ 3 & 4 \end{vmatrix}$
 \usepackage{tikz}
 \usepackage{amsmath}
 
-%---
+%===
 
 \begin{tikzpicture}
   \node at (0,1) {$A = \left(\begin{smallmatrix} 2 & 0 \\ 0 & 1 \end{smallmatrix}\right)$};
@@ -361,7 +361,7 @@ $\begin{vmatrix} 1 & 2 \\ 3 & 4 \end{vmatrix}$
 ```tex compile
 \usepackage{tikz}
 
-%---
+%===
 
 \begin{tikzpicture}
   \foreach \i/\h in {1/2, 2/4, 3/3, 4/1, 5/5} {
@@ -376,7 +376,7 @@ $\begin{vmatrix} 1 & 2 \\ 3 & 4 \end{vmatrix}$
 ```tex compile
 \usepackage{tikz}
 
-%---
+%===
 
 \begin{tikzpicture}[
   level 1/.style={sibling distance=4cm},
@@ -401,7 +401,7 @@ $\begin{vmatrix} 1 & 2 \\ 3 & 4 \end{vmatrix}$
 ```tex compile
 \usepackage{tikz}
 
-%---
+%===
 
 \begin{tikzpicture}
   \draw [->] (0,0) -- (5,0) node [right] {$n$};
@@ -422,7 +422,7 @@ $\begin{vmatrix} 1 & 2 \\ 3 & 4 \end{vmatrix}$
 ```tex compile
 \usepackage{tikz}
 
-%---
+%===
 
 \begin{tikzpicture}
   \draw (0,0) circle (1cm) node [left] {A};
@@ -438,7 +438,7 @@ $\begin{vmatrix} 1 & 2 \\ 3 & 4 \end{vmatrix}$
 ```tex compile
 \usepackage{tikz}
 
-%---
+%===
 
 \begin{tikzpicture}
   \draw [thick] (0,0) rectangle (4,3) node [above left] {$U$};
@@ -458,7 +458,7 @@ $\begin{vmatrix} 1 & 2 \\ 3 & 4 \end{vmatrix}$
 ```tex compile
 \usepackage{tikz}
 
-%---
+%===
 
 \begin{tikzpicture}
   \draw [fill=red!20] (0,0) circle (0.5cm);
@@ -476,7 +476,7 @@ $\begin{vmatrix} 1 & 2 \\ 3 & 4 \end{vmatrix}$
 ```tex compile
 \usepackage{tikz}
 
-%---
+%===
 
 \usetikzlibrary{shapes.geometric,positioning}
 
@@ -498,7 +498,7 @@ $\begin{vmatrix} 1 & 2 \\ 3 & 4 \end{vmatrix}$
 ```tex compile
 \usepackage{tikz}
 
-%---
+%===
 
 \begin{tikzpicture}
   \draw (0,0) circle (1cm);
@@ -515,7 +515,7 @@ $\begin{vmatrix} 1 & 2 \\ 3 & 4 \end{vmatrix}$
 ```tex compile
 \usepackage{tikz}
 
-%---
+%===
 
 \begin{tikzpicture}
   \draw [->] (0,0) -- (6,0) node [right] {$x$};
@@ -530,7 +530,7 @@ $\begin{vmatrix} 1 & 2 \\ 3 & 4 \end{vmatrix}$
 ```tex compile
 \usepackage{tikz}
 
-%---
+%===
 
 \begin{tikzpicture}
   \foreach \i in {0,45,90,135,180,225,270,315} {
