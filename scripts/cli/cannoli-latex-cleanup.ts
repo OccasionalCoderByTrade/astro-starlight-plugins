@@ -2,7 +2,10 @@
 
 import { readdir, readFile, unlink } from "node:fs/promises";
 import { resolve, join } from "node:path";
-import { hashLatexCode } from "../../src/plugins/remark-latex-compile/compile.js";
+import {
+  hashLatexCode,
+  LATEX_BLOCK_REGEX,
+} from "../../src/plugins/remark-latex-compile/compile.js";
 
 // Parse CLI arguments
 const args = process.argv.slice(2);
@@ -55,7 +58,10 @@ async function scanMarkdownForHashes(
         (entry.name.endsWith(".md") || entry.name.endsWith(".mdx"))
       ) {
         const content = await readFile(fullPath, "utf-8");
-        const latexBlockRegex = /```(?:tex|latex)\s+compile\r?\n([\s\S]*?)\r?\n```/g;
+        const latexBlockRegex = new RegExp(
+          LATEX_BLOCK_REGEX.source,
+          LATEX_BLOCK_REGEX.flags,
+        );
         const matches = content.matchAll(latexBlockRegex);
 
         for (const match of matches) {

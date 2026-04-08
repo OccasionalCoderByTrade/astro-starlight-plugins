@@ -32,6 +32,14 @@ export interface CompilationResult {
   wasCompiled: boolean;
 }
 
+/**
+ * Regex to match fenced ```tex compile or ```latex compile blocks in markdown.
+ * Handles both LF and CRLF line endings.
+ * Capture group 1: the raw block content.
+ */
+export const LATEX_BLOCK_REGEX =
+  /```(?:tex|latex)\s+compile\r?\n([\s\S]*?)\r?\n```/g;
+
 export function hashLatexCode(code: string): string {
   const normalized = code
     .split("\n")

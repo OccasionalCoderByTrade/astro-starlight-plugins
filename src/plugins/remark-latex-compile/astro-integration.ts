@@ -6,7 +6,11 @@
  */
 import { readdir, readFile, writeFile } from "node:fs/promises";
 import { resolve, join, extname } from "node:path";
-import { compileLatexToSvg, hashLatexCode } from "./compile.js";
+import {
+  compileLatexToSvg,
+  hashLatexCode,
+  LATEX_BLOCK_REGEX,
+} from "./compile.js";
 
 export interface AstroLatexCompileOptions {
   svgOutputDir: string;
@@ -82,7 +86,10 @@ async function processMarkdownFile(
   const content = await readFile(filePath, "utf-8");
 
   // Match tex/latex compile blocks: ```tex compile\n...\n``` or ```latex compile\n...\n```
-  const latexBlockRegex = /```(?:tex|latex)\s+compile\r?\n([\s\S]*?)\r?\n```/g;
+  const latexBlockRegex = new RegExp(
+    LATEX_BLOCK_REGEX.source,
+    LATEX_BLOCK_REGEX.flags,
+  );
   const matches = content.matchAll(latexBlockRegex);
 
   for (const match of matches) {
@@ -139,7 +146,10 @@ async function scanMarkdownForHashes(
       (entry.name.endsWith(".md") || entry.name.endsWith(".mdx"))
     ) {
       const content = await readFile(fullPath, "utf-8");
-      const latexBlockRegex = /```(?:tex|latex)\s+compile\r?\n([\s\S]*?)\r?\n```/g;
+      const latexBlockRegex = new RegExp(
+        LATEX_BLOCK_REGEX.source,
+        LATEX_BLOCK_REGEX.flags,
+      );
       const matches = content.matchAll(latexBlockRegex);
 
       for (const match of matches) {
