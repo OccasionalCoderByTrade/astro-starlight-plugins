@@ -9,6 +9,7 @@ import type { ViteDevServer } from "vite";
 import { cp, mkdir, readdir, rm, stat } from "node:fs/promises";
 import { resolve, relative } from "node:path";
 import { minimatch } from "minimatch";
+import { parseFrontmatter } from "./utils/sidebar-builder-utils.js";
 
 export interface SyncDocsToPublicOptions {
   /**
@@ -56,9 +57,18 @@ async function syncDirs(
       const rel = relative(srcDir, src);
       // Always allow the root itself
       if (rel === "") return true;
-      return !ignorePatterns.some((pattern) =>
-        minimatch(rel, pattern, { dot: true }),
-      );
+      // Apply ignore patterns
+      if (
+        ignorePatterns.some((pattern) => minimatch(rel, pattern, { dot: true }))
+      ) {
+        return false;
+      }
+      // Skip markdown files with draft: true in frontmatter
+      if (src.endsWith(".md") || src.endsWith(".mdx")) {
+        const frontmatter = parseFrontmatter(src);
+        if (frontmatter.draft === true) return false;
+      }
+      return true;
     },
   });
 

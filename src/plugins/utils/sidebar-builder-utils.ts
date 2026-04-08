@@ -1,6 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
-import { parse as parseYaml } from "yaml";
+import { parseFrontmatter as astroParseFile } from "@astrojs/markdown-remark";
 import type { TSidebarItem } from "./types";
 
 type TOptions = {
@@ -36,15 +36,19 @@ function findIndexMd(dirPath: string): string | null {
   return null;
 }
 
-function parseFrontmatter(filePath: string): TFrontmatter {
+export function parseFrontmatter(filePath: string): TFrontmatter {
+  let content: string;
   try {
-    const content = fs.readFileSync(filePath, "utf-8");
-    const match = content.match(/^---\n([\s\S]*?)\n---/);
-    if (!match) return {};
-
-    const frontmatter = parseYaml(match[1]);
-    return typeof frontmatter === "object" && frontmatter ? frontmatter : {};
+    content = fs.readFileSync(filePath, "utf-8");
   } catch {
+    return {};
+  }
+
+  try {
+    const { frontmatter } = astroParseFile(content);
+    return frontmatter as TFrontmatter;
+  } catch (err) {
+    console.warn(`[parseFrontmatter] Failed to parse frontmatter in ${filePath}:`, err);
     return {};
   }
 }
