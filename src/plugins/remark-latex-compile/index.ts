@@ -7,7 +7,7 @@
  *   // In astro.config.mjs:
  *   markdown: {
  *     remarkPlugins: [
- *       [remarkLatexCompile, { svgOutputDir: "public/static/tex-svgs" }],
+ *       [remarkLatexCompile, { svgOutputDir: "public/static/example-out-dir" }],
  *     ],
  *   }
  */
@@ -17,9 +17,8 @@ import { compileLatexToSvg } from "./compile.js";
 export interface RemarkLatexCompileOptions {
   /**
    * Directory where SVG files should be written.
-   * @default "public/static/tex-svgs"
    */
-  svgOutputDir?: string;
+  svgOutputDir: string;
 }
 
 function traverseTree(
@@ -74,7 +73,7 @@ function traverseTree(
             // Extract just the formatted error (after the wrapper line)
             const match = errorMsg.match(/\n\n([\s\S]+)/);
             const details = match ? match[1] : errorMsg;
-            console.error(`\n${filePath}:${lineNumber}\n${details}`);
+            console.error(`${filePath}:${lineNumber}\n${details}`);
           }
         }
       } else {
@@ -85,12 +84,8 @@ function traverseTree(
   }
 }
 
-export default function remarkLatexCompile(
-  options?: RemarkLatexCompileOptions,
-) {
-  const svgOutputDir = options?.svgOutputDir
-    ? resolve(options.svgOutputDir)
-    : resolve("public/static/tex-svgs");
+export default function remarkLatexCompile(options: RemarkLatexCompileOptions) {
+  const svgOutputDir = resolve(options.svgOutputDir);
 
   return (tree: Record<string, unknown>, file: unknown) => {
     // Get file path from file metadata, default to 'unknown' if not available

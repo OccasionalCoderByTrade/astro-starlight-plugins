@@ -227,5 +227,5 @@ export function createCompilationErrorMessage(
     parsed.errors,
   );
 
-  return `${formatted}\n` + `LaTeX source:\n${formattedSource}`;
+  return `${formatted}\n` + `LaTeX source:\n${formattedSource}\n`;
 }

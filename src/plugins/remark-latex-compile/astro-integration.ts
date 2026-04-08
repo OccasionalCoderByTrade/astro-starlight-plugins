@@ -19,16 +19,12 @@ function hashLatexCode(code: string): string {
 }
 
 export interface AstroLatexCompileOptions {
-  svgOutputDir?: string;
+  svgOutputDir: string;
   contentDir?: string;
 }
 
-export function createAstroLatexIntegration(
-  options?: AstroLatexCompileOptions,
-) {
-  const svgOutputDir = options?.svgOutputDir
-    ? resolve(options.svgOutputDir)
-    : resolve("public/static/tex-svgs");
+export function createAstroLatexIntegration(options: AstroLatexCompileOptions) {
+  const svgOutputDir = resolve(options.svgOutputDir);
 
   const contentDir = options?.contentDir
     ? resolve(options.contentDir)
@@ -111,7 +107,7 @@ async function processMarkdownFile(
     } catch (err) {
       // Add file path and line number to the error message
       const error = err instanceof Error ? err : new Error(String(err));
-      error.message = `\n${filePath}:${lineNumber}\n${error.message}`;
+      error.message = `${filePath}:${lineNumber}\n${error.message}`;
       throw error;
     }
   }
