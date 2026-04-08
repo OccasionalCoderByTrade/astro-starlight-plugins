@@ -68,7 +68,7 @@ function buildLatexSource(latexCode: string): string {
   }
 
   return [
-    "\\documentclass[border=4pt]{standalone}",
+    "\\documentclass[border=5pt]{standalone}",
     preamble,
     "\\begin{document}",
     "\\Large",
