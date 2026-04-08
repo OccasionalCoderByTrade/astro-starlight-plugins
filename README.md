@@ -111,9 +111,20 @@ Use either ` ```tex compile ` or ` ```latex compile ` — both work identically:
 ```
 ````
 
-**Custom Preamble:**
+**Minimal approach:**
 
-Use `% ===` to separate custom preamble from diagram content:
+Use `% ===` to separate an optional custom preamble from your diagram content. The plugin wraps everything in the following document structure:
+
+```latex
+\documentclass[border=5pt]{standalone}
+{your preamble}
+\begin{document}
+\Large
+{your content}
+\end{document}
+```
+
+Example **minimal** tex code block:
 
 ````markdown
 ```tex compile
@@ -126,6 +137,8 @@ Use `% ===` to separate custom preamble from diagram content:
 \end{tikzpicture}
 ```
 ````
+
+If no `% ===` separator is present, the entire block is treated as content and wrapped in the same default document structure (with an empty preamble).
 
 **Complete Document Control:**
 
@@ -149,7 +162,7 @@ If your code block contains both `\documentclass` and `\begin{document}`, the pl
 
 **Custom CSS Classes:**
 
-Add custom CSS classes to the generated `<img>` that defines the compiled LaTeX diagram using `class="..."`:
+Add custom CSS classes the `tex compile` code block to have them applied to the resulting `<img>` element:
 
 ````markdown
 ```tex compile class="bg-white rounded-1"
@@ -317,7 +330,7 @@ export default defineConfig({
 starlightSyncDocsToPublic({
   preserveDirs: ["static"],
   ignorePatterns: ["**/*.txt", "**/drafts/**"],
-})
+});
 ```
 
 ## CLI Utilities
