@@ -34,6 +34,10 @@
       "import": "./dist/plugins/starlight-latex-compile.js",
       "types": "./dist/plugins/starlight-latex-compile.d.ts"
     },
+    "./starlight-sync-docs-to-public": {
+      "import": "./dist/plugins/starlight-sync-docs-to-public.js",
+      "types": "./dist/plugins/starlight-sync-docs-to-public.d.ts"
+    },
     "./styles": "./dist/styles/",
     "./styles/*": "./dist/styles/*"
   },
@@ -53,8 +57,8 @@
     "url": "https://github.com/OccasionalCoderByTrade/astro-starlight-plugins"
   },
   "scripts": {
-    "app:dev": "npm run app:preprocess && node scripts/sync-docs-to-public.js && rm -rf .astro/ && astro dev --port 5600",
-    "app:build": "npm run app:preprocess && rm -rf .astro/ && node scripts/sync-docs-to-public.js && astro build",
+    "app:dev": "npm run app:preprocess && rm -rf .astro/ && astro dev --port 5600",
+    "app:build": "npm run app:preprocess && rm -rf .astro/ && astro build",
     "app:preview": "astro build && astro preview --port 5600",
     "app:preprocess": "npx sass --quiet src/styles/_bootstrap-utilities-builder.scss src/styles/_bootstrap-utilities.scss",
     "app:help": "astro --help",

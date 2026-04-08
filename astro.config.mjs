@@ -12,6 +12,7 @@ import {
   rehypeValidateLinks,
   starlightIndexOnlySidebar,
   starlightLatexCompile,
+  starlightSyncDocsToPublic,
 } from "./src";
 
 // Common Config Items
@@ -54,6 +55,9 @@ export default defineConfig({
       plugins: [
         STARLIGHT_SIDEBAR_CONFIG,
         starlightLatexCompile({ svgOutputDir: "public/static/tex-svgs" }),
+        starlightSyncDocsToPublic({
+          preserveDirs: ["static"],
+        }),
       ],
       customCss: ["/src/styles/main.scss", "katex/dist/katex.min.css"],
       expressiveCode: {

@@ -275,6 +275,51 @@ export default defineConfig({
 });
 ```
 
+### Starlight Sync Docs to Public
+
+Syncs `src/content/docs/` to `public/` so local files (e.g., PDFs, images) referenced in markdown are served by the dev server and included in builds. In dev mode, it watches for file changes and re-syncs automatically — no restart needed.
+
+**Features:**
+
+- Syncs once at build start
+- Watches for changes in dev mode and re-syncs automatically (debounced)
+- Preserves specified child directories in `public/` during sync (e.g., `static/`)
+- Supports glob patterns to exclude files from syncing
+
+**Usage:**
+
+```ts
+// astro.config.mjs
+import { defineConfig } from "astro/config";
+import starlight from "@astrojs/starlight";
+import { starlightSyncDocsToPublic } from "cannoli-starlight-plugins";
+
+export default defineConfig({
+  integrations: [
+    starlight({
+      title: "My Docs",
+      plugins: [
+        starlightSyncDocsToPublic({
+          preserveDirs: ["static"],
+        }),
+      ],
+    }),
+  ],
+});
+```
+
+**Options:**
+
+- `preserveDirs` (required): Names of child directories inside `public/` to preserve during sync. These will not be deleted when re-syncing.
+- `ignorePatterns` (optional): Glob patterns for files to exclude from syncing. Patterns are matched against paths relative to `src/content/docs/`.
+
+```ts
+starlightSyncDocsToPublic({
+  preserveDirs: ["static"],
+  ignorePatterns: ["**/*.txt", "**/drafts/**"],
+})
+```
+
 ## CLI Utilities
 
 ### cannoli-latex-cleanup
