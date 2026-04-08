@@ -32,7 +32,7 @@ export interface CompilationResult {
   wasCompiled: boolean;
 }
 
-function hashLatexCode(code: string): string {
+export function hashLatexCode(code: string): string {
   const normalized = code
     .split("\n")
     .map((line) => line.trim())

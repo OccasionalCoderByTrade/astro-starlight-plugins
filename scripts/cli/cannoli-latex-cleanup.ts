@@ -2,7 +2,7 @@
 
 import { readdir, readFile, unlink } from "node:fs/promises";
 import { resolve, join } from "node:path";
-import { createHash } from "node:crypto";
+import { hashLatexCode } from "../../src/plugins/remark-latex-compile/compile.js";
 
 // Parse CLI arguments
 const args = process.argv.slice(2);
@@ -37,15 +37,6 @@ if (!checkMode && !deleteMode) {
 // Resolve paths
 const svgDirPath = resolve(svgDir);
 const docsDirPath = resolve(docsDir);
-
-function hashLatexCode(code: string): string {
-  const normalized = code
-    .split("\n")
-    .map((line) => line.trim())
-    .join("\n")
-    .trim();
-  return createHash("md5").update(normalized).digest("hex").slice(0, 16);
-}
 
 async function scanMarkdownForHashes(
   dir: string,
