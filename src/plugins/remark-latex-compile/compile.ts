@@ -33,12 +33,13 @@ export interface CompilationResult {
 }
 
 function hashLatexCode(code: string): string {
-  // Normalize by trimming each line (removes leading/trailing whitespace)
-  // then trimming the overall string. This makes the hash robust to formatting
-  // differences while preserving significant internal whitespace (e.g., in \verb{...})
   const normalized = code
     .split("\n")
     .map((line) => line.trim())
+    // Remove LaTeX comment lines (% starts a comment; %=== separator also stripped)
+    .filter((line) => !line.startsWith("%"))
+    // Remove empty lines
+    .filter(Boolean)
     .join("\n")
     .trim();
   // MD5 truncated to 16 chars (8 bytes, 64 bits) is fast and provides
