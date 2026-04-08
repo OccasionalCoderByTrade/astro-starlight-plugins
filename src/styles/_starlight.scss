@@ -167,7 +167,6 @@ div > div[class="page"] > svg {
 
 // invert img.note-svg when on dark mode
 img.note-svg {
-  color-scheme: light dark;
   padding-top: 1em;
   padding-bottom: 1em;
 
@@ -181,5 +180,9 @@ img.note-svg {
 }
 
 .tex-compiled {
-  background-color: white;
+  background-color: transparent;
+
+  html[data-theme="dark"] & {
+    filter: invert(1) hue-rotate(180deg);
+  }
 }
