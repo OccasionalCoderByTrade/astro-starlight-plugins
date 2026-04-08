@@ -48,6 +48,14 @@ function hashLatexCode(code: string): string {
 }
 
 function buildLatexSource(latexCode: string): string {
+  // If user provided a complete document structure, use it as-is
+  if (
+    latexCode.includes("\\documentclass") &&
+    latexCode.includes("\\begin{document}")
+  ) {
+    return latexCode.trim();
+  }
+
   // Split on %--- separator (with optional spaces/tabs, not newlines): preamble %--- content
   const separatorRegex = /%[ \t]*---/;
   const parts = latexCode.split(separatorRegex);
