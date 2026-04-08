@@ -9,6 +9,7 @@ A collection of powerful plugins for [Astro Starlight](https://starlight.astro.b
 Automatically generates a nested Starlight sidebar by recursively scanning directories for `index.md`/`index.mdx` files. Only directories with index files appear in the sidebar, creating a clean, minimal navigation structure.
 
 **Features:**
+
 - Recursively scans directories for `index.md` or `index.mdx` files
 - Creates sidebar entries only for pages with index files
 - Respects frontmatter: `draft: true` and `sidebar.hidden: true` hide entries
@@ -38,7 +39,7 @@ export default defineConfig({
       plugins: [
         starlightIndexOnlySidebar({
           directories: ["guides", "api", "tutorials"],
-          maxDepthNesting: 2,           // optional
+          maxDepthNesting: 2, // optional
           dirnameDeterminesLabels: false, // optional
         }),
       ],
@@ -47,11 +48,123 @@ export default defineConfig({
 });
 ```
 
+### Starlight LaTeX Compile
+
+Automatically compiles fenced `tex compile` and `latex compile` code blocks to SVG diagrams during the build process. Uses `pdflatex` and `dvisvgm` for high-quality, cached SVG output.
+
+**Features:**
+
+- Compiles LaTeX/TikZ code blocks to SVG automatically
+- Caches compiled SVGs by content hash (no recompilation if unchanged)
+- Comprehensive error reporting with line numbers and formatted LaTeX source
+- Supports custom preamble via `%---` separator in code blocks
+- Works seamlessly with Starlight's content pipeline
+- Requires `svgOutputDir` configuration (no defaults)
+
+**System Requirements:**
+
+This plugin requires the following CLI tools to be installed and available on your system:
+
+- **`pdflatex`** — LaTeX compiler that produces PDF output
+- **`dvisvgm`** — Converts PDF to SVG format
+
+Verify installation by running:
+
+```bash
+pdflatex --version
+dvisvgm --version
+```
+
+**Usage:**
+
+```ts
+// astro.config.mjs
+import { defineConfig } from "astro/config";
+import starlight from "@astrojs/starlight";
+import { starlightLatexCompile } from "cannoli-starlight-plugins";
+
+export default defineConfig({
+  integrations: [
+    starlight({
+      title: "My Docs",
+      plugins: [
+        starlightLatexCompile({
+          svgOutputDir: "public/static/tex-svgs",
+        }),
+      ],
+    }),
+  ],
+});
+```
+
+**Markdown Syntax:**
+
+````markdown
+```tex compile
+\begin{tikzpicture}
+  \node (A) at (0,0) {A};
+  \node (B) at (2,0) {B};
+  \draw (A) -- (B);
+\end{tikzpicture}
+```
+````
+
+**Custom Preamble:**
+
+Use `%---` to separate custom preamble from diagram content:
+
+````markdown
+```tex compile
+\usepackage{tikz-3dplot}
+
+%---
+
+\begin{tikzpicture}
+  % diagram code here
+\end{tikzpicture}
+```
+````
+
+### Remark LaTeX Compile
+
+The underlying remark plugin that powers `starlightLatexCompile`. Use this directly in Astro projects that don't use Starlight.
+
+**System Requirements:**
+
+Same as `starlightLatexCompile`:
+
+- **`pdflatex`** — LaTeX compiler that produces PDF output
+- **`dvisvgm`** — Converts PDF to SVG format
+
+**Usage:**
+
+```ts
+// astro.config.mjs
+import { defineConfig } from "astro/config";
+import { remarkLatexCompile } from "cannoli-starlight-plugins/remark-latex-compile";
+
+export default defineConfig({
+  markdown: {
+    remarkPlugins: [
+      [
+        remarkLatexCompile,
+        {
+          svgOutputDir: "public/static/tex-svgs",
+        },
+      ],
+    ],
+  },
+});
+```
+
+The plugin works identically to `starlightLatexCompile` but is configured directly in the Astro markdown pipeline.
+
 ### Rehype Validate Links
 
 A rehype plugin that validates all internal links in your Markdown/MDX files at build time. Links without matching files will cause the build to fail.
 
 **Features:**
+
 - Validates `<a href>` and `<img src>` attributes
 - Supports relative paths (`../other`) and absolute paths (`/some/page`)
 - Auto-expands extensionless links to match `.md` or `.mdx` files
@@ -68,9 +181,7 @@ import { rehypeValidateLinks } from "cannoli-starlight-plugins";
 
 export default defineConfig({
   markdown: {
-    rehypePlugins: [
-      rehypeValidateLinks,
-    ],
+    rehypePlugins: [rehypeValidateLinks],
   },
 });
 ```
@@ -100,7 +211,9 @@ Prepend a `?` to the link href to skip validation:
 Use the `data-no-link-check` attribute on anchor tags:
 
 ```mdx
-<a href="csci-320-331-obrenic/grade-calculator" data-no-link-check>Grade Calculator</a>
+<a href="csci-320-331-obrenic/grade-calculator" data-no-link-check>
+  Grade Calculator
+</a>
 ```
 
 **3. Global Skip Patterns** (Configuration-based)
@@ -112,16 +225,52 @@ Use the `skipPatterns` option to exclude links matching glob patterns:
 export default defineConfig({
   markdown: {
     rehypePlugins: [
-      [rehypeValidateLinks, {
-        skipPatterns: [
-          '/csci-320-331-obrenic/grade-calculator',  // exact match
-          '**/draft-*',                               // glob pattern
-        ]
-      }],
+      [
+        rehypeValidateLinks,
+        {
+          skipPatterns: [
+            "/csci-320-331-obrenic/grade-calculator", // exact match
+            "**/draft-*", // glob pattern
+          ],
+        },
+      ],
     ],
   },
 });
 ```
+
+## CLI Utilities
+
+### cannoli-latex-cleanup
+
+A cleanup utility for the LaTeX compile plugin. Scans your markdown source files for all `tex compile` code blocks, hashes them, and identifies orphaned SVG files in the output directory that are no longer referenced by any code block.
+
+**Usage:**
+
+Check for orphaned SVGs without deleting:
+
+```bash
+npx cannoli-latex-cleanup --svg-dir public/static/tex-svgs --check
+```
+
+Delete orphaned SVGs:
+
+```bash
+npx cannoli-latex-cleanup --svg-dir public/static/tex-svgs --delete
+```
+
+With custom docs directory (defaults to `src/content/docs`):
+
+```bash
+npx cannoli-latex-cleanup --svg-dir public/static/tex-svgs --docs-dir ./src/content/docs --delete
+```
+
+**Options:**
+
+- `--svg-dir` (required): Path to the SVG output directory configured in `starlightLatexCompile`
+- `--docs-dir` (optional, default: `src/content/docs`): Path to markdown source directory
+- `--check`: List orphaned SVGs without deleting
+- `--delete`: Delete orphaned SVGs
 
 ## Installation
 
