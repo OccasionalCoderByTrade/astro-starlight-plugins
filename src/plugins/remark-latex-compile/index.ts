@@ -59,10 +59,11 @@ function traverseTree(
         try {
           // Compile and get the result
           const result = compileLatexToSvg(String(child.value), svgOutputDir);
-          const status = result.wasCompiled ? "compiled" : "used cached";
-          console.log(
-            `[remark-latex-compile] ${filePath}:${lineNumber}: ${status} ${result.hash}.svg`,
-          );
+          if (result.wasCompiled) {
+            console.log(
+              `[remark-latex-compile] ${filePath}:${lineNumber}: compiled ${result.hash}.svg`,
+            );
+          }
 
           // Extract custom classes from meta string
           const customClasses = extractClassesFromMeta(
@@ -119,3 +120,4 @@ export default function remarkLatexCompile(options: RemarkLatexCompileOptions) {
 
 export { compileLatexToSvg };
 export { starlightLatexCompile } from "./starlight-plugin.js";
+export { rehypeLatexCompile } from "./rehype-converter.js";

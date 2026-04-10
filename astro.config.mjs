@@ -8,7 +8,6 @@ import rehypeGraphviz from "rehype-graphviz";
 import rehypeKatex from "rehype-katex";
 import remarkMath from "remark-math";
 import {
-  astroNormalizePaths,
   rehypeValidateLinks,
   starlightIndexOnlySidebar,
   starlightLatexCompile,
@@ -45,7 +44,7 @@ export default defineConfig({
     ],
   },
   integrations: [
-    astroNormalizePaths(),
+    // astroNormalizePaths(),
     starlight({
       title: SITE_NAME,
       tableOfContents: {

@@ -4,7 +4,7 @@
  * This integration handles compiling LaTeX diagrams from markdown source files
  * during the build process, since Starlight's content loader bypasses the standard Astro markdown pipeline.
  */
-import { readdir, readFile } from "node:fs/promises";
+import { readdir, readFile, cp } from "node:fs/promises";
 import { resolve, join, extname } from "node:path";
 import { compileLatexToSvg, LATEX_BLOCK_REGEX } from "./compile.js";
 
@@ -29,6 +29,18 @@ export function createAstroLatexIntegration(options: AstroLatexCompileOptions) {
         );
         await scanAndCompileLatex(contentDir, svgOutputDir);
       },
+      "astro:build:done": async ({ dir }: { dir: { pathname: string } }) => {
+        // Copy SVGs from public/static/tex-svgs to the build output
+        // This ensures SVGs created by the remark plugin are included in the final output
+        const srcSvgDir = resolve(svgOutputDir);
+        const outSvgDir = resolve(dir.pathname, "static/tex-svgs");
+        try {
+          await cp(srcSvgDir, outSvgDir, { recursive: true, force: true });
+          console.log("[astro-latex-compile] Copied SVGs to build output");
+        } catch (err) {
+          console.error("[astro-latex-compile] Error copying SVGs:", err);
+        }
+      },
     },
   };
 }
@@ -48,6 +60,7 @@ async function scanAndCompileLatex(
     } else if (entry.isFile()) {
       const ext = extname(entry.name);
       if (ext === ".md" || ext === ".mdx") {
+        console.log(`[astro-latex-compile] Found markdown file: ${fullPath}`);
         await processMarkdownFile(fullPath, svgOutputDir);
       }
     }
