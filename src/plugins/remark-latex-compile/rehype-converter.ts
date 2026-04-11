@@ -6,7 +6,7 @@
 import { visit } from "unist-util-visit";
 import type { Element, Root } from "hast";
 import type { VFile } from "vfile";
-import { hashLatexCode } from "./compile.js";
+import { hashLatexCode } from "./utils.js";
 
 export function rehypeLatexCompile() {
   return (tree: Root, _file: VFile) => {
@@ -22,20 +22,27 @@ export function rehypeLatexCompile() {
         : [];
 
       // Check if it's a tex/latex code block
-      if (!classes.includes("language-tex") && !classes.includes("language-latex")) {
+      if (
+        !classes.includes("language-tex") &&
+        !classes.includes("language-latex")
+      ) {
         return;
       }
 
       // Extract the code content from the code block
       const codeContent = codeChild.children
-        ?.map((child: any) => (typeof child === "string" ? child : child.value || ""))
+        ?.map((child: any) =>
+          typeof child === "string" ? child : child.value || "",
+        )
         .join("")
         .trim();
 
       if (!codeContent) return;
 
       // Check if it's a compile block (has "compile" in the data attribute or content)
-      const dataAttribute = codeChild.properties?.["data-meta"] as string | undefined;
+      const dataAttribute = codeChild.properties?.["data-meta"] as
+        | string
+        | undefined;
       const isCompileBlock =
         (dataAttribute && dataAttribute.includes("compile")) ||
         codeContent.includes("compile");
@@ -71,7 +78,10 @@ export function rehypeLatexCompile() {
         }
       } catch (err) {
         // If hashing fails, leave the code block as-is
-        console.error(`[rehype-latex-compile] Error processing code block:`, err);
+        console.error(
+          `[rehype-latex-compile] Error processing code block:`,
+          err,
+        );
       }
     });
   };

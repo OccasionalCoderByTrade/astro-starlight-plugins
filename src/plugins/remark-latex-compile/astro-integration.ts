@@ -6,7 +6,7 @@
  */
 import { readdir, readFile, cp } from "node:fs/promises";
 import { resolve, join, extname } from "node:path";
-import { compileLatexToSvg, LATEX_BLOCK_REGEX } from "./compile.js";
+import { compileLatexToSvg, LATEX_BLOCK_REGEX } from "./utils.js";
 
 export interface AstroLatexCompileOptions {
   svgOutputDir: string;
@@ -104,4 +104,3 @@ async function processMarkdownFile(
     }
   }
 }
-

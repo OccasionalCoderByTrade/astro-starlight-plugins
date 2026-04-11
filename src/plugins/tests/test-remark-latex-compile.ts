@@ -2,7 +2,7 @@
  * Standalone test for LaTeX compilation.
  * Run with: npx tsx src/plugins/tests/remark-latex-compile.ts
  */
-import { compileLatexToSvg } from "../remark-latex-compile/compile.js";
+import { compileLatexToSvg } from "../remark-latex-compile/utils.js";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 

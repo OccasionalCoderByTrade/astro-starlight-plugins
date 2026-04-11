@@ -12,7 +12,7 @@
  *   }
  */
 import { resolve } from "node:path";
-import { compileLatexToSvg } from "./compile.js";
+import { compileLatexToSvg } from "./utils.js";
 
 export interface RemarkLatexCompileOptions {
   /**
