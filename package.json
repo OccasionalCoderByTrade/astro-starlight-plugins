@@ -84,6 +84,9 @@
       "optional": true
     }
   },
+  "overrides": {
+    "@types/hast": "^3.0.0"
+  },
   "devDependencies": {
     "@astrojs/check": "^0.9.6",
     "@astrojs/starlight": "^0.37.6",
@@ -92,7 +95,7 @@
     "@expressive-code/plugin-line-numbers": "^0.41.7",
     "@hpcc-js/wasm": "^2.33.1",
     "@trivago/prettier-plugin-sort-imports": "^6.0.2",
-    "@types/hast": "^2.3.10",
+    "@types/hast": "^3.0.0",
     "@typescript-eslint/eslint-plugin": "^8.56.1",
     "@typescript-eslint/parser": "^8.56.1",
     "astro": "^5.6.1",
