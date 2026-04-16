@@ -1,5 +1,6 @@
-import { readFileSync, writeFileSync, existsSync } from "fs";
-import { sync as globSync } from "glob";
+import { existsSync } from "fs";
+import { readFile, writeFile } from "node:fs/promises";
+import { glob } from "glob";
 import { dirname, resolve } from "path";
 import type { AstroIntegration } from "astro";
 
@@ -15,52 +16,49 @@ export function astroNormalizePaths(): AstroIntegration {
     name: "astro-normalize-paths",
     hooks: {
       "astro:build:done": async ({ dir }) => {
-        const htmlFiles = globSync(`${dir.pathname}/**/*.html`);
+        const htmlFiles = await glob(`${dir.pathname}/**/*.html`);
 
-        for (const htmlFile of htmlFiles) {
-          let content = readFileSync(htmlFile, "utf-8");
-          const originalContent = content;
+        await Promise.all(
+          htmlFiles.map(async (htmlFile) => {
+            let content = await readFile(htmlFile, "utf-8");
+            const originalContent = content;
 
-          // Normalize img src attributes
-          const imgRegex = /<img([^>]*?)src=["']([^"']+)["']/g;
-          let match;
+            // Normalize img src attributes
+            const imgRegex = /<img([^>]*?)src=["']([^"']+)["']/g;
+            let match;
 
-          while ((match = imgRegex.exec(content)) !== null) {
-            const attrs = match[1];
-            const src = match[2];
+            while ((match = imgRegex.exec(content)) !== null) {
+              const attrs = match[1];
+              const src = match[2];
 
-            const normalized = normalizeAssetPath(src, htmlFile, dir.pathname);
-            if (normalized && src !== normalized) {
-              console.log(`[astro-normalize-paths] Img path resolution:`);
-              console.log(`  Original: ${src}`);
-              console.log(`  HTML file: ${htmlFile}`);
-              console.log(`  Normalized: ${normalized}`);
-              const oldTag = `<img${attrs}src="${src}"`;
-              const newTag = `<img${attrs}src="${normalized}"`;
-              content = content.replace(oldTag, newTag);
+              const normalized = normalizeAssetPath(src, htmlFile, dir.pathname);
+              if (normalized && src !== normalized) {
+                console.log(`[astro-normalize-paths] Img path resolution:`);
+                console.log(`  Original: ${src}`);
+                console.log(`  HTML file: ${htmlFile}`);
+                console.log(`  Normalized: ${normalized}`);
+                content = content.replace(`<img${attrs}src="${src}"`, `<img${attrs}src="${normalized}"`);
+              }
             }
-          }
 
-          // Normalize anchor href attributes
-          const anchorRegex = /<a([^>]*?)href=["']([^"']+)["']/g;
+            // Normalize anchor href attributes
+            const anchorRegex = /<a([^>]*?)href=["']([^"']+)["']/g;
 
-          while ((match = anchorRegex.exec(content)) !== null) {
-            const attrs = match[1];
-            const href = match[2];
+            while ((match = anchorRegex.exec(content)) !== null) {
+              const attrs = match[1];
+              const href = match[2];
 
-            const normalized = normalizeAssetPath(href, htmlFile, dir.pathname);
-            if (normalized && href !== normalized) {
-              const oldTag = `<a${attrs}href="${href}"`;
-              const newTag = `<a${attrs}href="${normalized}"`;
-              content = content.replace(oldTag, newTag);
+              const normalized = normalizeAssetPath(href, htmlFile, dir.pathname);
+              if (normalized && href !== normalized) {
+                content = content.replace(`<a${attrs}href="${href}"`, `<a${attrs}href="${normalized}"`);
+              }
             }
-          }
 
-          // Write back if content changed
-          if (content !== originalContent) {
-            writeFileSync(htmlFile, content, "utf-8");
-          }
-        }
+            if (content !== originalContent) {
+              await writeFile(htmlFile, content, "utf-8");
+            }
+          }),
+        );
       },
     },
   };

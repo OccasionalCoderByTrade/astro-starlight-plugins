@@ -92,33 +92,26 @@ function getResolvedLink(href: string, currentFilePath: string): TLink | null {
   };
 }
 
-function validateLink(link: TLink): void {
+function validateLink(link: TLink): string | null {
   const { project_absolute_href } = link;
 
   if (project_absolute_href.includes(".{md,mdx}")) {
     const matches = globSync(project_absolute_href);
 
     if (matches.length === 0) {
-      throw new Error(
-        `Link validation error: No matching file found for: ${link.original_href} (pattern: ${project_absolute_href})`
-      );
+      return `No matching file found for: ${link.original_href} (pattern: ${project_absolute_href})`;
     }
 
     if (matches.length > 1) {
-      throw new Error(
-        `Link validation error: Multiple matching files found: ${matches.join(
-          ", "
-        )} (from link: ${link.original_href})`
-      );
+      return `Multiple matching files found: ${matches.join(", ")} (from link: ${link.original_href})`;
     }
   } else {
-    // if not a glob pattern, check directly
     if (!existsSync(project_absolute_href)) {
-      throw new Error(
-        `Link validation error: File not found: ${project_absolute_href} (from link: ${link.original_href})`
-      );
+      return `File not found: ${project_absolute_href} (from link: ${link.original_href})`;
     }
   }
+
+  return null;
 }
 
 /**
@@ -131,10 +124,12 @@ export function rehypeValidateLinks(options?: TRehypeValidateLinksOptions) {
 
     if (!filePath) {
       console.warn(
-        "rehype-validate-links: Unable to determine file path for link validation. Skipping link validation for this file."
+        "rehype-validate-links: Unable to determine file path for link validation. Skipping link validation for this file.",
       );
       return;
     }
+
+    const errors: string[] = [];
 
     visit(tree, "element", (node: Element) => {
       // Only validate <a> elements (links), not <img> elements
@@ -146,18 +141,21 @@ export function rehypeValidateLinks(options?: TRehypeValidateLinksOptions) {
       const link = getResolvedLink(href, filePath);
       if (!link) return;
 
-      // Check if link has skipValidation flag (? prefix in href)
       if (link.skipValidation) return;
-
-      // Check if element has data-no-link-check attribute
       if (node.properties?.["data-no-link-check"] !== undefined) return;
+      if (matchesSkipPattern(link.site_absolute_href, options?.skipPatterns))
+        return;
 
-      // Check if link matches skip patterns
-      if (matchesSkipPattern(link.site_absolute_href, options?.skipPatterns)) return;
-
-      // Validate that the link target exists
-      validateLink(link);
+      const error = validateLink(link);
+      if (error) errors.push(error);
     });
+
+    if (errors.length > 0) {
+      throw new Error(
+        `Link validation errors in ${filePath}:\n` +
+          errors.map((e) => `  - ${e}`).join("\n"),
+      );
+    }
   };
 }
 
