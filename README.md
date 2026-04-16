@@ -278,7 +278,7 @@ export default defineConfig({
 });
 ```
 
-### Starlight Sync Docs to Public
+### Sync Docs to Public
 
 Syncs `src/content/docs/` to `public/` so local files (e.g., PDFs, images) referenced in markdown are served by the dev server and included in builds. In dev mode, it watches for file changes and re-syncs automatically — no restart needed.
 
@@ -295,18 +295,12 @@ Syncs `src/content/docs/` to `public/` so local files (e.g., PDFs, images) refer
 // astro.config.mjs
 import { defineConfig } from "astro/config";
 import starlight from "@astrojs/starlight";
-import { starlightSyncDocsToPublic } from "cannoli-starlight-plugins";
+import { syncDocsToPublic } from "cannoli-starlight-plugins";
 
 export default defineConfig({
   integrations: [
-    starlight({
-      title: "My Docs",
-      plugins: [
-        starlightSyncDocsToPublic({
-          preserveDirs: ["static"],
-        }),
-      ],
-    }),
+    syncDocsToPublic({ preserveDirs: ["static"] }),
+    starlight({ title: "My Docs" }),
   ],
 });
 ```
@@ -317,7 +311,7 @@ export default defineConfig({
 - `ignorePatterns` (optional): Glob patterns for files to exclude from syncing. Patterns are matched against paths relative to `src/content/docs/`.
 
 ```ts
-starlightSyncDocsToPublic({
+syncDocsToPublic({
   preserveDirs: ["static"],
   ignorePatterns: ["**/*.txt", "**/drafts/**"],
 });

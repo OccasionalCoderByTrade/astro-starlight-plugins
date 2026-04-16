@@ -11,7 +11,7 @@ import {
   latexCompile,
   rehypeValidateLinks,
   starlightIndexOnlySidebar,
-  starlightSyncDocsToPublic,
+  syncDocsToPublic,
 } from "./src";
 
 // Common Config Items
@@ -48,6 +48,7 @@ export default defineConfig({
       svgOutputDir: "public/static/tex-svgs",
       removeOrphanedSvgs: true,
     }),
+    syncDocsToPublic({ preserveDirs: ["static"] }),
     // astroNormalizePaths(),
     starlight({
       title: SITE_NAME,
@@ -57,9 +58,6 @@ export default defineConfig({
       },
       plugins: [
         STARLIGHT_SIDEBAR_CONFIG,
-        starlightSyncDocsToPublic({
-          preserveDirs: ["static"],
-        }),
       ],
       customCss: ["/src/styles/main.scss", "katex/dist/katex.min.css"],
       expressiveCode: {
