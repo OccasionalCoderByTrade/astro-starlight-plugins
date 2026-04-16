@@ -11,7 +11,8 @@
  *     ],
  *   }
  */
-import { resolve } from "node:path";
+import { rm } from "node:fs/promises";
+import { join, resolve } from "node:path";
 import { visit, SKIP } from "unist-util-visit";
 import type { Code, Image, Paragraph, Parent, Root } from "mdast";
 import type { VFile } from "vfile";
@@ -23,6 +24,16 @@ export interface RemarkLatexCompileOptions {
    * Must be inside `public/` so Astro serves them as static assets.
    */
   svgOutputDir: string;
+  /**
+   * @internal Populated by the Astro integration to track which hashes were
+   * referenced during a build, used for full orphan cleanup at build:done.
+   */
+  _referencedHashes?: Set<string>;
+  /**
+   * @internal Maps each file path to the set of hashes it produced on the
+   * previous remark run. Used to delete stale SVGs when a block changes.
+   */
+  _fileHashMap?: Map<string, Set<string>>;
 }
 
 function extractClassesFromMeta(meta: string): string[] {
@@ -67,16 +78,40 @@ export default function remarkLatexCompile(options: RemarkLatexCompileOptions) {
               `[remark-latex-compile] ${filePath}:${lineNumber}: compiled ${result.hash}.svg`,
             );
           }
-          return { index, parent, result, error: null };
+          options._referencedHashes?.add(result.hash);
+          return { index, parent, result, error: null, hash: result.hash };
         } catch (err) {
           const errorMsg = err instanceof Error ? err.message : String(err);
           const match = errorMsg.match(/\n\n([\s\S]+)/);
           const details = match ? match[1] : errorMsg;
-          console.error(`[remark-latex-compile] ${filePath}:${lineNumber}\n${details}`);
-          return { index, parent, result: null, error: err };
+          console.error(
+            `[remark-latex-compile] ${filePath}:${lineNumber}\n${details}`,
+          );
+          return { index, parent, result: null, error: err, hash: null };
         }
       }),
     );
+
+    // Delete SVGs that this file previously produced but no longer references
+    if (options._fileHashMap) {
+      const newHashes = new Set(
+        results.map((r) => r.hash).filter(Boolean) as string[],
+      );
+      const oldHashes = options._fileHashMap.get(filePath) ?? new Set<string>();
+      const staleHashes = [...oldHashes].filter((h) => !newHashes.has(h));
+      for (const staleHash of staleHashes) {
+        console.warn(
+          `[remark-latex-compile] Removing orphaned svg: ${staleHash}.svg`,
+        );
+      }
+
+      await Promise.all(
+        staleHashes.map((h) =>
+          rm(join(svgOutputDir, `${h}.svg`), { force: true }),
+        ),
+      );
+      options._fileHashMap.set(filePath, newHashes);
+    }
 
     // Apply AST mutations in reverse index order so earlier splices don't shift
     // the indices of later nodes sharing the same parent.
@@ -91,7 +126,9 @@ export default function remarkLatexCompile(options: RemarkLatexCompileOptions) {
         type: "image",
         url: `/static/tex-svgs/${result.hash}.svg`,
         alt: "LaTeX diagram",
-        data: { hProperties: { className: ["tex-compiled", ...customClasses] } },
+        data: {
+          hProperties: { className: ["tex-compiled", ...customClasses] },
+        },
       };
 
       const paragraph: Paragraph = {

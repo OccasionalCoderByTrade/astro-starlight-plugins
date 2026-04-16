@@ -75,6 +75,11 @@ pdflatex --version
 dvisvgm --version
 ```
 
+**Options:**
+
+- `svgOutputDir` (required): Directory where compiled SVG files are written. Must be inside `public/` so Astro serves them as static assets.
+- `removeOrphanedSvgs` (optional, default: `false`): When `true`, SVG files that are no longer referenced by any `tex compile` block are deleted automatically. In dev mode, stale SVGs are removed immediately when a block is edited. On build, any remaining orphans are swept at the end.
+
 **Usage:**
 
 ```ts
@@ -85,7 +90,10 @@ import { latexCompile } from "cannoli-starlight-plugins";
 
 export default defineConfig({
   integrations: [
-    latexCompile({ svgOutputDir: "public/static/tex-svgs" }),
+    latexCompile({
+      svgOutputDir: "public/static/tex-svgs",
+      removeOrphanedSvgs: true, // optional
+    }),
     starlight({ title: "My Docs" }),
   ],
 });
@@ -319,7 +327,9 @@ starlightSyncDocsToPublic({
 
 ### cannoli-latex-cleanup
 
-A cleanup utility for the LaTeX compile plugin. Scans your markdown source files for all `tex compile` code blocks, hashes them, and identifies orphaned SVG files in the output directory that are no longer referenced by any code block.
+A manual cleanup utility for the LaTeX compile plugin. Scans your markdown source files for all `tex compile` code blocks, hashes them, and identifies orphaned SVG files in the output directory that are no longer referenced by any code block.
+
+> **Note:** If you use `removeOrphanedSvgs: true` in your `latexCompile` config, this CLI is generally not needed — orphaned SVGs are cleaned up automatically during both dev and build.
 
 **Usage:**
 

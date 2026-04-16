@@ -44,7 +44,10 @@ export default defineConfig({
     ],
   },
   integrations: [
-    latexCompile({ svgOutputDir: "public/static/tex-svgs" }),
+    latexCompile({
+      svgOutputDir: "public/static/tex-svgs",
+      removeOrphanedSvgs: true,
+    }),
     // astroNormalizePaths(),
     starlight({
       title: SITE_NAME,

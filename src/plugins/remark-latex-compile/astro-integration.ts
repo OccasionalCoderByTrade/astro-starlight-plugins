@@ -1,6 +1,19 @@
 import fs from "node:fs";
+import { readdir, rm } from "node:fs/promises";
+import { join, resolve } from "node:path";
 import type { AstroConfig, AstroIntegration } from "astro";
 import remarkLatexCompile, { type RemarkLatexCompileOptions } from "./index.js";
+
+export interface LatexCompileOptions extends RemarkLatexCompileOptions {
+  /**
+   * When `true`, SVG files in `svgOutputDir` that are no longer referenced by
+   * any `tex compile` block are deleted automatically. In dev mode, stale SVGs
+   * are removed immediately when a block is edited. On build, any remaining
+   * orphans are swept at the end.
+   * @default false
+   */
+  removeOrphanedSvgs?: boolean;
+}
 
 const DATA_STORE_FILE = "data-store.json";
 
@@ -15,9 +28,10 @@ async function clearContentLayerCache(config: AstroConfig): Promise<void> {
   }
 }
 
-export function latexCompile(
-  options: RemarkLatexCompileOptions,
-): AstroIntegration {
+export function latexCompile(options: LatexCompileOptions): AstroIntegration {
+  const referencedHashes = new Set<string>();
+  const fileHashMap = new Map<string, Set<string>>();
+
   return {
     name: "astro-latex-compile",
     hooks: {
@@ -32,11 +46,45 @@ export function latexCompile(
           ? config.markdown.remarkPlugins.filter(Boolean)
           : [];
 
+        const remarkOptions: RemarkLatexCompileOptions = {
+          ...options,
+          _fileHashMap: options.removeOrphanedSvgs ? fileHashMap : undefined,
+          _referencedHashes: command === "build" && options.removeOrphanedSvgs
+            ? referencedHashes
+            : undefined,
+        };
+
         updateConfig({
           markdown: {
-            remarkPlugins: [...existingPlugins, [remarkLatexCompile, options]],
+            remarkPlugins: [...existingPlugins, [remarkLatexCompile, remarkOptions]],
           },
         });
+      },
+
+      "astro:build:done": async () => {
+        if (!options.removeOrphanedSvgs) return;
+
+        const svgDir = resolve(options.svgOutputDir);
+        let entries: string[];
+        try {
+          entries = await readdir(svgDir);
+        } catch {
+          return; // directory doesn't exist, nothing to clean
+        }
+
+        const orphans = entries.filter(
+          (f) => f.endsWith(".svg") && !referencedHashes.has(f.slice(0, -4)),
+        );
+
+        await Promise.all(
+          orphans.map((f) => rm(join(svgDir, f), { force: true })),
+        );
+
+        if (orphans.length > 0) {
+          console.log(
+            `[astro-latex-compile] Removed ${orphans.length} orphaned SVG${orphans.length === 1 ? "" : "s"}.`,
+          );
+        }
       },
     },
   };

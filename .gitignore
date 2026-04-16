@@ -24,3 +24,4 @@ pnpm-debug.log*
 public/*
 !public/static/
 tex-svgs/
+astro-d2-main/
