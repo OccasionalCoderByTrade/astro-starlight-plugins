@@ -2,9 +2,9 @@
  * Standalone test for LaTeX compilation.
  * Run with: npx tsx src/plugins/tests/remark-latex-compile.ts
  */
-import { compileLatexToSvg } from "../remark-latex-compile/utils.js";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
+import { compileLatexToSvg } from "../astro-latex-compile";
 
 const testOutputDir = resolve("test-latex-output");
 
@@ -31,7 +31,7 @@ async function test() {
   for (const testCase of testCases) {
     try {
       console.log(`\n[test] Compiling: ${testCase.name}`);
-      const result = compileLatexToSvg(testCase.code, testOutputDir);
+      const result = await compileLatexToSvg(testCase.code, testOutputDir);
       console.log(`[test]   Hash: ${result.hash}`);
       console.log(`[test]   SVG Path: ${result.svgPath}`);
       console.log(`[test]   Was compiled: ${result.wasCompiled}`);
@@ -46,7 +46,7 @@ async function test() {
 
       // Test idempotency - compile again and verify it's cached
       console.log(`[test] Testing idempotency...`);
-      const result2 = compileLatexToSvg(testCase.code, testOutputDir);
+      const result2 = await compileLatexToSvg(testCase.code, testOutputDir);
       console.log(`[test]   Was compiled (2nd run): ${result2.wasCompiled}`);
       if (!result2.wasCompiled) {
         console.log(`[test]   ✓ Correctly skipped recompilation`);
