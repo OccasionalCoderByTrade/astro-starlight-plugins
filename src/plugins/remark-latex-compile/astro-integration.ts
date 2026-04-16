@@ -28,7 +28,7 @@ async function clearContentLayerCache(config: AstroConfig): Promise<void> {
   }
 }
 
-export function latexCompile(options: LatexCompileOptions): AstroIntegration {
+export function astroLatexCompile(options: LatexCompileOptions): AstroIntegration {
   const referencedHashes = new Set<string>();
   const fileHashMap = new Map<string, Set<string>>();
 

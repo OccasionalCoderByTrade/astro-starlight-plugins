@@ -86,11 +86,11 @@ dvisvgm --version
 // astro.config.mjs
 import { defineConfig } from "astro/config";
 import starlight from "@astrojs/starlight";
-import { latexCompile } from "cannoli-starlight-plugins";
+import { astroLatexCompile } from "cannoli-starlight-plugins";
 
 export default defineConfig({
   integrations: [
-    latexCompile({
+    astroLatexCompile({
       svgOutputDir: "public/static/tex-svgs",
       removeOrphanedSvgs: true, // optional
     }),
@@ -178,7 +178,7 @@ The img element will have classes: `tex-compiled bg-white rounded-1` (note: the 
 
 ### Remark LaTeX Compile (low-level)
 
-The underlying remark plugin used by `latexCompile`. Use this directly if you need to wire the transformer into a custom pipeline — most users should use `latexCompile` instead.
+The underlying remark plugin used by `astroLatexCompile`. Use this directly if you need to wire the transformer into a custom pipeline — most users should use `astroLatexCompile` instead.
 
 **Usage:**
 
@@ -196,7 +196,7 @@ export default defineConfig({
 });
 ```
 
-Note: when used directly (without `latexCompile`), the Starlight content layer cache is not cleared automatically, so SVGs may not recompile on repeat builds in Starlight projects.
+Note: when used directly (without `astroLatexCompile`), the Starlight content layer cache is not cleared automatically, so SVGs may not recompile on repeat builds in Starlight projects.
 
 ### Rehype Validate Links
 
@@ -323,7 +323,7 @@ syncDocsToPublic({
 
 A manual cleanup utility for the LaTeX compile plugin. Scans your markdown source files for all `tex compile` code blocks, hashes them, and identifies orphaned SVG files in the output directory that are no longer referenced by any code block.
 
-> **Note:** If you use `removeOrphanedSvgs: true` in your `latexCompile` config, this CLI is generally not needed — orphaned SVGs are cleaned up automatically during both dev and build.
+> **Note:** If you use `removeOrphanedSvgs: true` in your `astroLatexCompile` config, this CLI is generally not needed — orphaned SVGs are cleaned up automatically during both dev and build.
 
 **Usage:**
 
@@ -347,7 +347,7 @@ npx cannoli-latex-cleanup --svg-dir public/static/tex-svgs --docs-dir ./src/cont
 
 **Options:**
 
-- `--svg-dir` (required): Path to the SVG output directory configured in `latexCompile`
+- `--svg-dir` (required): Path to the SVG output directory configured in `astroLatexCompile`
 - `--docs-dir` (optional, default: `src/content/docs`): Path to markdown source directory
 - `--check`: List orphaned SVGs without deleting
 - `--delete`: Delete orphaned SVGs

@@ -8,7 +8,7 @@ import rehypeGraphviz from "rehype-graphviz";
 import rehypeKatex from "rehype-katex";
 import remarkMath from "remark-math";
 import {
-  latexCompile,
+  astroLatexCompile,
   rehypeValidateLinks,
   starlightIndexOnlySidebar,
   syncDocsToPublic,
@@ -44,7 +44,7 @@ export default defineConfig({
     ],
   },
   integrations: [
-    latexCompile({
+    astroLatexCompile({
       svgOutputDir: "public/static/tex-svgs",
       removeOrphanedSvgs: true,
     }),
