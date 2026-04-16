@@ -30,7 +30,7 @@ Automatically generates a nested Starlight sidebar by recursively scanning direc
 // astro.config.mjs
 import { defineConfig } from "astro/config";
 import starlight from "@astrojs/starlight";
-import { starlightIndexOnlySidebar } from "cannoli-starlight-plugins";
+import { starlightIndexOnlySidebar } from "starlight-cannoli-plugins";
 
 export default defineConfig({
   integrations: [
@@ -86,7 +86,7 @@ dvisvgm --version
 // astro.config.mjs
 import { defineConfig } from "astro/config";
 import starlight from "@astrojs/starlight";
-import { astroLatexCompile } from "cannoli-starlight-plugins";
+import { astroLatexCompile } from "starlight-cannoli-plugins";
 
 export default defineConfig({
   integrations: [
@@ -185,7 +185,7 @@ The underlying remark plugin used by `astroLatexCompile`. Use this directly if y
 ```ts
 // astro.config.mjs
 import { defineConfig } from "astro/config";
-import { remarkLatexCompile } from "cannoli-starlight-plugins/astro-latex-compile";
+import { remarkLatexCompile } from "starlight-cannoli-plugins/astro-latex-compile";
 
 export default defineConfig({
   markdown: {
@@ -216,7 +216,7 @@ A rehype plugin that validates all internal links in your Markdown/MDX files at 
 ```ts
 // astro.config.mjs
 import { defineConfig } from "astro/config";
-import { rehypeValidateLinks } from "cannoli-starlight-plugins";
+import { rehypeValidateLinks } from "starlight-cannoli-plugins";
 
 export default defineConfig({
   markdown: {
@@ -228,7 +228,7 @@ export default defineConfig({
 Or import directly:
 
 ```ts
-import { rehypeValidateLinks } from "cannoli-starlight-plugins/rehype-validate-links";
+import { rehypeValidateLinks } from "starlight-cannoli-plugins/rehype-validate-links";
 ```
 
 **Skipping Link Validation:**
@@ -295,7 +295,7 @@ Syncs `src/content/docs/` to `public/` so local files (e.g., PDFs, images) refer
 // astro.config.mjs
 import { defineConfig } from "astro/config";
 import starlight from "@astrojs/starlight";
-import { syncDocsToPublic } from "cannoli-starlight-plugins";
+import { syncDocsToPublic } from "starlight-cannoli-plugins";
 
 export default defineConfig({
   integrations: [
@@ -355,19 +355,19 @@ npx cannoli-latex-cleanup --svg-dir public/static/tex-svgs --docs-dir ./src/cont
 ## Installation
 
 ```bash
-npm install cannoli-starlight-plugins
+npm install starlight-cannoli-plugins
 ```
 
 With pnpm:
 
 ```bash
-pnpm add cannoli-starlight-plugins
+pnpm add starlight-cannoli-plugins
 ```
 
 With yarn:
 
 ```bash
-yarn add cannoli-starlight-plugins
+yarn add starlight-cannoli-plugins
 ```
 
 ## Peer Dependencies
