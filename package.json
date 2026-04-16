@@ -30,10 +30,6 @@
       "import": "./dist/plugins/remark-latex-compile.js",
       "types": "./dist/plugins/remark-latex-compile.d.ts"
     },
-    "./starlight-latex-compile": {
-      "import": "./dist/plugins/starlight-latex-compile.js",
-      "types": "./dist/plugins/starlight-latex-compile.d.ts"
-    },
     "./starlight-sync-docs-to-public": {
       "import": "./dist/plugins/starlight-sync-docs-to-public.js",
       "types": "./dist/plugins/starlight-sync-docs-to-public.d.ts"

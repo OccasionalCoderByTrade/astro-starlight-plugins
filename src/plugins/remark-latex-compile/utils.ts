@@ -14,7 +14,7 @@
  * entirely as document content.
  */
 import { createHash } from "node:crypto";
-import { spawnSync } from "node:child_process";
+import { spawn } from "node:child_process";
 import {
   existsSync,
   mkdirSync,
@@ -86,6 +86,33 @@ function buildLatexSource(latexCode: string): string {
   ].join("\n");
 }
 
+function execProcess(
+  command: string,
+  args: string[],
+): Promise<{ status: number; stdout: string; stderr: string }> {
+  return new Promise((resolve, reject) => {
+    let stdout = "";
+    let stderr = "";
+
+    const proc = spawn(command, args);
+
+    proc.stdout.on("data", (data: Buffer) => {
+      stdout += data.toString();
+    });
+    proc.stderr.on("data", (data: Buffer) => {
+      stderr += data.toString();
+    });
+
+    proc.on("error", (err: NodeJS.ErrnoException) => {
+      reject(err);
+    });
+
+    proc.on("close", (code) => {
+      resolve({ status: code ?? 1, stdout, stderr });
+    });
+  });
+}
+
 /**
  * Compile LaTeX code to SVG.
  *
@@ -94,10 +121,10 @@ function buildLatexSource(latexCode: string): string {
  * @returns Result object with hash, svgPath, and whether compilation occurred
  * @throws Error if compilation fails
  */
-export function compileLatexToSvg(
+export async function compileLatexToSvg(
   latexCode: string,
   svgOutputDir: string,
-): CompilationResult {
+): Promise<CompilationResult> {
   const hash = hashLatexCode(latexCode);
   const svgPath = join(svgOutputDir, `${hash}.svg`);
 
@@ -117,23 +144,24 @@ export function compileLatexToSvg(
     writeFileSync(texFile, latexSource, "utf-8");
 
     // Compile LaTeX to PDF
-    const latexResult = spawnSync("pdflatex", [
-      "-interaction=nonstopmode",
-      "-output-directory",
-      workDir,
-      texFile,
-    ]);
-
-    if (latexResult.error) {
-      const code = (latexResult.error as NodeJS.ErrnoException).code;
+    let result;
+    try {
+      result = await execProcess("pdflatex", [
+        "-interaction=nonstopmode",
+        "-output-directory",
+        workDir,
+        texFile,
+      ]);
+    } catch (err) {
+      const code = (err as NodeJS.ErrnoException).code;
       throw new Error(
         `[remark-latex-compile] pdflatex not found on PATH (${code}).`,
+        { cause: err },
       );
     }
 
-    if (latexResult.status !== 0) {
-      const errorOutput =
-        latexResult.stderr?.toString() || latexResult.stdout?.toString() || "";
+    if (result.status !== 0) {
+      const errorOutput = result.stderr || result.stdout || "";
       const userMessage = createCompilationErrorMessage(
         latexSource,
         errorOutput,
@@ -142,26 +170,25 @@ export function compileLatexToSvg(
     }
 
     // Convert PDF to SVG
-    const dvisvgmResult = spawnSync("dvisvgm", [
-      "--pdf",
-      "--bbox=dvi",
-      pdfFile,
-      "-o",
-      svgPath,
-    ]);
-
-    if (dvisvgmResult.error) {
-      const code = (dvisvgmResult.error as NodeJS.ErrnoException).code;
+    let svgResult;
+    try {
+      svgResult = await execProcess("dvisvgm", [
+        "--pdf",
+        "--bbox=dvi",
+        pdfFile,
+        "-o",
+        svgPath,
+      ]);
+    } catch (err) {
+      const code = (err as NodeJS.ErrnoException).code;
       throw new Error(
         `[remark-latex-compile] dvisvgm not found on PATH (${code}).`,
+        { cause: err },
       );
     }
 
-    if (dvisvgmResult.status !== 0) {
-      const errorOutput =
-        dvisvgmResult.stderr?.toString() ||
-        dvisvgmResult.stdout?.toString() ||
-        "";
+    if (svgResult.status !== 0) {
+      const errorOutput = svgResult.stderr || svgResult.stdout || "";
       throw new Error(
         `[remark-latex-compile] PDF to SVG conversion failed (hash: ${hash}).\n` +
           `Error: ${errorOutput}`,

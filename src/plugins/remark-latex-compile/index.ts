@@ -7,117 +7,102 @@
  *   // In astro.config.mjs:
  *   markdown: {
  *     remarkPlugins: [
- *       [remarkLatexCompile, { svgOutputDir: "public/static/example-out-dir" }],
+ *       [remarkLatexCompile, { svgOutputDir: "public/static/tex-svgs" }],
  *     ],
  *   }
  */
 import { resolve } from "node:path";
+import { visit, SKIP } from "unist-util-visit";
+import type { Code, Image, Paragraph, Parent, Root } from "mdast";
+import type { VFile } from "vfile";
 import { compileLatexToSvg } from "./utils.js";
 
 export interface RemarkLatexCompileOptions {
   /**
    * Directory where SVG files should be written.
+   * Must be inside `public/` so Astro serves them as static assets.
    */
   svgOutputDir: string;
 }
 
-/**
- * Extract class names from meta string.
- * Looks for class="..." attribute in the meta string.
- * Example: "compile class=\"bg-white rounded-1\"" returns ["bg-white", "rounded-1"]
- */
 function extractClassesFromMeta(meta: string): string[] {
   const classMatch = meta.match(/class="([^"]+)"/);
-  if (classMatch && classMatch[1]) {
+  if (classMatch?.[1]) {
     return classMatch[1].split(/\s+/).filter(Boolean);
   }
   return [];
 }
 
-function traverseTree(
-  node: Record<string, unknown>,
-  svgOutputDir: string,
-  filePath: string,
-  depth: number = 0,
-): void {
-  if (!node) return;
+export default function remarkLatexCompile(options: RemarkLatexCompileOptions) {
+  const svgOutputDir = resolve(options.svgOutputDir);
 
-  // Process children first (bottom-up traversal for safe replacement)
-  const children = node.children as Array<Record<string, unknown>>;
-  if (Array.isArray(children)) {
-    for (let i = 0; i < children.length; i++) {
-      const child = children[i];
+  return async function transformer(tree: Root, file: VFile) {
+    type NodeEntry = { node: Code; index: number; parent: Parent };
+    const nodes: NodeEntry[] = [];
+
+    visit(tree, "code", (node, index, parent) => {
       if (
-        child.type === "code" &&
-        (child.lang === "tex" || child.lang === "latex") &&
-        String(child.meta || "").includes("compile")
+        (node.lang === "tex" || node.lang === "latex") &&
+        node.meta?.includes("compile") &&
+        parent &&
+        index !== undefined
       ) {
-        const position = child.position as Record<string, unknown> | undefined;
-        const lineNumber =
-          (position?.start as Record<string, unknown>)?.line || "?";
+        nodes.push({ node, index, parent });
+      }
+      return SKIP;
+    });
 
+    if (nodes.length === 0) return;
+
+    const filePath = file.path || "unknown";
+
+    // Compile all blocks in parallel, collecting results before mutating the tree
+    const results = await Promise.all(
+      nodes.map(async ({ node, index, parent }) => {
+        const lineNumber = node.position?.start.line ?? "?";
         try {
-          // Compile and get the result
-          const result = compileLatexToSvg(String(child.value), svgOutputDir);
+          const result = await compileLatexToSvg(node.value, svgOutputDir);
           if (result.wasCompiled) {
             console.log(
               `[remark-latex-compile] ${filePath}:${lineNumber}: compiled ${result.hash}.svg`,
             );
           }
-
-          // Extract custom classes from meta string
-          const customClasses = extractClassesFromMeta(
-            String(child.meta || ""),
-          );
-          const allClasses = ["tex-compiled", ...customClasses];
-
-          // Replace with paragraph containing image
-          children[i] = {
-            type: "paragraph",
-            children: [
-              {
-                type: "image",
-                url: `/static/tex-svgs/${result.hash}.svg`,
-                alt: "LaTeX diagram",
-                data: {
-                  hProperties: {
-                    className: allClasses,
-                  },
-                },
-              },
-            ],
-          };
+          return { index, parent, result, error: null };
         } catch (err) {
-          // Don't throw—leave code block as-is so page renders.
-          // In dev mode, log the error without the wrapper since Astro will also display it.
-          // In build mode, the astro integration will catch and fail the build.
-          if (process.env.NODE_ENV !== "production") {
-            const errorMsg = err instanceof Error ? err.message : String(err);
-            // Extract just the formatted error (after the wrapper line)
-            const match = errorMsg.match(/\n\n([\s\S]+)/);
-            const details = match ? match[1] : errorMsg;
-            console.error(`${filePath}:${lineNumber}\n${details}`);
-          }
+          const errorMsg = err instanceof Error ? err.message : String(err);
+          const match = errorMsg.match(/\n\n([\s\S]+)/);
+          const details = match ? match[1] : errorMsg;
+          console.error(`[remark-latex-compile] ${filePath}:${lineNumber}\n${details}`);
+          return { index, parent, result: null, error: err };
         }
-      } else {
-        // Recurse into non-code children
-        traverseTree(child, svgOutputDir, filePath, depth + 1);
-      }
+      }),
+    );
+
+    // Apply AST mutations in reverse index order so earlier splices don't shift
+    // the indices of later nodes sharing the same parent.
+    for (let i = results.length - 1; i >= 0; i--) {
+      const { index, parent, result } = results[i];
+      const { node } = nodes[i];
+      if (!result) continue;
+
+      const customClasses = extractClassesFromMeta(node.meta ?? "");
+
+      const imageNode: Image = {
+        type: "image",
+        url: `/static/tex-svgs/${result.hash}.svg`,
+        alt: "LaTeX diagram",
+        data: { hProperties: { className: ["tex-compiled", ...customClasses] } },
+      };
+
+      const paragraph: Paragraph = {
+        type: "paragraph",
+        children: [imageNode],
+      };
+
+      parent.children.splice(index, 1, paragraph);
     }
-  }
-}
-
-export default function remarkLatexCompile(options: RemarkLatexCompileOptions) {
-  const svgOutputDir = resolve(options.svgOutputDir);
-
-  return (tree: Record<string, unknown>, file: unknown) => {
-    // Get file path from file metadata, default to 'unknown' if not available
-    const fileObj = file as Record<string, unknown> | undefined;
-    const filePath = String(fileObj?.path || fileObj?.filename || "unknown");
-    traverseTree(tree, svgOutputDir, filePath, 0);
   };
 }
 
 export { compileLatexToSvg };
-export { starlightLatexCompile } from "./starlight-plugin.js";
 export { rehypeLatexCompile } from "./rehype-converter.js";

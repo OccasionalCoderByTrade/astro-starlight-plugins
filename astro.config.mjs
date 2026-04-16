@@ -8,9 +8,9 @@ import rehypeGraphviz from "rehype-graphviz";
 import rehypeKatex from "rehype-katex";
 import remarkMath from "remark-math";
 import {
+  latexCompile,
   rehypeValidateLinks,
   starlightIndexOnlySidebar,
-  starlightLatexCompile,
   starlightSyncDocsToPublic,
 } from "./src";
 
@@ -44,6 +44,7 @@ export default defineConfig({
     ],
   },
   integrations: [
+    latexCompile({ svgOutputDir: "public/static/tex-svgs" }),
     // astroNormalizePaths(),
     starlight({
       title: SITE_NAME,
@@ -53,7 +54,6 @@ export default defineConfig({
       },
       plugins: [
         STARLIGHT_SIDEBAR_CONFIG,
-        starlightLatexCompile({ svgOutputDir: "public/static/tex-svgs" }),
         starlightSyncDocsToPublic({
           preserveDirs: ["static"],
         }),

@@ -48,7 +48,7 @@ export default defineConfig({
 });
 ```
 
-### Starlight LaTeX Compile
+### LaTeX Compile
 
 Automatically compiles fenced `tex compile` and `latex compile` code blocks to SVG diagrams during the build process. Uses `pdflatex` and `dvisvgm` for high-quality, cached SVG output.
 
@@ -58,7 +58,7 @@ Automatically compiles fenced `tex compile` and `latex compile` code blocks to S
 - Caches compiled SVGs by content hash (no recompilation if unchanged)
 - Comprehensive error reporting with line numbers and formatted LaTeX source
 - Supports custom preamble via `% ===` separator in code blocks
-- Works seamlessly with Starlight's content pipeline
+- Works with Starlight and plain Astro projects
 - Requires `svgOutputDir` configuration (no defaults)
 
 **System Requirements:**
@@ -81,18 +81,12 @@ dvisvgm --version
 // astro.config.mjs
 import { defineConfig } from "astro/config";
 import starlight from "@astrojs/starlight";
-import { starlightLatexCompile } from "cannoli-starlight-plugins";
+import { latexCompile } from "cannoli-starlight-plugins";
 
 export default defineConfig({
   integrations: [
-    starlight({
-      title: "My Docs",
-      plugins: [
-        starlightLatexCompile({
-          svgOutputDir: "public/static/tex-svgs",
-        }),
-      ],
-    }),
+    latexCompile({ svgOutputDir: "public/static/tex-svgs" }),
+    starlight({ title: "My Docs" }),
   ],
 });
 ```
@@ -174,16 +168,9 @@ Add custom CSS classes the `tex compile` code block to have them applied to the 
 
 The img element will have classes: `tex-compiled bg-white rounded-1` (note: the `tex-compiled` class is always included by default).
 
-### Remark LaTeX Compile
+### Remark LaTeX Compile (low-level)
 
-The underlying remark plugin that powers `starlightLatexCompile`. Use this directly in Astro projects that don't use Starlight.
-
-**System Requirements:**
-
-Same as `starlightLatexCompile`:
-
-- **`pdflatex`** — LaTeX compiler that produces PDF output
-- **`dvisvgm`** — Converts PDF to SVG format
+The underlying remark plugin used by `latexCompile`. Use this directly if you need to wire the transformer into a custom pipeline — most users should use `latexCompile` instead.
 
 **Usage:**
 
@@ -195,18 +182,13 @@ import { remarkLatexCompile } from "cannoli-starlight-plugins/remark-latex-compi
 export default defineConfig({
   markdown: {
     remarkPlugins: [
-      [
-        remarkLatexCompile,
-        {
-          svgOutputDir: "public/static/tex-svgs",
-        },
-      ],
+      [remarkLatexCompile, { svgOutputDir: "public/static/tex-svgs" }],
     ],
   },
 });
 ```
 
-The plugin works identically to `starlightLatexCompile` but is configured directly in the Astro markdown pipeline.
+Note: when used directly (without `latexCompile`), the Starlight content layer cache is not cleared automatically, so SVGs may not recompile on repeat builds in Starlight projects.
 
 ### Rehype Validate Links
 
@@ -361,7 +343,7 @@ npx cannoli-latex-cleanup --svg-dir public/static/tex-svgs --docs-dir ./src/cont
 
 **Options:**
 
-- `--svg-dir` (required): Path to the SVG output directory configured in `starlightLatexCompile`
+- `--svg-dir` (required): Path to the SVG output directory configured in `latexCompile`
 - `--docs-dir` (optional, default: `src/content/docs`): Path to markdown source directory
 - `--check`: List orphaned SVGs without deleting
 - `--delete`: Delete orphaned SVGs
