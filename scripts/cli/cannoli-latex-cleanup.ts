@@ -5,7 +5,7 @@ import { resolve, join } from "node:path";
 import {
   hashLatexCode,
   LATEX_BLOCK_REGEX,
-} from "../../src/plugins/remark-latex-compile/utils.js";
+} from "../../src/plugins/astro-latex-compile/utils.js";
 
 // Parse CLI arguments
 const args = process.argv.slice(2);

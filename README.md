@@ -185,7 +185,7 @@ The underlying remark plugin used by `astroLatexCompile`. Use this directly if y
 ```ts
 // astro.config.mjs
 import { defineConfig } from "astro/config";
-import { remarkLatexCompile } from "cannoli-starlight-plugins/remark-latex-compile";
+import { remarkLatexCompile } from "cannoli-starlight-plugins/astro-latex-compile";
 
 export default defineConfig({
   markdown: {

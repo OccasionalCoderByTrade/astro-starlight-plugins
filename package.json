@@ -26,13 +26,13 @@
       "import": "./dist/plugins/astro-normalize-paths.js",
       "types": "./dist/plugins/astro-normalize-paths.d.ts"
     },
-    "./remark-latex-compile": {
-      "import": "./dist/plugins/remark-latex-compile.js",
-      "types": "./dist/plugins/remark-latex-compile.d.ts"
+    "./astro-latex-compile": {
+      "import": "./dist/plugins/astro-latex-compile.js",
+      "types": "./dist/plugins/astro-latex-compile.d.ts"
     },
-    "./starlight-sync-docs-to-public": {
-      "import": "./dist/plugins/starlight-sync-docs-to-public.js",
-      "types": "./dist/plugins/starlight-sync-docs-to-public.d.ts"
+    "./astro-sync-docs-to-public": {
+      "import": "./dist/plugins/astro-sync-docs-to-public.js",
+      "types": "./dist/plugins/astro-sync-docs-to-public.d.ts"
     },
     "./styles": "./dist/styles/",
     "./styles/*": "./dist/styles/*"
