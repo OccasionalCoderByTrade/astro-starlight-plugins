@@ -224,10 +224,11 @@ export function syncDocsToPublic(
   const srcDir = resolve(DEFAULT_SRC_DIR);
   const publicDir = resolve(DEFAULT_PUBLIC_DIR);
   const {
-    preserveDirs,
+    preserveDirs: rawPreserveDirs,
     ignorePatterns = [],
     exposePageSrcButton = false,
   } = options;
+  const preserveDirs = rawPreserveDirs.map((d) => d.replace(/\/+$/, ""));
 
   return {
     name: "astro-sync-docs-to-public",
