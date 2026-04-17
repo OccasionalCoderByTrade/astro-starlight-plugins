@@ -18,10 +18,23 @@ function showSuccessBanner(message: string): void {
 
 async function getRawMdUrl(): Promise<string> {
   const base = window.location.href.replace(/\/?$/, "/");
-  const mdUrl = new URL("index.md", base).toString();
-  const resp = await fetch(mdUrl, { method: "HEAD" });
-  if (resp.ok) return mdUrl;
-  return new URL("index.mdx", base).toString();
+
+  // Try index.{md,mdx} — covers pages backed by an index file
+  for (const ext of [".md", ".mdx"]) {
+    const url = new URL(`index${ext}`, base).toString();
+    if ((await fetch(url, { method: "HEAD" })).ok) return url;
+  }
+
+  // Try ../segment.{md,mdx} — covers pages backed by a non-index file
+  // e.g. page URL /reference/foo/ → file at /reference/foo.md
+  const segment = new URL(base).pathname.replace(/\/$/, "").split("/").pop()!;
+  const parentBase = new URL("../", base).toString();
+  for (const ext of [".md", ".mdx"]) {
+    const url = new URL(`${segment}${ext}`, parentBase).toString();
+    if ((await fetch(url, { method: "HEAD" })).ok) return url;
+  }
+
+  return new URL("index.md", base).toString();
 }
 
 function createActionBar(): HTMLDivElement {

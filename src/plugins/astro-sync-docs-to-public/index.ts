@@ -15,7 +15,7 @@ import {
   rm,
   stat,
 } from "node:fs/promises";
-import { resolve, relative, basename, dirname, extname } from "node:path";
+import { resolve, relative, dirname } from "node:path";
 import { minimatch } from "minimatch";
 import { parseFrontmatter } from "../utils/sidebar-builder-utils.js";
 
@@ -93,27 +93,12 @@ function isMdFile(filePath: string): boolean {
   return filePath.endsWith(".md") || filePath.endsWith(".mdx");
 }
 
-function isIndexMd(filePath: string): boolean {
-  const base = basename(filePath);
-  return base === "index.md" || base === "index.mdx";
-}
-
-/**
- * Computes the public destination path for a source file.
- * Non-index md/mdx files are remapped: file.md → file/index.md
- */
 function getDestPath(
   srcFilePath: string,
   srcDir: string,
   publicDir: string,
 ): string {
-  const rel = relative(srcDir, srcFilePath);
-  if (!isMdFile(srcFilePath) || isIndexMd(srcFilePath)) {
-    return resolve(publicDir, rel);
-  }
-  const ext = extname(srcFilePath);
-  const stem = basename(srcFilePath, ext);
-  return resolve(publicDir, dirname(rel), stem, `index${ext}`);
+  return resolve(publicDir, relative(srcDir, srcFilePath));
 }
 
 /**
