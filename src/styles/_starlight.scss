@@ -10,12 +10,22 @@
   }
 }
 
-starlight-toc {
-  a {
+starlight-toc ul > li {
+  > a {
+    &[aria-current="true"] {
+      transform: scale(1.04);
+
+      > span {
+        &::before {
+          background-color: var(--sl-color-text-accent);
+        }
+      }
+    }
+
     transition: transform 0.2s ease;
     transform-origin: left;
 
-    span {
+    > span {
       position: relative;
       display: inline-block;
       transition: color 0.2s ease;
@@ -30,16 +40,6 @@ starlight-toc {
         background-color: transparent;
         border-radius: 2px;
         transition: background-color 0.2s ease;
-      }
-    }
-  }
-
-  a[aria-current="true"] {
-    transform: scale(1.04);
-
-    span {
-      &::before {
-        background-color: var(--sl-color-text-accent);
       }
     }
   }
