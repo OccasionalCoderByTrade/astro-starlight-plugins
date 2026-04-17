@@ -12,7 +12,6 @@ export default defineConfig({
       "src/plugins/astro-sync-docs-to-public/index.ts",
     "plugins/astro-sync-docs-to-public/page-script":
       "src/plugins/astro-sync-docs-to-public/page-script.ts",
-    "cli/cannoli-latex-cleanup": "scripts/cli/cannoli-latex-cleanup.ts",
   },
   format: ["esm"],
   dts: true,
