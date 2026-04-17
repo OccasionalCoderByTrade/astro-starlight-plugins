@@ -4,4 +4,3 @@ export { rehypeValidateLinks } from "./plugins/rehype-validate-links.js";
 export { astroNormalizePaths } from "./plugins/astro-normalize-paths.js";
 export { default as remarkLatexCompile } from "./plugins/astro-latex-compile/index.js";
 export { astroLatexCompile, type LatexCompileOptions } from "./plugins/astro-latex-compile/astro-integration.js";
-export { rehypeLatexCompile } from "./plugins/astro-latex-compile/rehype-converter.js";

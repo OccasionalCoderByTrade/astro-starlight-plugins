@@ -142,4 +142,3 @@ export default function remarkLatexCompile(options: RemarkLatexCompileOptions) {
 }
 
 export { compileLatexToSvg };
-export { rehypeLatexCompile } from "./rehype-converter.js";
