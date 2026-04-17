@@ -250,8 +250,17 @@ export function syncDocsToPublic(
       "astro:config:setup": ({ injectScript }) => {
         validateOptions(options);
         if (exposePageSrcButton) {
+          // Fix for local dev vs. external plugin consumers
+          // The source and dist layouts differ: in source, index.ts and page-script.ts share
+          // the same directory; in dist, index compiles to a flat plugins/astro-sync-docs-to-public.js
+          // while page-script lands one level deeper. A single hardcoded path can't satisfy both.
           const scriptPath = fileURLToPath(
-            new URL("./astro-sync-docs-to-public/page-script.js", import.meta.url),
+            import.meta.url.endsWith(".ts")
+              ? new URL("./page-script.ts", import.meta.url)
+              : new URL(
+                  "./astro-sync-docs-to-public/page-script.js",
+                  import.meta.url,
+                ),
           );
           injectScript("page", `import ${JSON.stringify(scriptPath)};`);
         }
