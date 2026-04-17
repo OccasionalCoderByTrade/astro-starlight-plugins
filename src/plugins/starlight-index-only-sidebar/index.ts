@@ -1,7 +1,7 @@
 import type { HookParameters } from "@astrojs/starlight/types";
 import { join } from "path";
-import { getIndexMdSidebarItems } from "./utils/sidebar-builder-utils";
-import type { TGroupedItem } from "./utils/types";
+import { getIndexMdSidebarItems } from "./utils";
+import type { TGroupedItem } from "./types";
 
 /**
  * Configuration options for sidebar generation behavior.

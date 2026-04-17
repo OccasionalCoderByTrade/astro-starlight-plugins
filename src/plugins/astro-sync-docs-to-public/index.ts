@@ -17,7 +17,7 @@ import {
 } from "node:fs/promises";
 import { resolve, relative, dirname } from "node:path";
 import { minimatch } from "minimatch";
-import { parseFrontmatter } from "../utils/sidebar-builder-utils.js";
+import { parseFrontmatter } from "../utils/workspace-utils.js";
 
 export interface SyncDocsToPublicOptions {
   /**

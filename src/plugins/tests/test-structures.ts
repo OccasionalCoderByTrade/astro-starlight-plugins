@@ -1,6 +1,6 @@
 // @ts-expect-error no types available for lodash
 import _ from "lodash";
-import type { TSidebarItem } from "../utils/types";
+import type { TSidebarItem } from "../starlight-index-only-sidebar/types";
 
 const { isEqual } = _;
 

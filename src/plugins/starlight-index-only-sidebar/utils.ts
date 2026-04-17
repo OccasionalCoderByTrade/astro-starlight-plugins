@@ -1,19 +1,11 @@
 import * as fs from "fs";
 import * as path from "path";
-import { parseFrontmatter as astroParseFile } from "@astrojs/markdown-remark";
+import { parseFrontmatter } from "../utils/workspace-utils";
 import type { TSidebarItem } from "./types";
 
 type TOptions = {
   maxDepthNesting?: number;
   dirnameDeterminesLabels?: boolean;
-};
-
-type TFrontmatter = {
-  title?: string;
-  draft?: boolean;
-  sidebar?: {
-    hidden?: boolean;
-  };
 };
 
 function isDir(filePath: string): boolean {
@@ -34,23 +26,6 @@ function findIndexMd(dirPath: string): string | null {
     // continue
   }
   return null;
-}
-
-export function parseFrontmatter(filePath: string): TFrontmatter {
-  let content: string;
-  try {
-    content = fs.readFileSync(filePath, "utf-8");
-  } catch {
-    return {};
-  }
-
-  try {
-    const { frontmatter } = astroParseFile(content);
-    return frontmatter as TFrontmatter;
-  } catch (err) {
-    console.warn(`[parseFrontmatter] Failed to parse frontmatter in ${filePath}:`, err);
-    return {};
-  }
 }
 
 function getSlug(dirPath: string, rootDir: string): string {
