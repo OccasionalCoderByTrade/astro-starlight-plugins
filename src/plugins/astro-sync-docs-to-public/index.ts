@@ -251,7 +251,7 @@ export function syncDocsToPublic(
         validateOptions(options);
         if (exposePageSrcButton) {
           const scriptPath = fileURLToPath(
-            new URL("./page-script.js", import.meta.url),
+            new URL("./astro-sync-docs-to-public/page-script.js", import.meta.url),
           );
           injectScript("page", `import ${JSON.stringify(scriptPath)};`);
         }
