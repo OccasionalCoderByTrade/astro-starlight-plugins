@@ -240,19 +240,21 @@ export function syncDocsToPublic(
           // 2. Dist, own entry (dist/plugins/astro-sync-docs-to-public.js): page-script is one level deeper
           // 3. Dist, bundled into another entry (e.g. dist/index.js via re-export): must prefix with plugins/
           const currentFile = fileURLToPath(import.meta.url);
-          const scriptPath = fileURLToPath(
-            currentFile.endsWith(".ts")
-              ? new URL("./page-script.ts", import.meta.url)
-              : currentFile.endsWith("astro-sync-docs-to-public.js")
-                ? new URL(
-                    "./astro-sync-docs-to-public/page-script.js",
-                    import.meta.url,
-                  )
-                : new URL(
-                    "./plugins/astro-sync-docs-to-public/page-script.js",
-                    import.meta.url,
-                  ),
-          );
+          let pageScriptUrl: URL;
+          if (currentFile.endsWith(".ts")) {
+            pageScriptUrl = new URL("./page-script.ts", import.meta.url);
+          } else if (currentFile.endsWith("astro-sync-docs-to-public.js")) {
+            pageScriptUrl = new URL(
+              "./astro-sync-docs-to-public/page-script.js",
+              import.meta.url,
+            );
+          } else {
+            pageScriptUrl = new URL(
+              "./plugins/astro-sync-docs-to-public/page-script.js",
+              import.meta.url,
+            );
+          }
+          const scriptPath = fileURLToPath(pageScriptUrl);
           injectScript("page", `import ${JSON.stringify(scriptPath)};`);
         }
       },
