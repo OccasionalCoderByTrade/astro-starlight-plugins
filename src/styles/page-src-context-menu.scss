@@ -16,6 +16,11 @@
     color: #fff;
   }
 
+  &--error {
+    background: #cf222e;
+    color: #fff;
+  }
+
   &--visible {
     transform: translateY(0);
   }
@@ -25,12 +30,19 @@
   position: relative;
 }
 
+@keyframes page-src-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .page-src-action-bar {
   position: absolute;
   top: -30px;
   right: -5px;
 
   &__btn {
+    position: relative;
     width: 2rem;
     height: 2rem;
     padding: 0;
@@ -47,6 +59,23 @@
 
     &:hover {
       background: var(--sl-color-bg-nav);
+    }
+
+    &--loading {
+      cursor: default;
+      pointer-events: none;
+      color: transparent;
+
+      &::after {
+        content: "";
+        position: absolute;
+        width: 12px;
+        height: 12px;
+        border: 2px solid var(--sl-color-text);
+        border-top-color: transparent;
+        border-radius: 50%;
+        animation: page-src-spin 0.6s linear infinite;
+      }
     }
   }
 

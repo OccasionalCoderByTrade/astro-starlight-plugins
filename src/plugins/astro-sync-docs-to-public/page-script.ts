@@ -1,6 +1,6 @@
-function showSuccessBanner(message: string): void {
+function showBanner(message: string, variant: "success" | "error"): void {
   const banner = document.createElement("div");
-  banner.className = "page-src-banner page-src-banner--success";
+  banner.className = `page-src-banner page-src-banner--${variant}`;
   banner.textContent = message;
   document.body.appendChild(banner);
 
@@ -46,6 +46,10 @@ function createActionBar(): HTMLDivElement {
   menuBtn.className = "page-src-action-bar__btn";
   menuBtn.textContent = "⋮";
 
+  function setLoading(loading: boolean) {
+    menuBtn.classList.toggle("page-src-action-bar__btn--loading", loading);
+  }
+
   // --- dropdown menu ---
   const menu = document.createElement("div");
   menu.className = "page-src-action-bar__menu";
@@ -54,17 +58,24 @@ function createActionBar(): HTMLDivElement {
     {
       label: "Copy Page",
       action: () => {
+        setLoading(true);
         getRawMdUrl()
           .then((url) => fetch(url))
           .then((resp) => resp.text())
           .then((text) => navigator.clipboard.writeText(text))
-          .then(() => showSuccessBanner("Page source copied to clipboard!"));
+          .then(() => showBanner("Page source copied to clipboard!", "success"))
+          .catch(() => showBanner("Failed to copy page source.", "error"))
+          .finally(() => setLoading(false));
       },
     },
     {
       label: "View raw",
       action: () => {
-        getRawMdUrl().then((url) => window.open(url, "_blank"));
+        setLoading(true);
+        getRawMdUrl()
+          .then((url) => window.open(url, "_blank"))
+          .catch(() => showBanner("Failed to open raw source.", "error"))
+          .finally(() => setLoading(false));
       },
     },
   ];
