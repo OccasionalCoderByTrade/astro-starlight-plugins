@@ -48,7 +48,7 @@ export default defineConfig({
       svgOutputDir: "public/static/tex-svgs",
       removeOrphanedSvgs: true,
     }),
-    syncDocsToPublic({ preserveDirs: ["static"] }),
+    syncDocsToPublic({ preserveDirs: ["static"], exposePageSrcButton: true }),
     // astroNormalizePaths(),
     starlight({
       title: SITE_NAME,
@@ -56,9 +56,7 @@ export default defineConfig({
         minHeadingLevel: 2, // h1 not included since it conflicts with frontmatter title
         maxHeadingLevel: 6, // include up to h6 in table of contents
       },
-      plugins: [
-        STARLIGHT_SIDEBAR_CONFIG,
-      ],
+      plugins: [STARLIGHT_SIDEBAR_CONFIG],
       customCss: ["/src/styles/main.scss", "katex/dist/katex.min.css"],
       expressiveCode: {
         plugins: [pluginLineNumbers()],
