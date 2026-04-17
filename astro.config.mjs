@@ -48,7 +48,10 @@ export default defineConfig({
       svgOutputDir: "public/static/tex-svgs",
       removeOrphanedSvgs: true,
     }),
-    syncDocsToPublic({ preserveDirs: ["static"], exposePageSrcButton: true }),
+    syncDocsToPublic({
+      preserveDirs: ["static"],
+      exposePageSrcButton: true,
+    }),
     // astroNormalizePaths(),
     starlight({
       title: SITE_NAME,

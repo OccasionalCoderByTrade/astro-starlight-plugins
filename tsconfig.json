@@ -2,5 +2,5 @@
   // See https://docs.astro.build/en/guides/typescript/ for more information about Astro's TypeScript configuration.
   "extends": "astro/tsconfigs/strict",
   "include": [".astro/types.d.ts", "**/*"],
-  "exclude": ["dist"]
+  "exclude": ["dist", "external-*", "node_modules"]
 }

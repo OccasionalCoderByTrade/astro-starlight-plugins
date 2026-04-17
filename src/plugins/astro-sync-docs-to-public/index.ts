@@ -41,6 +41,27 @@ export interface SyncDocsToPublicOptions {
 const DEFAULT_SRC_DIR = "src/content/docs";
 const DEFAULT_PUBLIC_DIR = "public";
 
+function validateOptions(options: SyncDocsToPublicOptions): void {
+  const mdProbePaths = ["test.md", "test.mdx", "foo/test.md", "foo/test.mdx"];
+
+  if (!options.exposePageSrcButton) return;
+
+  const offendingMdPatterns = (options.ignorePatterns ?? []).filter((pattern) =>
+    mdProbePaths.some((probe) => minimatch(probe, pattern, { dot: true })),
+  );
+
+  const offendingMtPatternsStr = offendingMdPatterns
+    .map((p) => `    - "${p}"`)
+    .join("\n");
+
+  if (offendingMdPatterns.length > 0) {
+    throw new Error(
+      `The 'exposePageSrcButton' option is enabled but the following 'ignorePatterns' values conflict with it: \n${offendingMtPatternsStr}\n\n` +
+        `Since these ignore patterns match md/mdx files, the page source button would break. Either disable 'exposePageSrcButton' or remove these patterns.`,
+    );
+  }
+}
+
 /**
  * Full sync: delete non-preserved dirs and copy everything.
  * Only called on initial startup and build.
@@ -227,6 +248,7 @@ export function syncDocsToPublic(
     name: "astro-sync-docs-to-public",
     hooks: {
       "astro:config:setup": ({ injectScript }) => {
+        validateOptions(options);
         if (exposePageSrcButton) {
           const scriptPath = fileURLToPath(
             new URL("./page-script.js", import.meta.url),
