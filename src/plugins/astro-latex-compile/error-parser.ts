@@ -2,14 +2,14 @@
  * LaTeX error parser - extracts meaningful error messages from verbose LaTeX output
  */
 
-export interface LatexErrorMessage {
+interface LatexErrorMessage {
   message: string;
   line?: number;
   context: string[];
   severity: "error" | "warning" | "fatal";
 }
 
-export interface ParsedLatexError {
+interface ParsedLatexError {
   errors: LatexErrorMessage[];
   hasFatal: boolean;
 }

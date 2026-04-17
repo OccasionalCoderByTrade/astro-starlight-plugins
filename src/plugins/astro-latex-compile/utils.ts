@@ -14,7 +14,6 @@
  * entirely as document content.
  */
 import { createHash } from "node:crypto";
-import { spawn } from "node:child_process";
 import {
   existsSync,
   mkdirSync,
@@ -25,6 +24,7 @@ import {
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { createCompilationErrorMessage } from "./error-parser.js";
+import { execProcess } from "../utils/process-utils.js";
 
 export interface CompilationResult {
   hash: string;
@@ -84,33 +84,6 @@ function buildLatexSource(latexCode: string): string {
     content,
     "\\end{document}",
   ].join("\n");
-}
-
-function execProcess(
-  command: string,
-  args: string[],
-): Promise<{ status: number; stdout: string; stderr: string }> {
-  return new Promise((resolve, reject) => {
-    let stdout = "";
-    let stderr = "";
-
-    const proc = spawn(command, args);
-
-    proc.stdout.on("data", (data: Buffer) => {
-      stdout += data.toString();
-    });
-    proc.stderr.on("data", (data: Buffer) => {
-      stderr += data.toString();
-    });
-
-    proc.on("error", (err: NodeJS.ErrnoException) => {
-      reject(err);
-    });
-
-    proc.on("close", (code) => {
-      resolve({ status: code ?? 1, stdout, stderr });
-    });
-  });
 }
 
 /**
