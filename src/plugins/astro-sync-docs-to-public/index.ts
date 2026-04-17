@@ -310,6 +310,3 @@ export function syncDocsToPublic(
     },
   };
 }
-
-/** @deprecated Use {@link syncDocsToPublic} instead. */
-export const starlightSyncDocsToPublic = syncDocsToPublic;
