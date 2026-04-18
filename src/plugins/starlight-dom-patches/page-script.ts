@@ -18,22 +18,24 @@ export function hideSingleLineGutters() {
 }
 
 export function syncTocLabelsFromHeadings() {
-  document.querySelectorAll("starlight-toc ul li > a").forEach((anchor) => {
-    const href = anchor.getAttribute("href") ?? "";
-    const hashIndex = href.indexOf("#");
-    if (hashIndex === -1) return;
+  document
+    .querySelectorAll("starlight-toc ul li > a, mobile-starlight-toc ul li > a")
+    .forEach((anchor) => {
+      const href = anchor.getAttribute("href") ?? "";
+      const hashIndex = href.indexOf("#");
+      if (hashIndex === -1) return;
 
-    const id = href.slice(hashIndex + 1);
-    if (id == "_top") return;
+      const id = href.slice(hashIndex + 1);
+      if (id == "_top") return;
 
-    const heading = document.getElementById(id);
-    if (!heading) return;
+      const heading = document.getElementById(id);
+      if (!heading) return;
 
-    const span = anchor.querySelector(":scope > span");
-    if (!span) return;
+      const span = anchor.querySelector(":scope > span");
+      if (!span) return;
 
-    span.innerHTML = heading.innerHTML;
-  });
+      span.innerHTML = heading.innerHTML;
+    });
 }
 
 export function wrapDetailsContent() {
