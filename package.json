@@ -1,7 +1,7 @@
 {
   "name": "starlight-cannoli-plugins",
   "type": "module",
-  "version": "2.3.0",
+  "version": "2.3.1",
   "description": "Starlight plugins for automatic sidebar generation and link validation",
   "license": "ISC",
   "main": "./dist/index.js",
