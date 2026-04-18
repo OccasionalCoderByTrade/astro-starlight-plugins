@@ -53,7 +53,11 @@ export default defineConfig({
       preserveDirs: ["static"],
       exposePageSrcButton: true,
     }),
-    starlightDomPatches({ hideSingleLineGutters: true, wrapDetailsContent: true }),
+    starlightDomPatches({
+      hideSingleLineGutters: true,
+      wrapDetailsContent: true,
+      syncTocLabelsFromHeadings: true,
+    }),
     // astroNormalizePaths(),
     starlight({
       title: SITE_NAME,
