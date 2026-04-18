@@ -4,6 +4,8 @@ import type { AstroIntegration } from "astro";
 export interface DomPatchesOptions {
   /** Hide line number gutters on single-line code blocks. @default false */
   hideSingleLineGutters?: boolean;
+  /** Copy rendered heading innerHTML into matching Starlight TOC anchor labels. @default false */
+  syncTocLabelsFromHeadings?: boolean;
   /** Wrap `<details>` content (excluding `<summary>`) in a `.details-wrapper` div. @default false */
   wrapDetailsContent?: boolean;
 }
@@ -15,7 +17,11 @@ export interface DomPatchesOptions {
 export function starlightDomPatches(
   options: DomPatchesOptions = {},
 ): AstroIntegration {
-  const { hideSingleLineGutters = false, wrapDetailsContent = false } = options;
+  const {
+    hideSingleLineGutters = false,
+    syncTocLabelsFromHeadings = false,
+    wrapDetailsContent = false,
+  } = options;
 
   return {
     name: "starlight-dom-patches",
@@ -40,6 +46,7 @@ export function starlightDomPatches(
         const scriptPath = JSON.stringify(fileURLToPath(pageScriptUrl));
         const imports = [
           hideSingleLineGutters ? "hideSingleLineGutters" : null,
+          syncTocLabelsFromHeadings ? "syncTocLabelsFromHeadings" : null,
           wrapDetailsContent ? "wrapDetailsContent" : null,
         ].filter(Boolean);
 

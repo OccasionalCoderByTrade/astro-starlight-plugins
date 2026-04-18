@@ -317,6 +317,36 @@ syncDocsToPublic({
 });
 ```
 
+### Starlight DOM Patches
+
+An Astro integration that injects a client-side script to apply opt-in DOM patches on every page. Each patch is disabled by default and must be explicitly enabled.
+
+**Options:**
+
+- `hideSingleLineGutters` (optional, default: `false`): Hides the line number gutter on Expressive Code blocks that contain only a single line.
+- `syncTocLabelsFromHeadings` (optional, default: `false`): Copies the rendered HTML of each heading into its matching Starlight TOC anchor label, so the TOC properly reflects any custom markup (e.g. math) present in the heading.
+- `wrapDetailsContent` (optional, default: `false`): Wraps the content of every `<details>` element (excluding its `<summary>`) in a `<div class="details-wrapper">`, useful for applying consistent spacing or animation styles.
+
+**Usage:**
+
+```ts
+// astro.config.mjs
+import { defineConfig } from "astro/config";
+import starlight from "@astrojs/starlight";
+import { starlightDomPatches } from "starlight-cannoli-plugins";
+
+export default defineConfig({
+  integrations: [
+    starlightDomPatches({
+      hideSingleLineGutters: true,
+      syncTocLabelsFromHeadings: true,
+      wrapDetailsContent: true,
+    }),
+    starlight({ title: "My Docs" }),
+  ],
+});
+```
+
 ## CLI Utilities
 
 ### cannoli-latex-cleanup
