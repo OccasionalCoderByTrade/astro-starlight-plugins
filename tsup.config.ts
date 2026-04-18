@@ -12,6 +12,10 @@ export default defineConfig({
       "src/plugins/astro-sync-docs-to-public/index.ts",
     "plugins/astro-sync-docs-to-public/page-script":
       "src/plugins/astro-sync-docs-to-public/page-script.ts",
+    "plugins/starlight-dom-patches":
+      "src/plugins/starlight-dom-patches/index.ts",
+    "plugins/starlight-dom-patches/page-script":
+      "src/plugins/starlight-dom-patches/page-script.ts",
   },
   format: ["esm"],
   dts: true,

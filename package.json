@@ -1,7 +1,7 @@
 {
   "name": "starlight-cannoli-plugins",
   "type": "module",
-  "version": "2.3.1",
+  "version": "2.3.2",
   "description": "Starlight plugins for automatic sidebar generation and link validation",
   "license": "ISC",
   "main": "./dist/index.js",
@@ -33,6 +33,10 @@
     "./astro-sync-docs-to-public": {
       "import": "./dist/plugins/astro-sync-docs-to-public.js",
       "types": "./dist/plugins/astro-sync-docs-to-public.d.ts"
+    },
+    "./starlight-dom-patches": {
+      "import": "./dist/plugins/starlight-dom-patches.js",
+      "types": "./dist/plugins/starlight-dom-patches.d.ts"
     },
     "./styles": "./dist/styles/",
     "./styles/*": "./dist/styles/*"
