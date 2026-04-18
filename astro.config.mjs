@@ -10,6 +10,7 @@ import remarkMath from "remark-math";
 import {
   astroLatexCompile,
   rehypeValidateLinks,
+  starlightDomPatches,
   starlightIndexOnlySidebar,
   syncDocsToPublic,
 } from "./src";
@@ -52,6 +53,7 @@ export default defineConfig({
       preserveDirs: ["static"],
       exposePageSrcButton: true,
     }),
+    starlightDomPatches({}),
     // astroNormalizePaths(),
     starlight({
       title: SITE_NAME,
