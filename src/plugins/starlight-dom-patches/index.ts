@@ -2,9 +2,9 @@ import { fileURLToPath } from "node:url";
 import type { AstroIntegration } from "astro";
 
 export interface DomPatchesOptions {
-  /** Hide line number gutters on single-line code blocks. @default true */
+  /** Hide line number gutters on single-line code blocks. @default false */
   hideSingleLineGutters?: boolean;
-  /** Wrap `<details>` content (excluding `<summary>`) in a `.details-wrapper` div. @default true */
+  /** Wrap `<details>` content (excluding `<summary>`) in a `.details-wrapper` div. @default false */
   wrapDetailsContent?: boolean;
 }
 
@@ -15,7 +15,7 @@ export interface DomPatchesOptions {
 export function starlightDomPatches(
   options: DomPatchesOptions = {},
 ): AstroIntegration {
-  const { hideSingleLineGutters = true, wrapDetailsContent = true } = options;
+  const { hideSingleLineGutters = false, wrapDetailsContent = false } = options;
 
   return {
     name: "starlight-dom-patches",
