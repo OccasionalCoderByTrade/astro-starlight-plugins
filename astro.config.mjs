@@ -4,7 +4,6 @@ import { pluginLineNumbers } from "@expressive-code/plugin-line-numbers";
 
 import { defineConfig } from "astro/config";
 import addClasses from "rehype-class-names";
-import rehypeGraphviz from "rehype-graphviz";
 import rehypeKatex from "rehype-katex";
 import remarkMath from "remark-math";
 import {
@@ -40,7 +39,6 @@ export default defineConfig({
         addClasses,
         { ".katex": "not-content", "mjx-container>svg": "not-content" },
       ],
-      rehypeGraphviz, // Graphviz diagram support
       rehypeValidateLinks, // validate links and convert to absolute paths
     ],
   },

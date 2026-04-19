@@ -111,7 +111,6 @@
     "lodash": "^4.17.23",
     "pino": "^10.3.1",
     "rehype-class-names": "^2.0.0",
-    "rehype-graphviz": "^0.3.0",
     "rehype-katex": "^7.0.1",
     "rehype-mathjax": "^7.1.0",
     "rehype-raw": "^7.0.0",
