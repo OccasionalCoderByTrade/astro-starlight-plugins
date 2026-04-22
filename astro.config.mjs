@@ -39,7 +39,7 @@ export default defineConfig({
         addClasses,
         { ".katex": "not-content", "mjx-container>svg": "not-content" },
       ],
-      rehypeValidateLinks, // validate links and convert to absolute paths
+      rehypeValidateLinks, // check for broken local links
     ],
   },
   integrations: [
