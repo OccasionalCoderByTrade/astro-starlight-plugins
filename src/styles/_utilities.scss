@@ -1,6 +1,10 @@
 // Pre-built Bootstrap utilities
 @use "bootstrap-utilities";
 
+.visually-hidden {
+  display: none !important;
+}
+
 /********** Custom Class Utilities (not in Bootstrap) **********/
 .visibility-hidden {
   visibility: hidden !important;
