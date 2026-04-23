@@ -8,7 +8,7 @@ export {
   type SyncDocsToPublicOptions,
 } from "./plugins/astro-sync-docs-to-public/index.js";
 export { rehypeValidateLinks } from "./plugins/rehype-validate-links.js";
-export { astroNormalizePaths } from "./plugins/astro-normalize-paths.js";
+export { astroNormalizePaths } from "./plugins/astro-normalize-paths/index.js";
 export { default as remarkLatexCompile } from "./plugins/astro-latex-compile/index.js";
 export {
   astroLatexCompile,

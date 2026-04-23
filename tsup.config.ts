@@ -7,7 +7,8 @@ export default defineConfig({
       "src/plugins/starlight-index-only-sidebar/index.ts",
     "plugins/rehype-validate-links": "src/plugins/rehype-validate-links.ts",
     "plugins/astro-latex-compile": "src/plugins/astro-latex-compile/index.ts",
-    "plugins/astro-normalize-paths": "src/plugins/astro-normalize-paths.ts",
+    "plugins/astro-normalize-paths":
+      "src/plugins/astro-normalize-paths/index.ts",
     "plugins/astro-sync-docs-to-public":
       "src/plugins/astro-sync-docs-to-public/index.ts",
     "plugins/astro-sync-docs-to-public/page-script":
