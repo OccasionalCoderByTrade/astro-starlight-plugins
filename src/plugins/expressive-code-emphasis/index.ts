@@ -5,8 +5,6 @@ import {
 } from "@expressive-code/core";
 import { h } from "@expressive-code/core/hast";
 
-const css = String.raw;
-
 class EmphasisAnnotation extends ExpressiveCodeAnnotation {
   render({ nodesToTransform }: AnnotationRenderOptions) {
     return nodesToTransform.map((node) => h("span.fw-supreme", [node]));
@@ -29,18 +27,6 @@ function parseEmphTerms(meta: string): string[] {
 export function expressiveCodeEmphasis() {
   return definePlugin({
     name: "expressiveCodeEmphasis",
-    baseStyles: css`
-      @import url("https://fonts.googleapis.com/css2?family=Open+Sans:wght@700;800&display=swap");
-
-      .fw-supreme {
-        font-family: "Open Sans", sans-serif;
-        font-weight: 800;
-      }
-
-      html:not([data-theme="light"]) .fw-supreme > span {
-        color: var(--sl-color-white);
-      }
-    `,
     hooks: {
       preprocessCode: (context) => {
         const terms = parseEmphTerms(context.codeBlock.meta);
