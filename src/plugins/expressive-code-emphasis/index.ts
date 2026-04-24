@@ -5,10 +5,16 @@ import {
 } from "@expressive-code/core";
 import { h } from "@expressive-code/core/hast";
 
+const css = String.raw;
+
 class EmphasisAnnotation extends ExpressiveCodeAnnotation {
   render({ nodesToTransform }: AnnotationRenderOptions) {
-    return nodesToTransform.map((node) => h("span.bold-supreme", [node]));
+    return nodesToTransform.map((node) => h("span.fw-supreme", [node]));
   }
+}
+
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function parseEmphTerms(meta: string): string[] {
@@ -23,6 +29,18 @@ function parseEmphTerms(meta: string): string[] {
 export function expressiveCodeEmphasis() {
   return definePlugin({
     name: "expressiveCodeEmphasis",
+    baseStyles: css`
+      @import url("https://fonts.googleapis.com/css2?family=Open+Sans:wght@700;800&display=swap");
+
+      .fw-supreme {
+        font-family: "Open Sans", sans-serif;
+        font-weight: 800;
+      }
+
+      html:not([data-theme="light"]) .fw-supreme > span {
+        color: var(--sl-color-white);
+      }
+    `,
     hooks: {
       preprocessCode: (context) => {
         const terms = parseEmphTerms(context.codeBlock.meta);
@@ -30,19 +48,16 @@ export function expressiveCodeEmphasis() {
 
         for (const line of context.codeBlock.getLines()) {
           for (const term of terms) {
-            let searchFrom = 0;
-            while (true) {
-              const index = line.text.indexOf(term, searchFrom);
-              if (index === -1) break;
+            const regex = new RegExp(`\\b${escapeRegex(term)}\\b`, "g");
+            for (const match of line.text.matchAll(regex)) {
               line.addAnnotation(
                 new EmphasisAnnotation({
                   inlineRange: {
-                    columnStart: index,
-                    columnEnd: index + term.length,
+                    columnStart: match.index,
+                    columnEnd: match.index + term.length,
                   },
                 }),
               );
-              searchFrom = index + term.length;
             }
           }
         }
