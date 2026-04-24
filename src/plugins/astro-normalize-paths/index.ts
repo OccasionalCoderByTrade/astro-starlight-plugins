@@ -108,11 +108,12 @@ function getLinks(document: Document): LinkElement[] {
  * `dist/reference/schemas/index.html`. This function resolves the ambiguity by checking which
  * candidate source files actually exist. If exactly one exists it is returned; otherwise an
  * error is thrown directing the user to fix the collision in their file structure.
+ *
+ * @param htmlFilePath - absolute + resolved path; the built/compiled HTML file path in the astro-configured dist directory
+ * @param distRoot - absolute + resolved path; the astro dir where it places HTML content upon compiling from source
+ * @returns
  */
-function resolveSourceFile(
-  htmlFilePath: string, // absolute path
-  distRoot: string, // absolute path
-): string {
+function resolveSourceFile(htmlFilePath: string, distRoot: string): string {
   const normalizedDistDir = distRoot.replace(/\/+$/, "");
   const srcDir = PROJECT_DOCS_DIR.replace(/\/+$/, "");
 
