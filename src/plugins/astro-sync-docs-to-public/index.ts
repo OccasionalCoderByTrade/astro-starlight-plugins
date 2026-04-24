@@ -19,6 +19,128 @@ import { resolve, relative, dirname } from "node:path";
 import { minimatch } from "minimatch";
 import { parseFrontmatter } from "../utils/workspace-utils.js";
 
+const css = String.raw;
+
+const pageSrcStyles = css`
+  .page-src-banner {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 9999;
+    padding: 12px 24px;
+    text-align: center;
+    font-size: 14px;
+    font-family: inherit;
+    transform: translateY(-100%);
+    transition: transform 0.25s ease;
+  }
+
+  .page-src-banner--success {
+    background: #2da44e;
+    color: #fff;
+  }
+
+  .page-src-banner--error {
+    background: #cf222e;
+    color: #fff;
+  }
+
+  .page-src-banner--visible {
+    transform: translateY(0);
+  }
+
+  .page-src-h1-wrapper {
+    position: relative;
+  }
+
+  @keyframes page-src-spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .page-src-action-bar {
+    position: absolute;
+    top: -30px;
+    right: -5px;
+  }
+
+  .page-src-action-bar__btn {
+    position: relative;
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    border: 1px solid var(--sl-color-hairline);
+    border-radius: 6px;
+    background: transparent;
+    color: var(--sl-color-text);
+    cursor: pointer;
+    font-size: 16px;
+    font-family: inherit;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .page-src-action-bar__btn:hover {
+    background: var(--sl-color-bg-nav);
+  }
+
+  .page-src-action-bar__btn--loading {
+    cursor: default;
+    pointer-events: none;
+    color: transparent;
+  }
+
+  .page-src-action-bar__btn--loading::after {
+    content: "";
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    border: 2px solid var(--sl-color-text);
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: page-src-spin 0.6s linear infinite;
+  }
+
+  .page-src-action-bar__menu {
+    display: none;
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    min-width: 160px;
+    border: 1px solid var(--sl-color-hairline);
+    border-radius: 6px;
+    background: var(--sl-color-bg);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    z-index: 1000;
+    overflow: hidden;
+  }
+
+  .page-src-action-bar__menu--open {
+    display: block;
+  }
+
+  .page-src-action-bar__menu-item {
+    display: block;
+    width: 100%;
+    padding: 6px 16px;
+    border: none;
+    background: transparent;
+    color: var(--sl-color-text);
+    text-align: left;
+    cursor: pointer;
+    font-size: inherit;
+    font-family: inherit;
+    line-height: 1.5;
+  }
+
+  .page-src-action-bar__menu-item:hover {
+    background: var(--sl-color-bg-nav);
+  }
+`;
+
 export interface SyncDocsToPublicOptions {
   /**
    * Names of child directories inside public/ to preserve during sync.
@@ -236,6 +358,14 @@ export function syncDocsToPublic(
       "astro:config:setup": ({ injectScript }) => {
         validateOptions(options);
         if (exposePageSrcButton) {
+          injectScript(
+            "page",
+            `
+            const s = document.createElement('style');
+            s.textContent = ${JSON.stringify(pageSrcStyles)};
+            document.head.appendChild(s);
+          `,
+          );
           // Three contexts require three different paths to page-script.js:
           // 1. Local dev (.ts source): page-script.ts lives alongside index.ts
           // 2. Dist, own entry (dist/plugins/astro-sync-docs-to-public.js): page-script is one level deeper
