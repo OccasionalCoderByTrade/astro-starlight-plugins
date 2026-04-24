@@ -9,6 +9,7 @@ import remarkMath from "remark-math";
 import {
   astroLatexCompile,
   astroNormalizePaths,
+  expressiveCodeEmphasis,
   rehypeValidateLinks,
   starlightDomPatches,
   starlightIndexOnlySidebar,
@@ -67,7 +68,7 @@ export default defineConfig({
       plugins: [STARLIGHT_SIDEBAR_CONFIG],
       customCss: ["/src/styles/main.scss", "katex/dist/katex.min.css"],
       expressiveCode: {
-        plugins: [pluginLineNumbers()],
+        plugins: [pluginLineNumbers(), expressiveCodeEmphasis()],
         defaultProps: {
           showLineNumbers: true,
           overridesByLang: {

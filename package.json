@@ -97,6 +97,7 @@
     "@astrojs/starlight": "^0.37.6",
     "@eslint/js": "^10.0.1",
     "@eslint/markdown": "^7.5.1",
+    "@expressive-code/core": "^0.41.7",
     "@expressive-code/plugin-line-numbers": "^0.41.7",
     "@hpcc-js/wasm": "^2.33.1",
     "@trivago/prettier-plugin-sort-imports": "^6.0.2",

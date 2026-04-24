@@ -1,3 +1,5 @@
+@import url("https://fonts.googleapis.com/css2?family=Open+Sans:wght@700;800&display=swap");
+
 /********** Starlight Overrides **********/
 
 .sl-container:where(.astro-7nkwcw3z) {
@@ -58,6 +60,11 @@ starlight-toc ul > li {
 .expressive-code .copy > button {
   height: 2rem;
   width: 2rem;
+}
+
+.bold-supreme {
+  font-family: "Open Sans", sans-serif;
+  font-weight: 800;
 }
 
 /************ Details/Summary Styles ************/
