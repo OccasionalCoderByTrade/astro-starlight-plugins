@@ -17,7 +17,10 @@ export default defineConfig({
       "src/plugins/starlight-dom-patches/index.ts",
     "plugins/starlight-dom-patches/page-script":
       "src/plugins/starlight-dom-patches/page-script.ts",
+    "plugins/expressive-code-emphasis":
+      "src/plugins/expressive-code-emphasis/index.ts",
   },
+  external: ["@expressive-code/core"],
   format: ["esm"],
   dts: true,
   clean: true,

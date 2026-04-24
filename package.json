@@ -79,6 +79,7 @@
   },
   "peerDependencies": {
     "@astrojs/starlight": ">=0.30.0",
+    "@expressive-code/core": ">=0.41.7",
     "astro": ">=5.0.0"
   },
   "peerDependenciesMeta": {
@@ -86,6 +87,9 @@
       "optional": false
     },
     "@astrojs/starlight": {
+      "optional": true
+    },
+    "@expressive-code/core": {
       "optional": true
     }
   },
