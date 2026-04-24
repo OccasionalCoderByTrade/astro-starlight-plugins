@@ -5,13 +5,7 @@ import { dirname, relative, resolve } from "path";
 import type { AstroIntegration } from "astro";
 import { JSDOM } from "jsdom";
 
-/**
- * Astro integration that normalizes img src and anchor href attributes to absolute paths in HTML files after build.
- * This processes resources in Starlight docs that aren't handled by the rehype plugin.
- *
- * Handles the case where Astro converts markdown files into index.html files in subdirectories,
- * which changes the relative path structure.
- */
+const SRC_CONTENT_ROOT = "src/content/docs/";
 
 // the element attributes that we can access to to read/set the link value
 // via which to read/set element.setAttribute(attribute, "newHrefValue");
@@ -50,8 +44,6 @@ class LinkElement {
     return element.getAttribute(this._accessor) ?? "";
   }
 }
-
-const SRC_CONTENT_ROOT = "src/content/docs/";
 
 /**
  * Astro integration that rewrites relative link hrefs in built HTML files to absolute site paths.
