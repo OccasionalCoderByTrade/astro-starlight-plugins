@@ -4,7 +4,7 @@ import { glob } from "glob";
 import { dirname, relative, resolve } from "path";
 import type { AstroIntegration } from "astro";
 import { JSDOM } from "jsdom";
-import { PROJECT_DOCS_DIR } from "../utils/path-utils";
+import { isRelativePath, PROJECT_DOCS_DIR } from "../utils/path-utils";
 
 // the element attributes that we can access to to read/set the link value
 // via which to read/set element.setAttribute(attribute, "newHrefValue");
@@ -196,16 +196,4 @@ function normalizeAssetPath(
     : relToRoot;
 
   return "/" + relToContentRoot.replace(/\\/g, "/") + suffix;
-}
-
-/** Returns true if the href is a relative path that should be resolved and rewritten. */
-function isRelativePath(path: string): boolean {
-  return (
-    !path.startsWith("/") &&
-    !path.startsWith("http://") &&
-    !path.startsWith("https://") &&
-    !path.startsWith("data:") &&
-    !path.startsWith("#") &&
-    !path.startsWith("mailto:")
-  );
 }

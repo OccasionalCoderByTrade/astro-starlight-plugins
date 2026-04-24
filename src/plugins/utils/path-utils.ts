@@ -17,8 +17,18 @@ const EXTERNAL_SCHEMES = [
   "wss://",
 ];
 
-export function isExternalHref(href: string): boolean {
-  return EXTERNAL_SCHEMES.some((scheme) => href.startsWith(scheme));
+export function isExternalPath(path: string): boolean {
+  return EXTERNAL_SCHEMES.some((scheme) => path.startsWith(scheme));
+}
+
+/** Returns true if the href is a relative path that should be resolved and rewritten. */
+export function isRelativePath(path: string): boolean {
+  return (
+    !isExternalPath(path) &&
+    !path.startsWith("/") &&
+    !path.startsWith("data:") &&
+    !path.startsWith("#")
+  );
 }
 
 /**
