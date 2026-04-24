@@ -44,7 +44,7 @@ function extractClassesFromMeta(meta: string): string[] {
   return [];
 }
 
-export default function remarkLatexCompile(options: RemarkLatexCompileOptions) {
+export function remarkLatexCompile(options: RemarkLatexCompileOptions) {
   const svgOutputDir = resolve(options.svgOutputDir);
 
   return async function transformer(tree: Root, file: VFile) {

@@ -158,5 +158,3 @@ export function rehypeValidateLinks(options?: TRehypeValidateLinksOptions) {
     }
   };
 }
-
-export default rehypeValidateLinks;

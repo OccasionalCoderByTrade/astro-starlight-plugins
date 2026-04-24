@@ -13,7 +13,9 @@ export function rehypeDetailsWrapper() {
         try {
           // Find the summary element and all other children
           const summaryIndex = node.children.findIndex(
-            (child) => child.type === "element" && (child as Element).tagName === "summary"
+            (child) =>
+              child.type === "element" &&
+              (child as Element).tagName === "summary",
           );
 
           if (summaryIndex === -1) {
@@ -56,5 +58,3 @@ export function rehypeDetailsWrapper() {
     });
   };
 }
-
-export default rehypeDetailsWrapper;

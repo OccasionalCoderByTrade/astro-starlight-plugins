@@ -2,7 +2,7 @@ import fs from "node:fs";
 import { readdir, rm } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import type { AstroConfig, AstroIntegration } from "astro";
-import remarkLatexCompile, { type RemarkLatexCompileOptions } from "./index.js";
+import { remarkLatexCompile, type RemarkLatexCompileOptions } from "./index.js";
 
 export interface LatexCompileOptions extends RemarkLatexCompileOptions {
   /**
@@ -28,7 +28,9 @@ async function clearContentLayerCache(config: AstroConfig): Promise<void> {
   }
 }
 
-export function astroLatexCompile(options: LatexCompileOptions): AstroIntegration {
+export function astroLatexCompile(
+  options: LatexCompileOptions,
+): AstroIntegration {
   const referencedHashes = new Set<string>();
   const fileHashMap = new Map<string, Set<string>>();
 
@@ -49,14 +51,18 @@ export function astroLatexCompile(options: LatexCompileOptions): AstroIntegratio
         const remarkOptions: RemarkLatexCompileOptions = {
           ...options,
           _fileHashMap: options.removeOrphanedSvgs ? fileHashMap : undefined,
-          _referencedHashes: command === "build" && options.removeOrphanedSvgs
-            ? referencedHashes
-            : undefined,
+          _referencedHashes:
+            command === "build" && options.removeOrphanedSvgs
+              ? referencedHashes
+              : undefined,
         };
 
         updateConfig({
           markdown: {
-            remarkPlugins: [...existingPlugins, [remarkLatexCompile, remarkOptions]],
+            remarkPlugins: [
+              ...existingPlugins,
+              [remarkLatexCompile, remarkOptions],
+            ],
           },
         });
       },

@@ -209,5 +209,3 @@ function isRelativePath(path: string): boolean {
     !path.startsWith("mailto:")
   );
 }
-
-export default astroNormalizePaths;
