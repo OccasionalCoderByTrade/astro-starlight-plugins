@@ -8,6 +8,7 @@ import rehypeKatex from "rehype-katex";
 import remarkMath from "remark-math";
 import {
   astroLatexCompile,
+  astroNormalizePaths,
   rehypeValidateLinks,
   starlightDomPatches,
   starlightIndexOnlySidebar,
@@ -56,7 +57,7 @@ export default defineConfig({
       wrapDetailsContent: true,
       syncTocLabelsFromHeadings: true,
     }),
-    // astroNormalizePaths(),
+    astroNormalizePaths(),
     starlight({
       title: SITE_NAME,
       tableOfContents: {
