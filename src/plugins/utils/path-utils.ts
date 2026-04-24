@@ -1,51 +1,36 @@
-import { dirname, resolve } from "path";
 import { minimatch } from "minimatch";
 
-const PROJECT_DOCS_DIR = "src/content/docs";
+export const PROJECT_DOCS_DIR = "src/content/docs";
 
-/**
- * Check if a path is an external URL, data URI, or absolute path
- */
-export function isExternalPath(path: string): boolean {
-  return path.startsWith("http") || path.startsWith("data:") || path.startsWith("/");
+const EXTERNAL_SCHEMES = [
+  "http://",
+  "https://",
+  "ftp://",
+  "ftps://",
+  "sftp://",
+  "ssh://",
+  "git://",
+  "svn://",
+  "irc://",
+  "ircs://",
+  "ws://",
+  "wss://",
+];
+
+export function isExternalHref(href: string): boolean {
+  return EXTERNAL_SCHEMES.some((scheme) => href.startsWith(scheme));
 }
 
 /**
- * Check if a path matches any of the given skip patterns
+ * Check if a path matches any of the given glob patterns
  */
-export function matchesSkipPattern(path: string, patterns: string[] | undefined): boolean {
+export function matchesGlobPatterns(
+  path: string,
+  patterns: string[] | undefined,
+): boolean {
   if (!patterns || patterns.length === 0) {
     return false;
   }
 
   return patterns.some((pattern) => minimatch(path, pattern));
 }
-
-/**
- * Normalize a relative path to an absolute site path
- * Resolves relative to the given file's directory and converts to absolute path from site root
- */
-export function normalizePath(
-  path: string,
-  fromFilePath: string,
-  siteRootPath: string
-): string | null {
-  // Skip external URLs, data URIs, and absolute paths
-  if (isExternalPath(path)) {
-    return null;
-  }
-
-  // For relative paths, resolve relative to the file's directory
-  const fileDir = dirname(fromFilePath);
-  const resolvedPath = resolve(fileDir, path);
-
-  // Convert to absolute site path
-  const siteRoot = resolve(siteRootPath);
-  const relativePath = resolve(resolvedPath)
-    .slice(siteRoot.length)
-    .replace(/\\/g, "/")
-    .replace(/^\/+/, ""); // Remove leading slashes to avoid double slash
-  return "/" + relativePath;
-}
-
-export { PROJECT_DOCS_DIR };

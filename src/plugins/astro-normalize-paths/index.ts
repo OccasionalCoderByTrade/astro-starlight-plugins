@@ -4,8 +4,7 @@ import { glob } from "glob";
 import { dirname, relative, resolve } from "path";
 import type { AstroIntegration } from "astro";
 import { JSDOM } from "jsdom";
-
-const SRC_CONTENT_ROOT = "src/content/docs/";
+import { PROJECT_DOCS_DIR } from "../utils/path-utils";
 
 // the element attributes that we can access to to read/set the link value
 // via which to read/set element.setAttribute(attribute, "newHrefValue");
@@ -115,7 +114,7 @@ function resolveSourceFile(
   distRoot: string, // absolute path
 ): string {
   const normalizedDistDir = distRoot.replace(/\/+$/, "");
-  const srcDir = SRC_CONTENT_ROOT.replace(/\/+$/, "");
+  const srcDir = PROJECT_DOCS_DIR.replace(/\/+$/, "");
 
   const relativeHtmlPath = htmlFilePath
     .slice(normalizedDistDir.length)
@@ -190,7 +189,8 @@ function normalizeAssetPath(
 
   const absoluteLinkedPath = resolve(dirname(sourceFilePath), href);
   const relToRoot = relative(process.cwd(), absoluteLinkedPath);
-  const srcContentRoot = SRC_CONTENT_ROOT.replace(/\/+$/, "");
+  const srcContentRoot = PROJECT_DOCS_DIR.replace(/\/+$/, "");
+
   const relToContentRoot = relToRoot.startsWith(srcContentRoot)
     ? relToRoot.slice(srcContentRoot.length).replace(/^\/+/, "")
     : relToRoot;

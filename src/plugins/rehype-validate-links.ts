@@ -4,7 +4,7 @@ import type { Element, Root } from "hast";
 import { dirname, join, relative, resolve } from "path";
 import { visit } from "unist-util-visit";
 import type { VFile } from "vfile";
-import { PROJECT_DOCS_DIR, matchesSkipPattern } from "./utils/path-utils.js";
+import { PROJECT_DOCS_DIR, matchesGlobPatterns } from "./utils/path-utils.js";
 
 type TLink = {
   original_href: string;
@@ -143,7 +143,7 @@ export function rehypeValidateLinks(options?: TRehypeValidateLinksOptions) {
 
       if (link.skipValidation) return;
       if (node.properties?.["data-no-link-check"] !== undefined) return;
-      if (matchesSkipPattern(link.site_absolute_href, options?.skipPatterns))
+      if (matchesGlobPatterns(link.site_absolute_href, options?.skipPatterns))
         return;
 
       const error = validateLink(link);
