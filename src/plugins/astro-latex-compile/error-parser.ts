@@ -189,20 +189,18 @@ function formatLatexSourceWithLineNumbers(
   const RESET = "\x1b[0m";
 
   const lines = latexSource.split("\n");
-  const maxLineNum = lines.length;
-  const lineNumWidth = String(maxLineNum).length;
+  const setwidthAmount = "[999]".length;
   const errorLineNumbers = new Set(errors.map((e) => e.line).filter(Boolean));
 
   const formattedLines = lines
     .map((line, index) => {
       const lineNum = index + 1;
-      const lineNumStr = String(lineNum);
-      const padding = lineNumStr.length < lineNumWidth ? " " : "";
+      const lineNumIdentifier = `[${lineNum}]`.padStart(setwidthAmount);
 
       if (errorLineNumbers.has(lineNum)) {
-        return `${padding}${RED}[${lineNumStr}]:${RESET} ${line}`;
+        return `${RED}${lineNumIdentifier}:${RESET} ${line}`;
       }
-      return `${padding}[${lineNumStr}]: ${line}`;
+      return `${lineNumIdentifier}: ${line}`;
     })
     .join("\n");
 
