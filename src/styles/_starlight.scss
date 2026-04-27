@@ -1,5 +1,7 @@
 /********** Starlight Overrides **********/
 
+$DARK_MODE_ROTATE: 178deg;
+
 .sl-container:where(.astro-7nkwcw3z) {
   max-width: 50rem;
 }
@@ -127,7 +129,7 @@ div > div[class="page"] > svg {
   html:not([data-theme="light"]) & {
     stroke: white;
     fill: white;
-    filter: invert(1) hue-rotate(168deg);
+    filter: invert(1) hue-rotate($DARK_MODE_ROTATE);
   }
 }
 
@@ -175,7 +177,7 @@ img.note-svg {
   }
 
   html:not([data-theme="light"]) & {
-    filter: invert(1) hue-rotate(168deg);
+    filter: invert(1) hue-rotate($DARK_MODE_ROTATE);
   }
 }
 
@@ -183,6 +185,6 @@ img.note-svg {
   background-color: transparent;
 
   html[data-theme="dark"] & {
-    filter: invert(1) hue-rotate(168deg);
+    filter: invert(1) hue-rotate($DARK_MODE_ROTATE);
   }
 }
