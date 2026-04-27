@@ -36,6 +36,17 @@ export function syncTocLabelsFromHeadings() {
 
       span.innerHTML = heading.innerHTML;
     });
+
+  document
+    .querySelectorAll("starlight-toc ul > li > a > span")
+    .forEach((span) => {
+      if (span.childElementCount !== 1) return;
+
+      const child = span.children[0];
+      if (child.tagName !== "STRONG") return;
+
+      span.innerHTML = child.innerHTML;
+    });
 }
 
 export function wrapDetailsContent() {

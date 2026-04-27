@@ -57,7 +57,7 @@
     "url": "https://github.com/OccasionalCoderByTrade/astro-starlight-plugins"
   },
   "scripts": {
-    "app:dev": "npm run app:preprocess && rm -rf .astro/ && astro dev --port 5600",
+    "app:dev": "npm run app:preprocess && rm -rf .astro/ && astro dev --host --port 5600",
     "app:build": "npm run app:preprocess && rm -rf .astro/ && astro build",
     "app:preview": "astro build && astro preview --port 5600",
     "app:preprocess": "npx sass --quiet --no-source-map src/styles/_bootstrap-utilities-builder.scss src/styles/_bootstrap-utilities.scss",
