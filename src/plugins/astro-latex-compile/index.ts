@@ -113,16 +113,15 @@ export function remarkLatexCompile(options: RemarkLatexCompileOptions) {
       const { node } = nodes[i];
       if (!result) continue;
 
+      const metaOptions = new MetaOptions(node.meta ?? "");
       const customClasses =
-        new MetaOptions(node.meta ?? "")
-          .getString("class")
-          ?.split(/\s+/)
-          .filter(Boolean) ?? [];
+        metaOptions.getString("class")?.split(/\s+/).filter(Boolean) ?? [];
+      const altText = metaOptions.getString("alt") ?? "LaTeX diagram";
 
       const imageNode: Image = {
         type: "image",
         url: `/static/tex-svgs/${result.hash}.svg`,
-        alt: "LaTeX diagram",
+        alt: altText,
         data: {
           hProperties: { className: ["tex-compiled", ...customClasses] },
         },
