@@ -26,6 +26,13 @@ export interface RemarkLatexCompileOptions {
    */
   svgOutputDir: string;
   /**
+   * Directories added to the TeX input search path via TEXINPUTS, allowing
+   * \input{} and \include{} to resolve files from your project. Use a trailing
+   * slash for the directory itself, or double trailing slash for recursive
+   * search (e.g. "src/latex/" or "src/latex//").
+   */
+  texInputDirs?: string[];
+  /**
    * @internal Populated by the Astro integration to track which hashes were
    * referenced during a build, used for full orphan cleanup at build:done.
    */
@@ -65,7 +72,11 @@ export function remarkLatexCompile(options: RemarkLatexCompileOptions) {
       nodes.map(async ({ node, index, parent }) => {
         const lineNumber = node.position?.start.line ?? "?";
         try {
-          const result = await compileLatexToSvg(node.value, svgOutputDir);
+          const result = await compileLatexToSvg(
+            node.value,
+            svgOutputDir,
+            options.texInputDirs ?? [],
+          );
           if (result.wasCompiled) {
             console.log(
               `[remark-latex-compile] ${filePath}:${lineNumber}: compiled ${result.hash}.svg`,

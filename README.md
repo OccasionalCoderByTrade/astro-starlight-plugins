@@ -79,6 +79,14 @@ dvisvgm --version
 
 - `svgOutputDir` (required): Directory where compiled SVG files are written. Must be inside `public/` so Astro serves them as static assets.
 - `removeOrphanedSvgs` (optional, default: `false`): When `true`, SVG files that are no longer referenced by any `tex compile` block are deleted automatically. In dev mode, stale SVGs are removed immediately when a block is edited. On build, any remaining orphans are swept at the end.
+- `texInputDirs` (optional): Directories added to the TeX input search path (`TEXINPUTS`), allowing `\input{}` and `\include{}` to resolve files from your project. Use a trailing `/` to search only that directory, or `//` to search it recursively. Multiple directories are supported.
+
+```ts
+astroLatexCompile({
+  svgOutputDir: "public/static/tex-svgs",
+  texInputDirs: ["src/latex//"], // search src/latex/ and all its subdirectories
+});
+```
 
 **Usage:**
 
@@ -162,19 +170,20 @@ If your code block contains both `\documentclass` and `\begin{document}`, the pl
 ```
 ````
 
-**Custom CSS Classes:**
+**Meta Attributes:**
 
-Add custom CSS classes the `tex compile` code block to have them applied to the resulting `<img>` element:
+The following attributes can be added to the opening fence:
+
+- `class="..."`: CSS classes applied to the resulting `<img>` element (space-separated). The `tex-compiled` class is always included.
+- `alt="..."`: Alt text for the resulting `<img>` element. Defaults to `"LaTeX diagram"` if omitted.
 
 ````markdown
-```tex compile class="bg-white rounded-1"
+```tex compile class="bg-white rounded-1" alt="A commutative diagram"
 \begin{tikzpicture}
   \node {Custom styled diagram};
 \end{tikzpicture}
 ```
 ````
-
-The img element will have classes: `tex-compiled bg-white rounded-1` (note: the `tex-compiled` class is always included by default).
 
 ### Remark LaTeX Compile (low-level)
 

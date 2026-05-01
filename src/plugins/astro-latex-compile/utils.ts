@@ -97,6 +97,7 @@ function buildLatexSource(latexCode: string): string {
 export async function compileLatexToSvg(
   latexCode: string,
   svgOutputDir: string,
+  texInputDirs: string[] = [],
 ): Promise<CompilationResult> {
   const hash = hashLatexCode(latexCode);
   const svgPath = join(svgOutputDir, `${hash}.svg`);
@@ -116,15 +117,22 @@ export async function compileLatexToSvg(
   try {
     writeFileSync(texFile, latexSource, "utf-8");
 
+    const pdflatexEnv =
+      texInputDirs.length > 0
+        ? {
+            ...process.env,
+            TEXINPUTS: `${texInputDirs.join(":")}:${process.env.TEXINPUTS ?? ""}`,
+          }
+        : undefined;
+
     // Compile LaTeX to PDF
     let result;
     try {
-      result = await execProcess("pdflatex", [
-        "-interaction=nonstopmode",
-        "-output-directory",
-        workDir,
-        texFile,
-      ]);
+      result = await execProcess(
+        "pdflatex",
+        ["-interaction=nonstopmode", "-output-directory", workDir, texFile],
+        { env: pdflatexEnv },
+      );
     } catch (err) {
       const code = (err as NodeJS.ErrnoException).code;
       throw new Error(
