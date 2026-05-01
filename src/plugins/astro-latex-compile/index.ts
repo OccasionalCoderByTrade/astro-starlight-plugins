@@ -16,6 +16,7 @@ import { join, resolve } from "node:path";
 import { visit, SKIP } from "unist-util-visit";
 import type { Code, Image, Paragraph, Parent, Root } from "mdast";
 import type { VFile } from "vfile";
+import { MetaOptions } from "@expressive-code/core";
 import { compileLatexToSvg } from "./utils.js";
 
 export interface RemarkLatexCompileOptions {
@@ -34,14 +35,6 @@ export interface RemarkLatexCompileOptions {
    * previous remark run. Used to delete stale SVGs when a block changes.
    */
   _fileHashMap?: Map<string, Set<string>>;
-}
-
-function extractClassesFromMeta(meta: string): string[] {
-  const classMatch = meta.match(/class="([^"]+)"/);
-  if (classMatch?.[1]) {
-    return classMatch[1].split(/\s+/).filter(Boolean);
-  }
-  return [];
 }
 
 export function remarkLatexCompile(options: RemarkLatexCompileOptions) {
@@ -120,7 +113,11 @@ export function remarkLatexCompile(options: RemarkLatexCompileOptions) {
       const { node } = nodes[i];
       if (!result) continue;
 
-      const customClasses = extractClassesFromMeta(node.meta ?? "");
+      const customClasses =
+        new MetaOptions(node.meta ?? "")
+          .getString("class")
+          ?.split(/\s+/)
+          .filter(Boolean) ?? [];
 
       const imageNode: Image = {
         type: "image",

@@ -15,21 +15,18 @@ function escapeRegex(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-function parseEmphTerms(meta: string): string[] {
-  const match = meta.match(/\bemph="([^"]+)"/);
-  if (!match) return [];
-  return match[1]
-    .split(",")
-    .map((t) => t.trim())
-    .filter(Boolean);
-}
-
 export function expressiveCodeEmphasis() {
   return definePlugin({
     name: "expressiveCodeEmphasis",
     hooks: {
       preprocessCode: (context) => {
-        const terms = parseEmphTerms(context.codeBlock.meta);
+        const emphValue = context.codeBlock.metaOptions.getString("emph");
+        const terms = emphValue
+          ? emphValue
+              .split(",")
+              .map((t) => t.trim())
+              .filter(Boolean)
+          : [];
         if (terms.length === 0) return;
 
         for (const line of context.codeBlock.getLines()) {
