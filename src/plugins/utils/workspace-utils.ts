@@ -4,6 +4,7 @@ import * as fs from "fs";
 type TFrontmatter = {
   title?: string;
   draft?: boolean;
+  pagefind?: boolean;
   sidebar?: {
     hidden?: boolean;
   };
