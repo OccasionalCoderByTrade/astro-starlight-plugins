@@ -30,7 +30,7 @@ const SITE_NAME = "My Grand Amazing Site";
 // });
 const STARLIGHT_SOURCED_SIDEBAR_CONFIG = starlightIndexSourcedSidebar({
   maxDepthNesting: 100,
-  indexMarker: "★",
+  indexMarker: { text: "★", variant: "default" },
   directories: [
     "reference",
     "csci-323-algorithms",

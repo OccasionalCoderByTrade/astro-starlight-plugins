@@ -1,7 +1,7 @@
 import type { HookParameters } from "@astrojs/starlight/types";
 import { join } from "path";
 import { getIndexSourcedSidebarItems } from "./utils";
-import type { TGroupedItem } from "./types";
+import type { TGroupedItem, TIndexMarker } from "./types";
 
 type TOptions = {
   /**
@@ -24,7 +24,14 @@ type TOptions = {
    * regular sidebar entries. When undefined, no marker is added.
    * @example "★"
    */
-  indexMarker?: string;
+  indexMarker?: TIndexMarker;
+
+  /**
+   * Whether sidebar groups should be collapsed by default. Starlight automatically expands
+   * the group containing the current page regardless of this setting.
+   * @default true
+   */
+  collapsed?: boolean;
 };
 
 const SITE_DOCS_ROOT = "./src/content/docs";
@@ -49,7 +56,7 @@ export function starlightIndexSourcedSidebar(options: TOptions) {
     hooks: {
       "config:setup": (hookOptions: HookParameters<"config:setup">) => {
         const { updateConfig } = hookOptions;
-        const { directories, maxDepthNesting = 100, indexMarker } = options;
+        const { directories, maxDepthNesting = 100, indexMarker, collapsed = true } = options;
 
         const sidebarItems = directories
           .map((directory) => {
@@ -58,6 +65,7 @@ export function starlightIndexSourcedSidebar(options: TOptions) {
               dirPath,
               maxDepthNesting,
               indexMarker,
+              collapsed,
             );
             const rootGroup = rawItems[0];
             if (!rootGroup || !("items" in rootGroup)) return undefined;

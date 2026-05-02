@@ -4,7 +4,7 @@ import remarkParse from "remark-parse";
 import { unified } from "unified";
 import { visit } from "unist-util-visit";
 import { parseFrontmatter } from "../utils/workspace-utils";
-import type { TSidebarItem } from "./types";
+import type { TIndexMarker, TSidebarItem } from "./types";
 
 const SITE_DOCS_ROOT = "./src/content/docs";
 
@@ -121,7 +121,8 @@ function buildItems(
   currentDepth: number,
   maxDepth: number,
   visited: Set<string>,
-  indexMarker: string | undefined,
+  indexMarker: TIndexMarker | undefined,
+  collapsed: boolean,
 ): TSidebarItem[] {
   const absDir = path.resolve(dirPath);
 
@@ -143,8 +144,9 @@ function buildItems(
   // The index page itself is always the first item in its group
   const indexBaseLabel = fm.title ?? pathSegmentToLabel(path.basename(absDir));
   items.push({
-    label: indexMarker ? `${indexMarker} ${indexBaseLabel}` : indexBaseLabel,
+    label: indexBaseLabel,
     slug: normalizeSlug(filePathToSlug(indexFile)),
+    ...(indexMarker && { badge: indexMarker }),
   });
 
   for (const href of extractMarkdownLinks(indexFile)) {
@@ -173,8 +175,9 @@ function buildItems(
         const subBaseLabel =
           subFm.title ?? pathSegmentToLabel(path.basename(subDirPath));
         items.push({
-          label: indexMarker ? `${indexMarker} ${subBaseLabel}` : subBaseLabel,
+          label: subBaseLabel,
           slug: normalizeSlug(filePathToSlug(resolvedFile)),
+          ...(indexMarker && { badge: indexMarker }),
         });
       } else {
         // index.md: recurse and build a group (or flatten if at max depth)
@@ -184,6 +187,7 @@ function buildItems(
           maxDepth,
           visited,
           indexMarker,
+          collapsed,
         );
         if (subItems.length === 0) continue;
 
@@ -193,6 +197,7 @@ function buildItems(
           items.push({
             label: pathSegmentToLabel(path.basename(subDirPath)),
             items: subItems,
+            collapsed,
           });
         }
       }
@@ -218,7 +223,8 @@ function buildItems(
 export function getIndexSourcedSidebarItems(
   directory: string,
   maxDepthNesting: number = 100,
-  indexMarker?: string,
+  indexMarker?: TIndexMarker,
+  collapsed: boolean = true,
 ): TSidebarItem[] {
   const absDir = path.resolve(directory);
   const rootGroupLabel = pathSegmentToLabel(path.basename(absDir));
@@ -228,9 +234,10 @@ export function getIndexSourcedSidebarItems(
     maxDepthNesting,
     new Set<string>(),
     indexMarker,
+    collapsed,
   );
 
   if (items.length === 0) return [];
 
-  return [{ label: rootGroupLabel, items }];
+  return [{ label: rootGroupLabel, items, collapsed }];
 }
