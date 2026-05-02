@@ -1,4 +1,5 @@
 export { starlightIndexOnlySidebar } from "./plugins/starlight-index-only-sidebar/index.js";
+export { starlightIndexSourcedSidebar } from "./plugins/starlight-index-sourced-sidebar/index.js";
 export {
   starlightDomPatches,
   type DomPatchesOptions,

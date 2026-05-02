@@ -48,6 +48,70 @@ export default defineConfig({
 });
 ```
 
+### Starlight Index-Sourced Sidebar
+
+Generates a Starlight sidebar by parsing markdown links out of `index.md` files. Instead of scanning the filesystem for every index file, this plugin reads the links declared in each directory's own `index.md` and uses those to build the sidebar — giving you explicit, author-controlled navigation with automatic nesting.
+
+**Features:**
+
+- Builds sidebar entries from the links written in each directory's `index.md`
+- Links ending in `/index` pointing to an `index.md` create nested sub-groups (recursed automatically)
+- Links ending in `/index` pointing to an `index.mdx` add it as a single leaf item without recursing into it
+- Sub-group depth limited by `maxDepthNesting`; deeper items are flattened
+- Each index page itself appears as the first leaf item in its group
+- Labels for leaf items come from the linked page's frontmatter `title`
+- Respects frontmatter: `draft: true`, `pagefind: false`, and `sidebar.hidden: true` hide entries
+- Links to non-markdown files (images, PDFs, etc.) are silently skipped
+- Links to markdown files that do not exist on disk are silently skipped
+- External links and same-page anchor links (`#section`) are silently skipped
+
+**Options:**
+
+- `directories` (required): Array of directory names to scan (relative to `src/content/docs`)
+- `maxDepthNesting` (optional, default: `100`): Maximum nesting depth. At this depth, sub-index groups are not created and their items are flattened into the current level instead. With `maxDepthNesting: 1`, all items are flat under the root group.
+- `indexMarker` (optional, default: `undefined`): A string prepended to the label of every index entry to visually distinguish it from regular sidebar entries. Example: `"★"`.
+
+**Link conventions in `index.md`:**
+
+- Links to sub-sections must end in `/index` (e.g. `[Subtopic](./subtopic/index)`) — the plugin recurses into those if the target is an `index.md`, or adds a leaf item if the target is an `index.mdx`
+- All other relative links become flat leaf items
+- External URLs are ignored
+
+**Usage:**
+
+```ts
+// astro.config.mjs
+import { defineConfig } from "astro/config";
+import starlight from "@astrojs/starlight";
+import { starlightIndexSourcedSidebar } from "starlight-cannoli-plugins";
+
+export default defineConfig({
+  integrations: [
+    starlight({
+      title: "My Docs",
+      plugins: [
+        starlightIndexSourcedSidebar({
+          directories: ["guides", "reference"],
+          maxDepthNesting: 2, // optional
+        }),
+      ],
+    }),
+  ],
+});
+```
+
+**Example `index.md`:**
+
+```markdown
+---
+title: Guides
+---
+
+- [Getting Started](./getting-started)
+- [Configuration](./configuration)
+- [Advanced Topics](./advanced/index)
+```
+
 ### LaTeX Compile
 
 Automatically compiles fenced `tex compile` and `latex compile` code blocks to SVG diagrams during the build process. Uses `pdflatex` and `dvisvgm` for high-quality, cached SVG output.

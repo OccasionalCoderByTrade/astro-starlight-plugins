@@ -12,15 +12,25 @@ import {
   expressiveCodeEmphasis,
   rehypeValidateLinks,
   starlightDomPatches,
-  starlightIndexOnlySidebar,
+  starlightIndexSourcedSidebar,
   syncDocsToPublic,
 } from "./src";
 
 // Common Config Items
 const SITE_NAME = "My Grand Amazing Site";
-const STARLIGHT_SIDEBAR_CONFIG = starlightIndexOnlySidebar({
-  maxDepthNesting: 1,
-  dirnameDeterminesLabels: false,
+// const STARLIGHT_SIDEBAR_CONFIG = starlightIndexOnlySidebar({
+//   maxDepthNesting: 1,
+//   dirnameDeterminesLabels: false,
+//   directories: [
+//     "reference",
+//     "csci-323-algorithms",
+//     "csci-340-operating-systems",
+//     "csci-328-algorithms-for-big-data",
+//   ],
+// });
+const STARLIGHT_SOURCED_SIDEBAR_CONFIG = starlightIndexSourcedSidebar({
+  maxDepthNesting: 100,
+  indexMarker: "★",
   directories: [
     "reference",
     "csci-323-algorithms",
@@ -65,7 +75,7 @@ export default defineConfig({
         minHeadingLevel: 2, // h1 not included since it conflicts with frontmatter title
         maxHeadingLevel: 6, // include up to h6 in table of contents
       },
-      plugins: [STARLIGHT_SIDEBAR_CONFIG],
+      plugins: [STARLIGHT_SOURCED_SIDEBAR_CONFIG],
       customCss: ["/src/styles/main.scss", "katex/dist/katex.min.css"],
       expressiveCode: {
         plugins: [pluginLineNumbers(), expressiveCodeEmphasis()],
