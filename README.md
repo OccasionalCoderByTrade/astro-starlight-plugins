@@ -399,6 +399,7 @@ An Astro integration that injects a client-side script to apply opt-in DOM patch
 - `hideSingleLineGutters` (optional, default: `false`): Hides the line number gutter on Expressive Code blocks that contain only a single line.
 - `syncTocLabelsFromHeadings` (optional, default: `false`): Copies the rendered HTML of each heading into its matching Starlight TOC anchor label, so the TOC properly reflects any custom markup (e.g. math) present in the heading.
 - `wrapDetailsContent` (optional, default: `false`): Wraps the content of every `<details>` element (excluding its `<summary>`) in a `<div class="details-wrapper">`, useful for applying consistent spacing or animation styles.
+- `offerTabbedContent` (optional, default: `false`): Injects a "Tabbed view" toggle checkbox immediately after `#starlight__on-this-page` in the right sidebar. When enabled by the user, the page's markdown content is reorganised into tabs — one per `<h2>` heading, plus an optional "Main" tab for any content that appears before the first `<h2>`. The toggle state is persisted to `localStorage`; active tab selection is not persisted. Only activates when the page has at least two sections (i.e. two or more `<h2>` elements, or one `<h2>` with pre-heading content). Has no effect on pages that lack `#starlight__on-this-page` (e.g. pages with the TOC disabled). Clicking a TOC anchor while tabs are enabled automatically switches to the tab containing the target heading. The generated elements use the classes `tabbed-content`, `tabbed-content-nav`, `tabbed-content-tab`, and `tabbed-content-panel` for styling; toggle button uses the existing `.toggle-checkbox-btn` class.
 
 **Usage:**
 
@@ -414,6 +415,7 @@ export default defineConfig({
       hideSingleLineGutters: true,
       syncTocLabelsFromHeadings: true,
       wrapDetailsContent: true,
+      offerTabbedContent: true,
     }),
     starlight({ title: "My Docs" }),
   ],

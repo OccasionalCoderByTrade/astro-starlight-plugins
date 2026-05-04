@@ -17,6 +17,17 @@ export function hideSingleLineGutters() {
   });
 }
 
+// Returns the heading's innerHTML, unwrapping a sole <strong> child if present.
+function headingInnerHTML(heading: HTMLElement): string {
+  if (
+    heading.childElementCount === 1 &&
+    heading.children[0].tagName === "STRONG"
+  ) {
+    return (heading.children[0] as HTMLElement).innerHTML;
+  }
+  return heading.innerHTML;
+}
+
 export function syncTocLabelsFromHeadings() {
   document
     .querySelectorAll("starlight-toc ul li > a, mobile-starlight-toc ul li > a")
@@ -34,19 +45,197 @@ export function syncTocLabelsFromHeadings() {
       const span = anchor.querySelector(":scope > span");
       if (!span) return;
 
-      span.innerHTML = heading.innerHTML;
+      span.innerHTML = headingInnerHTML(heading);
     });
+}
 
-  document
-    .querySelectorAll("starlight-toc ul > li > a > span")
-    .forEach((span) => {
-      if (span.childElementCount !== 1) return;
+export function tabbedH2Content() {
+  console.log("[tabbedH2Content] running");
+  const LS_KEY = "starlight-dom-patches:tabbed-content";
 
-      const child = span.children[0];
-      if (child.tagName !== "STRONG") return;
+  const container = document.querySelector<HTMLElement>(
+    ".main-pane .sl-markdown-content",
+  );
+  if (!container) {
+    console.log(
+      "[tabbedH2Content] no .main-pane .sl-markdown-content found — aborting",
+    );
+    return;
+  }
 
-      span.innerHTML = child.innerHTML;
+  const tocSection = document.getElementById("starlight__on-this-page");
+  if (!tocSection) {
+    console.log(
+      "[tabbedH2Content] #starlight__on-this-page not found — aborting",
+    );
+    return;
+  }
+
+  const children = Array.from(container.children) as HTMLElement[];
+  if (children.length === 0) {
+    console.log("[tabbedH2Content] content container is empty — aborting");
+    return;
+  }
+
+  console.log(`[tabbedH2Content] container element:`, container);
+  console.log(
+    `[tabbedH2Content] found ${children.length} children:`,
+    children.map((c) => c.tagName).join(", "),
+  );
+
+  // Split content into sections at H2 boundaries.
+  // Nodes before the first H2 become the optional "Main" section.
+  type Section = { label: string; nodes: HTMLElement[] };
+  const preH2Nodes: HTMLElement[] = [];
+  const h2Sections: Section[] = [];
+  let currentSection: Section | null = null;
+
+  const isH2Wrapper = (el: HTMLElement) =>
+    el.tagName === "DIV" &&
+    el.classList.contains("sl-heading-wrapper") &&
+    el.classList.contains("level-h2");
+
+  for (const child of children) {
+    if (isH2Wrapper(child)) {
+      if (currentSection) h2Sections.push(currentSection);
+      const h2 = child.querySelector("h2");
+      currentSection = {
+        label: h2 ? headingInnerHTML(h2) : "",
+        nodes: [child],
+      };
+    } else if (currentSection === null) {
+      preH2Nodes.push(child);
+    } else {
+      currentSection.nodes.push(child);
+    }
+  }
+  if (currentSection) h2Sections.push(currentSection);
+
+  const hasPreContent = preH2Nodes.length > 0;
+  const totalSections = (hasPreContent ? 1 : 0) + h2Sections.length;
+
+  console.log(
+    `[tabbedH2Content] preH2Nodes: ${preH2Nodes.length}, h2Sections: ${h2Sections.length}, totalSections: ${totalSections}`,
+  );
+
+  // Need at least two sections for tabs to be meaningful.
+  if (totalSections <= 1) {
+    console.log(
+      "[tabbedH2Content] only one section — aborting (no tabs needed)",
+    );
+    return;
+  }
+
+  const allSections: Section[] = [];
+  if (hasPreContent) allSections.push({ label: "Main", nodes: preH2Nodes });
+  allSections.push(...h2Sections);
+
+  // Build the tab wrapper, nav, and panels.
+  // Moving nodes out of `container` first (appendChild detaches from old parent).
+  const wrapper = document.createElement("div");
+  wrapper.className = "tabbed-content";
+
+  const nav = document.createElement("div");
+  nav.className = "tabbed-content-nav not-content";
+
+  const tabButtons: HTMLButtonElement[] = [];
+  const panels: HTMLDivElement[] = [];
+
+  allSections.forEach((section, i) => {
+    const btn = document.createElement("button");
+    btn.className = "tabbed-content-tab";
+    btn.innerHTML = section.label;
+    btn.dataset.tab = String(i);
+    tabButtons.push(btn);
+    nav.appendChild(btn);
+
+    const panel = document.createElement("div");
+    panel.className = "tabbed-content-panel";
+    panel.dataset.panel = String(i);
+    // Moving nodes into panel removes them from container.
+    section.nodes.forEach((node) => panel.appendChild(node));
+    panels.push(panel);
+  });
+
+  wrapper.appendChild(nav);
+  panels.forEach((p) => wrapper.appendChild(p));
+  // container is now empty (all children moved); append the new structure.
+  container.appendChild(wrapper);
+
+  let activeTab = 0;
+
+  function activateTab(index: number) {
+    activeTab = index;
+    tabButtons.forEach((btn, i) => {
+      btn.dataset.active = String(i === index);
     });
+    panels.forEach((panel, i) => {
+      panel.hidden = i !== index;
+    });
+  }
+
+  function setEnabled(enabled: boolean) {
+    wrapper.dataset.enabled = String(enabled);
+    nav.hidden = !enabled;
+    if (enabled) {
+      activateTab(activeTab);
+    } else {
+      panels.forEach((panel) => {
+        panel.hidden = false;
+      });
+    }
+  }
+
+  tabButtons.forEach((btn, i) => {
+    btn.addEventListener("click", () => {
+      if (wrapper.dataset.enabled === "true") activateTab(i);
+    });
+  });
+
+  // When a TOC link is clicked while tabs are enabled, switch to the tab
+  // that contains the target heading.
+  function navigateToHash(hash: string) {
+    if (!hash || wrapper.dataset.enabled !== "true") return;
+    const id = hash.startsWith("#") ? hash.slice(1) : hash;
+    panels.forEach((panel, i) => {
+      if (panel.querySelector(`#${CSS.escape(id)}`)) activateTab(i);
+    });
+  }
+
+  window.addEventListener("hashchange", () =>
+    navigateToHash(window.location.hash),
+  );
+  if (window.location.hash) navigateToHash(window.location.hash);
+
+  // Build and inject the toggle checkbox.
+  const toggleLabel = document.createElement("label");
+  toggleLabel.className = "toggle-checkbox-btn";
+
+  const checkbox = document.createElement("input");
+  checkbox.type = "checkbox";
+
+  const toggleText = document.createElement("span");
+  toggleText.textContent = "Tabbed view";
+
+  toggleLabel.appendChild(checkbox);
+  toggleLabel.appendChild(toggleText);
+  tocSection.parentNode!.insertBefore(toggleLabel, tocSection.nextSibling);
+  console.log(
+    "[tabbedH2Content] toggle checkbox injected after #starlight__on-this-page",
+  );
+
+  // Restore persisted state (default: disabled).
+  const initialEnabled = localStorage.getItem(LS_KEY) === "enabled";
+  console.log(
+    `[tabbedH2Content] localStorage value: ${localStorage.getItem(LS_KEY)}, initialEnabled: ${initialEnabled}`,
+  );
+  checkbox.checked = initialEnabled;
+  setEnabled(initialEnabled);
+
+  checkbox.addEventListener("change", () => {
+    setEnabled(checkbox.checked);
+    localStorage.setItem(LS_KEY, checkbox.checked ? "enabled" : "disabled");
+  });
 }
 
 export function wrapDetailsContent() {

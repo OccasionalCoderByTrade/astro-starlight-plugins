@@ -67,6 +67,7 @@ export default defineConfig({
       hideSingleLineGutters: true,
       wrapDetailsContent: true,
       syncTocLabelsFromHeadings: true,
+      offerTabbedContent: true,
     }),
     astroNormalizePaths(),
     starlight({

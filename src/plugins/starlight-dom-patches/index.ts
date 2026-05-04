@@ -8,6 +8,12 @@ export interface DomPatchesOptions {
   syncTocLabelsFromHeadings?: boolean;
   /** Wrap `<details>` content (excluding `<summary>`) in a `.details-wrapper` div. @default false */
   wrapDetailsContent?: boolean;
+  /**
+   * Inject a toggle checkbox (after `#starlight__on-this-page`) that reorganises page content
+   * into tabs driven by `<h2>` boundaries. Toggle state is persisted to localStorage.
+   * @default false
+   */
+  offerTabbedContent?: boolean;
 }
 
 /**
@@ -21,6 +27,7 @@ export function starlightDomPatches(
     hideSingleLineGutters = false,
     syncTocLabelsFromHeadings = false,
     wrapDetailsContent = false,
+    offerTabbedContent = false,
   } = options;
 
   return {
@@ -48,6 +55,7 @@ export function starlightDomPatches(
           hideSingleLineGutters ? "hideSingleLineGutters" : null,
           syncTocLabelsFromHeadings ? "syncTocLabelsFromHeadings" : null,
           wrapDetailsContent ? "wrapDetailsContent" : null,
+          offerTabbedContent ? "tabbedH2Content" : null,
         ].filter(Boolean);
 
         if (imports.length === 0) return;
