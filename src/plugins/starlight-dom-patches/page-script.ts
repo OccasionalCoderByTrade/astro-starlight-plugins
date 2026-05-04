@@ -1,20 +1,17 @@
-const TOC_NAV_SELECTOR = "nav[aria-labelledby='starlight__on-this-page']";
-
-// Finds or creates a div.cannoli-actionable immediately before the TOC nav and
-// appends el to it. Returns false if the TOC nav is not present on this page.
+// Finds or creates a div.cannoli-actionable as the first child of starlight-toc
+// and appends el to it. Returns false if starlight-toc is not present on this page.
 function appendToActionPanel(element: HTMLElement): boolean {
-  const tocNav = document.querySelector<HTMLElement>(TOC_NAV_SELECTOR);
-  if (!tocNav) return false;
+  const starlightToc = document.querySelector<HTMLElement>("starlight-toc");
+  if (!starlightToc) return false;
 
-  let panel =
-    tocNav.parentElement?.querySelector<HTMLDivElement>(
-      ":scope > div.cannoli-actionable",
-    ) ?? null;
+  let panel = starlightToc.querySelector<HTMLDivElement>(
+    ":scope > div.cannoli-actionable",
+  );
 
   if (!panel) {
     panel = document.createElement("div");
     panel.className = "cannoli-actionable";
-    tocNav.parentNode!.insertBefore(panel, tocNav);
+    starlightToc.prepend(panel);
   }
 
   panel.appendChild(element);
