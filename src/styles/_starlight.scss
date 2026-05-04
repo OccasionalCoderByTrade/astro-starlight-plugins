@@ -186,38 +186,8 @@ div > div[class="page"] > svg {
   }
 }
 
-/********** Toggle Checkbox Styles **********/
-#toggle-all-details-btn {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  cursor: pointer;
-
-  input[type="checkbox"] {
-    position: relative;
-    appearance: none;
-    width: 1.2em;
-    height: 1.2em;
-    border: 2px solid currentColor;
-    border-radius: 2px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background-color 0.2s ease;
-
-    &:checked {
-      background-color: var(--sl-color-accent);
-      border-color: var(--sl-color-accent);
-
-      &::after {
-        content: "✓";
-        color: white;
-        font-size: 0.8em;
-        font-weight: bold;
-      }
-    }
-  }
+starlight-toc .toggle-checkbox-btn:last-of-type {
+  margin-bottom: 1rem;
 }
 
 .toggle-checkbox-btn {
