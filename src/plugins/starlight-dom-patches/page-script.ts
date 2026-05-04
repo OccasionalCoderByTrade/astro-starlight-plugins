@@ -19,8 +19,6 @@ function appendToActionPanel(element: HTMLElement): boolean {
 }
 
 export function hideSingleLineGutters() {
-  console.log("Hiding Single Line Gutters");
-
   const codeElements = document.querySelectorAll(
     "div.expressive-code > figure > pre > code",
   );
@@ -69,185 +67,242 @@ export function syncTocLabelsFromHeadings() {
     });
 }
 
+type TabbedSection = {
+  label: string;
+  nodes: HTMLElement[];
+  headingId?: string;
+};
+
 export function tabbedH2Content() {
-  console.log("[tabbedH2Content] running");
   const LS_KEY = "starlight-dom-patches:tabbed-content";
 
-  const container = document.querySelector<HTMLElement>(
+  const contentContainer = document.querySelector<HTMLElement>(
     ".main-pane .sl-markdown-content",
   );
-  if (!container) {
-    console.log(
-      "[tabbedH2Content] no .main-pane .sl-markdown-content found — aborting",
-    );
-    return;
-  }
+  if (!contentContainer) return;
 
-  const children = Array.from(container.children) as HTMLElement[];
-  if (children.length === 0) {
-    console.log("[tabbedH2Content] content container is empty — aborting");
-    return;
-  }
+  const starlightToc = document.querySelector<HTMLElement>("starlight-toc");
+  if (!starlightToc) return;
 
-  console.log(`[tabbedH2Content] container element:`, container);
-  console.log(
-    `[tabbedH2Content] found ${children.length} children:`,
-    children.map((c) => c.tagName).join(", "),
-  );
+  const contentChildren = Array.from(
+    contentContainer.children,
+  ) as HTMLElement[];
+  if (contentChildren.length === 0) return;
 
   // Split content into sections at H2 boundaries.
   // Nodes before the first H2 become the optional "Main" section.
-  type Section = { label: string; nodes: HTMLElement[] };
-  const preH2Nodes: HTMLElement[] = [];
-  const h2Sections: Section[] = [];
-  let currentSection: Section | null = null;
+  function splitIntoSections(): {
+    preH2Nodes: HTMLElement[];
+    h2Sections: TabbedSection[];
+  } {
+    const isH2Wrapper = (element: HTMLElement) =>
+      element.tagName === "DIV" &&
+      element.classList.contains("sl-heading-wrapper") &&
+      element.classList.contains("level-h2");
 
-  const isH2Wrapper = (el: HTMLElement) =>
-    el.tagName === "DIV" &&
-    el.classList.contains("sl-heading-wrapper") &&
-    el.classList.contains("level-h2");
+    const preH2Nodes: HTMLElement[] = [];
+    const h2Sections: TabbedSection[] = [];
+    let currentSection: TabbedSection | null = null;
 
-  for (const child of children) {
-    if (isH2Wrapper(child)) {
-      if (currentSection) h2Sections.push(currentSection);
-      const h2 = child.querySelector("h2");
-      currentSection = {
-        label: h2 ? headingInnerHTML(h2) : "",
-        nodes: [child],
-      };
-    } else if (currentSection === null) {
-      preH2Nodes.push(child);
-    } else {
-      currentSection.nodes.push(child);
+    for (const block of contentChildren) {
+      if (isH2Wrapper(block)) {
+        if (currentSection) h2Sections.push(currentSection);
+        const h2Element = block.querySelector("h2");
+        currentSection = {
+          label: h2Element ? headingInnerHTML(h2Element) : "",
+          headingId: h2Element?.id,
+          nodes: [block],
+        };
+      } else if (currentSection === null) {
+        preH2Nodes.push(block);
+      } else {
+        currentSection.nodes.push(block);
+      }
     }
-  }
-  if (currentSection) h2Sections.push(currentSection);
-
-  const hasPreContent = preH2Nodes.length > 0;
-  const totalSections = (hasPreContent ? 1 : 0) + h2Sections.length;
-
-  console.log(
-    `[tabbedH2Content] preH2Nodes: ${preH2Nodes.length}, h2Sections: ${h2Sections.length}, totalSections: ${totalSections}`,
-  );
-
-  // Need at least two sections for tabs to be meaningful.
-  if (totalSections <= 1) {
-    console.log(
-      "[tabbedH2Content] only one section — aborting (no tabs needed)",
-    );
-    return;
+    if (currentSection) h2Sections.push(currentSection);
+    return { preH2Nodes, h2Sections };
   }
 
-  const allSections: Section[] = [];
-  if (hasPreContent) allSections.push({ label: "Main", nodes: preH2Nodes });
+  const { preH2Nodes, h2Sections } = splitIntoSections();
+  const hasPreH2Content = preH2Nodes.length > 0;
+  if ((hasPreH2Content ? 1 : 0) + h2Sections.length <= 1) return;
+
+  const allSections: TabbedSection[] = [];
+  if (hasPreH2Content) allSections.push({ label: "Main", nodes: preH2Nodes });
   allSections.push(...h2Sections);
 
   // Build the tab wrapper, nav, and panels.
-  // Moving nodes out of `container` first (appendChild detaches from old parent).
-  const wrapper = document.createElement("div");
-  wrapper.className = "tabbed-content";
+  // Moving nodes into panels detaches them from `markdownContent`.
+  function buildTabs(): {
+    tabbedWrapper: HTMLDivElement;
+    tabNav: HTMLDivElement;
+    tabButtons: HTMLButtonElement[];
+    tabPanels: HTMLDivElement[];
+  } {
+    const tabbedWrapper = document.createElement("div");
+    tabbedWrapper.className = "tabbed-content";
 
-  const nav = document.createElement("div");
-  nav.className = "tabbed-content-nav not-content";
+    const tabNav = document.createElement("div");
+    tabNav.className = "tabbed-content-nav not-content";
 
-  const tabButtons: HTMLButtonElement[] = [];
-  const panels: HTMLDivElement[] = [];
+    const tabButtons: HTMLButtonElement[] = [];
+    const tabPanels: HTMLDivElement[] = [];
 
-  allSections.forEach((section, i) => {
-    const btn = document.createElement("button");
-    btn.className = "tabbed-content-tab";
-    btn.innerHTML = section.label;
-    btn.dataset.tab = String(i);
-    tabButtons.push(btn);
-    nav.appendChild(btn);
+    allSections.forEach((section, sectionIndex) => {
+      const tabButton = document.createElement("button");
+      tabButton.className = "tabbed-content-tab";
+      tabButton.innerHTML = section.label;
+      tabButton.dataset.tab = String(sectionIndex);
+      tabButtons.push(tabButton);
+      tabNav.appendChild(tabButton);
 
-    const panel = document.createElement("div");
-    panel.className = "tabbed-content-panel";
-    panel.dataset.panel = String(i);
-    // Moving nodes into panel removes them from container.
-    section.nodes.forEach((node) => panel.appendChild(node));
-    panels.push(panel);
-  });
-
-  wrapper.appendChild(nav);
-  panels.forEach((p) => wrapper.appendChild(p));
-  // container is now empty (all children moved); append the new structure.
-  container.appendChild(wrapper);
-
-  let activeTab = 0;
-
-  function activateTab(index: number) {
-    activeTab = index;
-    tabButtons.forEach((btn, i) => {
-      btn.dataset.active = String(i === index);
+      const tabPanel = document.createElement("div");
+      tabPanel.className = "tabbed-content-panel";
+      tabPanel.dataset.panel = String(sectionIndex);
+      section.nodes.forEach((node) => tabPanel.appendChild(node));
+      tabPanels.push(tabPanel);
     });
-    panels.forEach((panel, i) => {
-      panel.hidden = i !== index;
+
+    tabbedWrapper.appendChild(tabNav);
+    tabPanels.forEach((tabPanel) => tabbedWrapper.appendChild(tabPanel));
+    return { tabbedWrapper, tabNav, tabButtons, tabPanels };
+  }
+
+  function buildPagination(): {
+    paginationBar: HTMLDivElement;
+    prevTabButton: HTMLButtonElement;
+    nextTabButton: HTMLButtonElement;
+  } {
+    const paginationBar = document.createElement("div");
+    paginationBar.className = "tabbed-content-pagination not-content";
+
+    const prevTabButton = document.createElement("button");
+    prevTabButton.className = "tabbed-content-pagination-btn";
+    prevTabButton.dataset.direction = "prev";
+    prevTabButton.textContent = "← Previous Tab";
+
+    const nextTabButton = document.createElement("button");
+    nextTabButton.className = "tabbed-content-pagination-btn";
+    nextTabButton.dataset.direction = "next";
+    nextTabButton.textContent = "Next Tab →";
+
+    paginationBar.appendChild(prevTabButton);
+    paginationBar.appendChild(nextTabButton);
+    return { paginationBar, prevTabButton, nextTabButton };
+  }
+
+  function buildToggle(): HTMLInputElement {
+    const viewToggleLabel = document.createElement("label");
+    viewToggleLabel.className = "toggle-checkbox-btn";
+
+    const viewToggleCheckbox = document.createElement("input");
+    viewToggleCheckbox.type = "checkbox";
+
+    const viewToggleText = document.createElement("span");
+    viewToggleText.textContent = "Tabbed view";
+
+    viewToggleLabel.appendChild(viewToggleCheckbox);
+    viewToggleLabel.appendChild(viewToggleText);
+    appendToActionPanel(viewToggleLabel);
+    return viewToggleCheckbox;
+  }
+
+  const { tabbedWrapper, tabNav, tabButtons, tabPanels } = buildTabs();
+  const { paginationBar, prevTabButton, nextTabButton } = buildPagination();
+
+  // markdownContent is now empty (all children moved); append the new structure.
+  contentContainer.appendChild(tabbedWrapper);
+  contentContainer.appendChild(paginationBar);
+
+  let activeTabIndex = 0;
+
+  function activateTab(targetIndex: number, updateHash = true) {
+    activeTabIndex = targetIndex;
+    tabButtons.forEach((tabButton, buttonIndex) => {
+      tabButton.dataset.active = String(buttonIndex === targetIndex);
     });
+    tabPanels.forEach((tabPanel, panelIndex) => {
+      tabPanel.hidden = panelIndex !== targetIndex;
+    });
+    prevTabButton.disabled = targetIndex === 0;
+    nextTabButton.disabled = targetIndex === allSections.length - 1;
+    if (updateHash) {
+      const targetHeadingId = allSections[targetIndex].headingId;
+      if (targetHeadingId) {
+        history.replaceState(null, "", `#${targetHeadingId}`);
+      } else {
+        history.replaceState(
+          null,
+          "",
+          window.location.pathname + window.location.search,
+        );
+      }
+    }
   }
 
   function setEnabled(enabled: boolean) {
-    wrapper.dataset.enabled = String(enabled);
-    nav.hidden = !enabled;
+    tabbedWrapper.dataset.enabled = String(enabled);
+    tabNav.hidden = !enabled;
+    paginationBar.hidden = !enabled;
     if (enabled) {
-      activateTab(activeTab);
+      activateTab(activeTabIndex, false);
     } else {
-      panels.forEach((panel) => {
-        panel.hidden = false;
+      tabPanels.forEach((tabPanel) => {
+        tabPanel.hidden = false;
       });
     }
   }
 
-  tabButtons.forEach((btn, i) => {
-    btn.addEventListener("click", () => {
-      if (wrapper.dataset.enabled === "true") activateTab(i);
-    });
-  });
-
   // When a TOC link is clicked while tabs are enabled, switch to the tab
   // that contains the target heading.
-  function navigateToHash(hash: string) {
-    if (!hash || wrapper.dataset.enabled !== "true") return;
-    const id = hash.startsWith("#") ? hash.slice(1) : hash;
-    panels.forEach((panel, i) => {
-      if (panel.querySelector(`#${CSS.escape(id)}`)) activateTab(i);
+  function navigateToHash(urlHash: string) {
+    if (!urlHash || tabbedWrapper.dataset.enabled !== "true") return;
+    const targetHeadingId = urlHash.startsWith("#")
+      ? urlHash.slice(1)
+      : urlHash;
+    tabPanels.forEach((tabPanel, panelIndex) => {
+      if (
+        tabPanel.querySelector(`#${CSS.escape(targetHeadingId)}`) &&
+        panelIndex !== activeTabIndex
+      )
+        activateTab(panelIndex, false);
     });
   }
 
-  window.addEventListener("hashchange", () =>
-    navigateToHash(window.location.hash),
-  );
-  if (window.location.hash) navigateToHash(window.location.hash);
+  function wireInteractions(viewToggleCheckbox: HTMLInputElement) {
+    prevTabButton.addEventListener("click", () => {
+      if (activeTabIndex > 0) activateTab(activeTabIndex - 1);
+    });
+    nextTabButton.addEventListener("click", () => {
+      if (activeTabIndex < allSections.length - 1)
+        activateTab(activeTabIndex + 1);
+    });
+    tabButtons.forEach((tabButton, buttonIndex) => {
+      tabButton.addEventListener("click", () => {
+        if (tabbedWrapper.dataset.enabled === "true") activateTab(buttonIndex);
+      });
+    });
+    window.addEventListener("hashchange", () =>
+      navigateToHash(window.location.hash),
+    );
+    viewToggleCheckbox.addEventListener("change", () => {
+      setEnabled(viewToggleCheckbox.checked);
+      localStorage.setItem(
+        LS_KEY,
+        viewToggleCheckbox.checked ? "enabled" : "disabled",
+      );
+    });
+  }
 
-  // Build and inject the toggle checkbox.
-  const toggleLabel = document.createElement("label");
-  toggleLabel.className = "toggle-checkbox-btn";
-
-  const checkbox = document.createElement("input");
-  checkbox.type = "checkbox";
-
-  const toggleText = document.createElement("span");
-  toggleText.textContent = "Tabbed view";
-
-  toggleLabel.appendChild(checkbox);
-  toggleLabel.appendChild(toggleText);
-  appendToActionPanel(toggleLabel);
-  console.log(
-    "[tabbedH2Content] toggle checkbox injected into .cannoli-actionable panel",
-  );
+  const viewToggleCheckbox = buildToggle();
 
   // Restore persisted state (default: disabled).
   const initialEnabled = localStorage.getItem(LS_KEY) === "enabled";
-  console.log(
-    `[tabbedH2Content] localStorage value: ${localStorage.getItem(LS_KEY)}, initialEnabled: ${initialEnabled}`,
-  );
-  checkbox.checked = initialEnabled;
+  viewToggleCheckbox.checked = initialEnabled;
   setEnabled(initialEnabled);
+  if (window.location.hash) navigateToHash(window.location.hash);
 
-  checkbox.addEventListener("change", () => {
-    setEnabled(checkbox.checked);
-    localStorage.setItem(LS_KEY, checkbox.checked ? "enabled" : "disabled");
-  });
+  wireInteractions(viewToggleCheckbox);
 }
 
 export function toggleAllDetails() {
@@ -291,8 +346,6 @@ export function toggleAllDetails() {
 }
 
 export function limitDetailsElementHeight() {
-  console.log("Wrapping details element contents");
-
   const detailsElements = document.querySelectorAll(".main-pane details");
   detailsElements.forEach((details) => {
     if (details.children.length === 0) return;

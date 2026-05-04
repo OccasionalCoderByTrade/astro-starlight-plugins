@@ -171,6 +171,40 @@ div > div[class="page"] > svg {
   margin-bottom: 1rem;
 }
 
+.tabbed-content-pagination {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 2rem;
+
+  &[hidden] {
+    display: none;
+  }
+}
+
+.tabbed-content-pagination-btn {
+  padding: 0.4rem 1rem;
+  border: 1px solid var(--sl-color-gray-5);
+  border-radius: 6px;
+  background-color: transparent;
+  color: var(--sl-color-text);
+  cursor: pointer;
+  font-size: 0.875em;
+  transition:
+    color 0.15s ease,
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+
+  &:hover:not(:disabled) {
+    background-color: var(--sl-color-gray-6);
+    border-color: var(--sl-color-gray-4);
+  }
+
+  &:disabled {
+    opacity: 0.35;
+    cursor: default;
+  }
+}
+
 .toggle-checkbox-btn {
   display: flex;
   align-items: center;
