@@ -65,7 +65,7 @@ export default defineConfig({
     }),
     starlightDomPatches({
       hideSingleLineGutters: true,
-      wrapDetailsContent: true,
+      limitDetailsElementHeight: true,
       syncTocLabelsFromHeadings: true,
       offerTabbedContent: true,
       offerToggleAllDetails: true,

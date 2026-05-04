@@ -293,7 +293,7 @@ export function toggleAllDetails() {
   });
 }
 
-export function wrapDetailsContent() {
+export function limitDetailsElementHeight() {
   console.log("Wrapping details element contents");
 
   const detailsElements = document.querySelectorAll(".main-pane details");

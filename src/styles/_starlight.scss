@@ -76,21 +76,6 @@ starlight-toc ul > li {
   html[data-theme="light"] & {
     background: rgba(162, 171, 173, 0.08);
   }
-
-  &[open] {
-    max-width: 100%;
-
-    > div.details-wrapper {
-      overflow: auto;
-      max-height: 67vh;
-      padding: 0 1em;
-    }
-
-    p > img {
-      height: auto;
-      width: auto;
-    }
-  }
 }
 
 /********** MathJax/LaTeX Styling **********/

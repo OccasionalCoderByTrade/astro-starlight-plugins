@@ -1,13 +1,16 @@
 import { fileURLToPath } from "node:url";
 import type { AstroIntegration } from "astro";
 
+const css = String.raw;
+const js = String.raw;
+
 export interface DomPatchesOptions {
   /** Hide line number gutters on single-line code blocks. @default false */
   hideSingleLineGutters?: boolean;
   /** Copy rendered heading innerHTML into matching Starlight TOC anchor labels. @default false */
   syncTocLabelsFromHeadings?: boolean;
   /** Wrap `<details>` content (excluding `<summary>`) in a `.details-wrapper` div. @default false */
-  wrapDetailsContent?: boolean;
+  limitDetailsElementHeight?: boolean;
   /**
    * Inject a toggle checkbox (after `#starlight__on-this-page`) that reorganises page content
    * into tabs driven by `<h2>` boundaries. Toggle state is persisted to localStorage.
@@ -21,7 +24,42 @@ export interface DomPatchesOptions {
    * @default false
    */
   offerToggleAllDetails?: boolean;
+  /**
+   * @deprecated Use `limitDetailsElementHeight` instead.
+   */
+  wrapDetailsContent?: boolean;
 }
+
+type ConditionalCssEntry = { enabled?: string; disabled?: string };
+
+const CONDITIONAL_CSS: Partial<
+  Record<keyof DomPatchesOptions, ConditionalCssEntry>
+> = {
+  limitDetailsElementHeight: {
+    enabled: css`
+      .main-pane details[open] {
+        max-width: 100%;
+      }
+
+      .main-pane details[open] > div.details-wrapper {
+        overflow: auto;
+        max-height: 67vh;
+        padding: 0 1em;
+      }
+
+      .main-pane details[open] p > img {
+        height: auto;
+        width: auto;
+      }
+    `,
+    disabled: css`
+      .main-pane details > *:not(summary) {
+        padding: 0 1rem;
+        margin: 1rem 0;
+      }
+    `,
+  },
+};
 
 /**
  * Astro integration that injects a client-side script to apply DOM patches
@@ -33,10 +71,20 @@ export function starlightDomPatches(
   const {
     hideSingleLineGutters = false,
     syncTocLabelsFromHeadings = false,
-    wrapDetailsContent = false,
+    limitDetailsElementHeight: limitDetailsElementHeightOption = false,
     offerTabbedContent = false,
     offerToggleAllDetails = false,
+    wrapDetailsContent,
   } = options;
+
+  if (wrapDetailsContent !== undefined) {
+    console.warn(
+      "[starlight-dom-patches] `wrapDetailsContent` is deprecated — use `limitDetailsElementHeight` instead.",
+    );
+  }
+
+  const limitDetailsElementHeight =
+    wrapDetailsContent ?? limitDetailsElementHeightOption;
 
   return {
     name: "starlight-dom-patches",
@@ -58,11 +106,24 @@ export function starlightDomPatches(
           );
         }
 
+        for (const [key, entry] of Object.entries(CONDITIONAL_CSS) as [
+          keyof DomPatchesOptions,
+          ConditionalCssEntry,
+        ][]) {
+          const cssString = options[key] ? entry.enabled : entry.disabled;
+          if (cssString) {
+            injectScript(
+              "page",
+              js`{ const s = document.createElement("style"); s.textContent = ${JSON.stringify(cssString)}; document.head.appendChild(s); }`,
+            );
+          }
+        }
+
         const scriptPath = JSON.stringify(fileURLToPath(pageScriptUrl));
         const imports = [
           hideSingleLineGutters ? "hideSingleLineGutters" : null,
           syncTocLabelsFromHeadings ? "syncTocLabelsFromHeadings" : null,
-          wrapDetailsContent ? "wrapDetailsContent" : null,
+          limitDetailsElementHeight ? "limitDetailsElementHeight" : null,
           offerTabbedContent ? "tabbedH2Content" : null,
           offerToggleAllDetails ? "toggleAllDetails" : null,
         ].filter(Boolean);
