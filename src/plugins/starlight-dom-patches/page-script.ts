@@ -216,7 +216,16 @@ export function tabbedH2Content() {
 
   let activeTabIndex = 0;
 
-  function activateTab(targetIndex: number, updateHash = true) {
+  function isTabNavVisible(): boolean {
+    const rect = tabNav.getBoundingClientRect();
+    return rect.top < window.innerHeight && rect.bottom > 0;
+  }
+
+  function activateTab(
+    targetIndex: number,
+    updateHash = true,
+    scrollToNav = false,
+  ) {
     activeTabIndex = targetIndex;
     tabButtons.forEach((tabButton, buttonIndex) => {
       tabButton.dataset.active = String(buttonIndex === targetIndex);
@@ -226,6 +235,16 @@ export function tabbedH2Content() {
     });
     prevTabButton.disabled = targetIndex === 0;
     nextTabButton.disabled = targetIndex === allSections.length - 1;
+    const scrollBehavior = getComputedStyle(document.documentElement)
+      .scrollBehavior as ScrollBehavior;
+    tabButtons[targetIndex].scrollIntoView({
+      behavior: scrollBehavior,
+      block: "nearest",
+      inline: "nearest",
+    });
+    if (scrollToNav) {
+      tabNav.scrollIntoView({ behavior: scrollBehavior, block: "nearest" });
+    }
     if (updateHash) {
       const targetHeadingId = allSections[targetIndex].headingId;
       if (targetHeadingId) {
@@ -240,12 +259,24 @@ export function tabbedH2Content() {
     }
   }
 
+  function findPanelIndexForHash(urlHash: string): number {
+    const targetHeadingId = urlHash.startsWith("#")
+      ? urlHash.slice(1)
+      : urlHash;
+    return tabPanels.findIndex((tabPanel) =>
+      tabPanel.querySelector(`#${CSS.escape(targetHeadingId)}`),
+    );
+  }
+
   function setEnabled(enabled: boolean) {
     tabbedWrapper.dataset.enabled = String(enabled);
     tabNav.hidden = !enabled;
     paginationBar.hidden = !enabled;
     if (enabled) {
-      activateTab(activeTabIndex, false);
+      const hashPanelIndex = window.location.hash
+        ? findPanelIndexForHash(window.location.hash)
+        : -1;
+      activateTab(hashPanelIndex >= 0 ? hashPanelIndex : activeTabIndex, false);
     } else {
       tabPanels.forEach((tabPanel) => {
         tabPanel.hidden = false;
@@ -257,25 +288,23 @@ export function tabbedH2Content() {
   // that contains the target heading.
   function navigateToHash(urlHash: string) {
     if (!urlHash || tabbedWrapper.dataset.enabled !== "true") return;
-    const targetHeadingId = urlHash.startsWith("#")
-      ? urlHash.slice(1)
-      : urlHash;
-    tabPanels.forEach((tabPanel, panelIndex) => {
-      if (
-        tabPanel.querySelector(`#${CSS.escape(targetHeadingId)}`) &&
-        panelIndex !== activeTabIndex
-      )
-        activateTab(panelIndex, false);
-    });
+    const targetPanelIndex = findPanelIndexForHash(urlHash);
+    if (targetPanelIndex >= 0 && targetPanelIndex !== activeTabIndex)
+      activateTab(targetPanelIndex, false);
   }
 
   function wireInteractions(viewToggleCheckbox: HTMLInputElement) {
     prevTabButton.addEventListener("click", () => {
-      if (activeTabIndex > 0) activateTab(activeTabIndex - 1);
+      if (activeTabIndex > 0) {
+        const scrollToNav = !isTabNavVisible();
+        activateTab(activeTabIndex - 1, true, scrollToNav);
+      }
     });
     nextTabButton.addEventListener("click", () => {
-      if (activeTabIndex < allSections.length - 1)
-        activateTab(activeTabIndex + 1);
+      if (activeTabIndex < allSections.length - 1) {
+        const scrollToNav = !isTabNavVisible();
+        activateTab(activeTabIndex + 1, true, scrollToNav);
+      }
     });
     tabButtons.forEach((tabButton, buttonIndex) => {
       tabButton.addEventListener("click", () => {
