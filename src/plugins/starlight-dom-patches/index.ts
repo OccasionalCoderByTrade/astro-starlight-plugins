@@ -14,6 +14,13 @@ export interface DomPatchesOptions {
    * @default false
    */
   offerTabbedContent?: boolean;
+  /**
+   * Inject a "Expand All Dropdowns" toggle checkbox that opens or closes every
+   * `<details>` element on the page at once. Only appears on pages that contain
+   * at least one visible `<details>` element.
+   * @default false
+   */
+  offerToggleAllDetails?: boolean;
 }
 
 /**
@@ -28,6 +35,7 @@ export function starlightDomPatches(
     syncTocLabelsFromHeadings = false,
     wrapDetailsContent = false,
     offerTabbedContent = false,
+    offerToggleAllDetails = false,
   } = options;
 
   return {
@@ -56,6 +64,7 @@ export function starlightDomPatches(
           syncTocLabelsFromHeadings ? "syncTocLabelsFromHeadings" : null,
           wrapDetailsContent ? "wrapDetailsContent" : null,
           offerTabbedContent ? "tabbedH2Content" : null,
+          offerToggleAllDetails ? "toggleAllDetails" : null,
         ].filter(Boolean);
 
         if (imports.length === 0) return;

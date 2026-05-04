@@ -68,6 +68,7 @@ export default defineConfig({
       wrapDetailsContent: true,
       syncTocLabelsFromHeadings: true,
       offerTabbedContent: true,
+      offerToggleAllDetails: true,
     }),
     astroNormalizePaths(),
     starlight({

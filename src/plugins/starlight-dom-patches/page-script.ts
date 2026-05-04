@@ -1,3 +1,26 @@
+const TOC_NAV_SELECTOR = "nav[aria-labelledby='starlight__on-this-page']";
+
+// Finds or creates a div.cannoli-actionable immediately before the TOC nav and
+// appends el to it. Returns false if the TOC nav is not present on this page.
+function appendToActionPanel(element: HTMLElement): boolean {
+  const tocNav = document.querySelector<HTMLElement>(TOC_NAV_SELECTOR);
+  if (!tocNav) return false;
+
+  let panel =
+    tocNav.parentElement?.querySelector<HTMLDivElement>(
+      ":scope > div.cannoli-actionable",
+    ) ?? null;
+
+  if (!panel) {
+    panel = document.createElement("div");
+    panel.className = "cannoli-actionable";
+    tocNav.parentNode!.insertBefore(panel, tocNav);
+  }
+
+  panel.appendChild(element);
+  return true;
+}
+
 export function hideSingleLineGutters() {
   console.log("Hiding Single Line Gutters");
 
@@ -59,16 +82,6 @@ export function tabbedH2Content() {
   if (!container) {
     console.log(
       "[tabbedH2Content] no .main-pane .sl-markdown-content found — aborting",
-    );
-    return;
-  }
-
-  const tocNav = document.querySelector<HTMLElement>(
-    "nav[aria-labelledby='starlight__on-this-page']",
-  );
-  if (!tocNav) {
-    console.log(
-      "[tabbedH2Content] nav[aria-labelledby='starlight__on-this-page'] not found — aborting",
     );
     return;
   }
@@ -221,9 +234,9 @@ export function tabbedH2Content() {
 
   toggleLabel.appendChild(checkbox);
   toggleLabel.appendChild(toggleText);
-  tocNav.parentNode!.insertBefore(toggleLabel, tocNav);
+  appendToActionPanel(toggleLabel);
   console.log(
-    "[tabbedH2Content] toggle checkbox injected after #starlight__on-this-page",
+    "[tabbedH2Content] toggle checkbox injected into .cannoli-actionable panel",
   );
 
   // Restore persisted state (default: disabled).
@@ -237,6 +250,46 @@ export function tabbedH2Content() {
   checkbox.addEventListener("change", () => {
     setEnabled(checkbox.checked);
     localStorage.setItem(LS_KEY, checkbox.checked ? "enabled" : "disabled");
+  });
+}
+
+export function toggleAllDetails() {
+  const detailsElements = document.querySelectorAll(
+    ".main-pane details:not(.visually-hidden)",
+  );
+  if (detailsElements.length === 0) return;
+
+  const label = document.createElement("label");
+  label.id = "toggle-all-details-btn";
+  label.htmlFor = "toggle-all-details-checkbox";
+  label.className = "toggle-checkbox-btn";
+
+  const checkbox = document.createElement("input");
+  checkbox.type = "checkbox";
+  checkbox.id = "toggle-all-details-checkbox";
+  checkbox.setAttribute("aria-label", "Toggle all details open/closed");
+
+  const span = document.createElement("span");
+  span.className = "toggle-label";
+  span.textContent = "Expand All Dropdowns";
+
+  label.appendChild(checkbox);
+  label.appendChild(span);
+  appendToActionPanel(label);
+
+  let allOpen = false;
+
+  checkbox.addEventListener("change", () => {
+    document.body.dataset.bulkToggleActive = "true";
+
+    detailsElements.forEach((details) => {
+      (details as HTMLDetailsElement).open = !allOpen;
+    });
+    allOpen = !allOpen;
+
+    setTimeout(() => {
+      delete document.body.dataset.bulkToggleActive;
+    }, 10);
   });
 }
 
