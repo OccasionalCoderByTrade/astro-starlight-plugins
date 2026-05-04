@@ -63,10 +63,12 @@ export function tabbedH2Content() {
     return;
   }
 
-  const tocSection = document.getElementById("starlight__on-this-page");
-  if (!tocSection) {
+  const tocNav = document.querySelector<HTMLElement>(
+    "nav[aria-labelledby='starlight__on-this-page']",
+  );
+  if (!tocNav) {
     console.log(
-      "[tabbedH2Content] #starlight__on-this-page not found — aborting",
+      "[tabbedH2Content] nav[aria-labelledby='starlight__on-this-page'] not found — aborting",
     );
     return;
   }
@@ -219,7 +221,7 @@ export function tabbedH2Content() {
 
   toggleLabel.appendChild(checkbox);
   toggleLabel.appendChild(toggleText);
-  tocSection.parentNode!.insertBefore(toggleLabel, tocSection.nextSibling);
+  tocNav.parentNode!.insertBefore(toggleLabel, tocNav);
   console.log(
     "[tabbedH2Content] toggle checkbox injected after #starlight__on-this-page",
   );
