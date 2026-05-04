@@ -141,6 +141,10 @@ div > div[class="page"] > svg {
   margin-bottom: 1.75rem;
   max-height: 9rem;
   overflow-y: auto;
+
+  &[hidden] {
+    display: none;
+  }
 }
 
 .tabbed-content-tab {
