@@ -9,7 +9,7 @@ export interface DomPatchesOptions {
   hideSingleLineGutters?: boolean;
   /** Copy rendered heading innerHTML into matching Starlight TOC anchor labels. @default false */
   syncTocLabelsFromHeadings?: boolean;
-  /** Wrap `<details>` content (excluding `<summary>`) in a `.details-wrapper` div. @default false */
+  /** Limit the height of expanded `<details>` elements and make their content scrollable. @default false */
   limitDetailsElementHeight?: boolean;
   /**
    * Inject a toggle checkbox (after `#starlight__on-this-page`) that reorganises page content
