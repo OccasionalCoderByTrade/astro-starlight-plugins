@@ -41,6 +41,10 @@ const CONDITIONAL_CSS: Partial<
         max-width: 100%;
       }
 
+      .main-pane details > summary {
+        padding-left: 1.1em;
+      }
+
       .main-pane details[open] > div.details-wrapper {
         overflow: auto;
         max-height: 67vh;
@@ -53,9 +57,9 @@ const CONDITIONAL_CSS: Partial<
       }
     `,
     disabled: css`
-      .main-pane details > *:not(summary) {
-        padding: 0 1rem;
-        margin: 1rem 0;
+      .main-pane details {
+        padding-left: 1rem;
+        padding-right: 1rem;
       }
     `,
   },
