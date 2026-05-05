@@ -35,6 +35,57 @@ type ConditionalCssEntry = { enabled?: string; disabled?: string };
 const CONDITIONAL_CSS: Partial<
   Record<keyof DomPatchesOptions, ConditionalCssEntry>
 > = {
+  offerTabbedContent: {
+    enabled: css`
+      /* Suppress the default crossfade for the named panel transition. */
+      ::view-transition-old(tabbed-panel),
+      ::view-transition-new(tabbed-panel) {
+        animation: none;
+        mix-blend-mode: normal;
+      }
+
+      /* Slide animation — only when the user has no motion preference. */
+      @media (prefers-reduced-motion: no-preference) {
+        :root[data-tab-direction="next"]::view-transition-old(tabbed-panel) {
+          animation: tabbed-slide-out-to-left 250ms ease both;
+        }
+        :root[data-tab-direction="next"]::view-transition-new(tabbed-panel) {
+          animation: tabbed-slide-in-from-right 250ms ease both;
+        }
+        :root[data-tab-direction="prev"]::view-transition-old(tabbed-panel) {
+          animation: tabbed-slide-out-to-right 250ms ease both;
+        }
+        :root[data-tab-direction="prev"]::view-transition-new(tabbed-panel) {
+          animation: tabbed-slide-in-from-left 250ms ease both;
+        }
+      }
+
+      @keyframes tabbed-slide-out-to-left {
+        to {
+          transform: translateX(-30%);
+          opacity: 0;
+        }
+      }
+      @keyframes tabbed-slide-in-from-right {
+        from {
+          transform: translateX(30%);
+          opacity: 0;
+        }
+      }
+      @keyframes tabbed-slide-out-to-right {
+        to {
+          transform: translateX(30%);
+          opacity: 0;
+        }
+      }
+      @keyframes tabbed-slide-in-from-left {
+        from {
+          transform: translateX(-30%);
+          opacity: 0;
+        }
+      }
+    `,
+  },
   limitDetailsElementHeight: {
     enabled: css`
       .main-pane details[open] {

@@ -226,15 +226,34 @@ export function tabbedH2Content() {
     updateHash = true,
     scrollToNav = false,
   ) {
-    activeTabIndex = targetIndex;
-    tabButtons.forEach((tabButton, buttonIndex) => {
-      tabButton.dataset.active = String(buttonIndex === targetIndex);
-    });
-    tabPanels.forEach((tabPanel, panelIndex) => {
-      tabPanel.hidden = panelIndex !== targetIndex;
-    });
-    prevTabButton.disabled = targetIndex === 0;
-    nextTabButton.disabled = targetIndex === allSections.length - 1;
+    const applySwitch = () => {
+      tabPanels[activeTabIndex].style.viewTransitionName = "";
+      activeTabIndex = targetIndex;
+      tabButtons.forEach((tabButton, buttonIndex) => {
+        tabButton.dataset.active = String(buttonIndex === targetIndex);
+      });
+      tabPanels.forEach((tabPanel, panelIndex) => {
+        tabPanel.hidden = panelIndex !== targetIndex;
+      });
+      tabPanels[targetIndex].style.viewTransitionName = "tabbed-panel";
+      prevTabButton.disabled = targetIndex === 0;
+      nextTabButton.disabled = targetIndex === allSections.length - 1;
+    };
+
+    if (targetIndex !== activeTabIndex && "startViewTransition" in document) {
+      document.documentElement.dataset.tabDirection =
+        targetIndex > activeTabIndex ? "next" : "prev";
+      // Assign the name to the outgoing panel before the API captures it.
+      tabPanels[activeTabIndex].style.viewTransitionName = "tabbed-panel";
+      (
+        document as Document & {
+          startViewTransition: (cb: () => void) => void;
+        }
+      ).startViewTransition(applySwitch);
+    } else {
+      applySwitch();
+    }
+
     const scrollBehavior = getComputedStyle(document.documentElement)
       .scrollBehavior as ScrollBehavior;
     tabButtons[targetIndex].scrollIntoView({
