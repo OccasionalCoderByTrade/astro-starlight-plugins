@@ -144,6 +144,7 @@ dvisvgm --version
 - `svgOutputDir` (required): Directory where compiled SVG files are written. Must be inside `public/` so Astro serves them as static assets.
 - `removeOrphanedSvgs` (optional, default: `false`): When `true`, SVG files that are no longer referenced by any `tex compile` block are deleted automatically. In dev mode, stale SVGs are removed immediately when a block is edited. On build, any remaining orphans are swept at the end.
 - `texInputDirs` (optional): Directories added to the TeX input search path (`TEXINPUTS`), allowing `\input{}` and `\include{}` to resolve files from your project. Use a trailing `/` to search only that directory, or `//` to search it recursively. Multiple directories are supported.
+- `tempOutputDir` (optional): When set, a JPEG copy of each compiled diagram is written to this directory, mirroring the folder structure of `src/content/docs/`. The filename format is `<originating-file>--<line-number>.jpg` (e.g. `tex-test.md--11.jpg`). Useful for previewing or post-processing diagrams outside the browser. JPEGs are deleted automatically when their corresponding block fails compilation or is removed. SVG output is unaffected — the JPEG is complementary.
 
 ```ts
 astroLatexCompile({

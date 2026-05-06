@@ -21,10 +21,13 @@ import {
   rmSync,
   mkdtempSync,
 } from "node:fs";
-import { join } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import { tmpdir } from "node:os";
+import sharp from "sharp";
 import { createCompilationErrorMessage } from "./error-parser.js";
 import { execProcess } from "../utils/process-utils.js";
+
+const CONTENT_ROOT = "src/content/docs/";
 
 export interface CompilationResult {
   hash: string;
@@ -39,6 +42,37 @@ export interface CompilationResult {
  */
 export const LATEX_BLOCK_REGEX =
   /```(?:tex|latex)\s+compile[^\r\n]*\r?\n([\s\S]*?)\r?\n```/g;
+
+export function computeJpgPath(
+  tempOutputDir: string,
+  filePath: string,
+  lineNumber: number,
+): string {
+  const normalized = filePath.replace(/\\/g, "/");
+  const idx = normalized.indexOf(CONTENT_ROOT);
+  const relativePath =
+    idx !== -1
+      ? normalized.slice(idx + CONTENT_ROOT.length)
+      : basename(normalized);
+
+  const dir = dirname(relativePath);
+  const filename = basename(relativePath);
+  const jpgFilename = `${filename}--${lineNumber}.jpg`;
+
+  const base = resolve(tempOutputDir);
+  return dir === "." ? join(base, jpgFilename) : join(base, dir, jpgFilename);
+}
+
+export async function writeJpgFromSvg(
+  svgPath: string,
+  jpgPath: string,
+): Promise<void> {
+  mkdirSync(dirname(jpgPath), { recursive: true });
+  await sharp(svgPath)
+    .flatten({ background: { r: 255, g: 255, b: 255 } })
+    .jpeg({ quality: 90 })
+    .toFile(jpgPath);
+}
 
 export function hashLatexCode(code: string): string {
   const normalized = code

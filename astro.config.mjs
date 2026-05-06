@@ -58,6 +58,7 @@ export default defineConfig({
     astroLatexCompile({
       svgOutputDir: "public/static/tex-svgs",
       removeOrphanedSvgs: true,
+      tempOutputDir: "test-latex-output/",
     }),
     syncDocsToPublic({
       preserveDirs: ["static"],

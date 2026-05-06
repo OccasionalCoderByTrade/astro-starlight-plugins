@@ -33,6 +33,7 @@ export function astroLatexCompile(
 ): AstroIntegration {
   const referencedHashes = new Set<string>();
   const fileHashMap = new Map<string, Set<string>>();
+  const fileJpgPathMap = new Map<string, Set<string>>();
 
   return {
     name: "astro-latex-compile",
@@ -55,6 +56,7 @@ export function astroLatexCompile(
             command === "build" && options.removeOrphanedSvgs
               ? referencedHashes
               : undefined,
+          _fileJpgPathMap: options.tempOutputDir ? fileJpgPathMap : undefined,
         };
 
         updateConfig({

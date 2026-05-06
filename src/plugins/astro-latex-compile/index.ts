@@ -11,13 +11,14 @@
  *     ],
  *   }
  */
+import { existsSync } from "node:fs";
 import { rm } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { visit, SKIP } from "unist-util-visit";
 import type { Code, Image, Paragraph, Parent, Root } from "mdast";
 import type { VFile } from "vfile";
 import { MetaOptions } from "@expressive-code/core";
-import { compileLatexToSvg } from "./utils.js";
+import { compileLatexToSvg, computeJpgPath, writeJpgFromSvg } from "./utils.js";
 
 export interface RemarkLatexCompileOptions {
   /**
@@ -33,6 +34,15 @@ export interface RemarkLatexCompileOptions {
    */
   texInputDirs?: string[];
   /**
+   * When set, a JPEG copy of each compiled diagram is written here, mirroring
+   * the folder structure of `src/content/docs/`. Filename format:
+   * `<originating-file>--<line-number>.jpg`.
+   * JPEGs are deleted automatically when their corresponding block fails
+   * compilation or is removed. The purpose of this directory is not for publishing these to the public,
+   * but to provide an easier way to locally inspect the generated diagrams.
+   */
+  tempOutputDir?: string;
+  /**
    * @internal Populated by the Astro integration to track which hashes were
    * referenced during a build, used for full orphan cleanup at build:done.
    */
@@ -42,6 +52,11 @@ export interface RemarkLatexCompileOptions {
    * previous remark run. Used to delete stale SVGs when a block changes.
    */
   _fileHashMap?: Map<string, Set<string>>;
+  /**
+   * @internal Maps each file path to the set of JPG paths it produced on the
+   * previous remark run. Used to delete stale JPGs when a block changes.
+   */
+  _fileJpgPathMap?: Map<string, Set<string>>;
 }
 
 export function remarkLatexCompile(options: RemarkLatexCompileOptions) {
@@ -70,7 +85,12 @@ export function remarkLatexCompile(options: RemarkLatexCompileOptions) {
     // Compile all blocks in parallel, collecting results before mutating the tree
     const results = await Promise.all(
       nodes.map(async ({ node, index, parent }) => {
-        const lineNumber = node.position?.start.line ?? "?";
+        const lineNumber = node.position?.start.line;
+        const lineNumberStr = lineNumber ?? "?";
+        const jpgPath =
+          options.tempOutputDir && lineNumber !== undefined
+            ? computeJpgPath(options.tempOutputDir, filePath, lineNumber)
+            : null;
         try {
           const result = await compileLatexToSvg(
             node.value,
@@ -79,19 +99,42 @@ export function remarkLatexCompile(options: RemarkLatexCompileOptions) {
           );
           if (result.wasCompiled) {
             console.log(
-              `[remark-latex-compile] ${filePath}:${lineNumber}: compiled ${result.hash}.svg`,
+              `[remark-latex-compile] ${filePath}:${lineNumberStr}: compiled ${result.hash}.svg`,
             );
           }
           options._referencedHashes?.add(result.hash);
-          return { index, parent, result, error: null, hash: result.hash };
+          if (jpgPath && !existsSync(jpgPath)) {
+            await writeJpgFromSvg(result.svgPath, jpgPath);
+            console.log(
+              `[remark-latex-compile] ${filePath}:${lineNumberStr}: wrote ${jpgPath}`,
+            );
+          }
+          return {
+            index,
+            parent,
+            result,
+            error: null,
+            hash: result.hash,
+            jpgPath,
+          };
         } catch (err) {
           const errorMsg = err instanceof Error ? err.message : String(err);
           const match = errorMsg.match(/\n\n([\s\S]+)/);
           const details = match ? match[1] : errorMsg;
           console.error(
-            `[remark-latex-compile] ${filePath}:${lineNumber}\n${details}`,
+            `[remark-latex-compile] ${filePath}:${lineNumberStr}\n${details}`,
           );
-          return { index, parent, result: null, error: err, hash: null };
+          if (jpgPath) {
+            await rm(jpgPath, { force: true });
+          }
+          return {
+            index,
+            parent,
+            result: null,
+            error: err,
+            hash: null,
+            jpgPath: null,
+          };
         }
       }),
     );
@@ -115,6 +158,23 @@ export function remarkLatexCompile(options: RemarkLatexCompileOptions) {
         ),
       );
       options._fileHashMap.set(filePath, newHashes);
+    }
+
+    // Delete JPGs that this file previously produced but no longer references
+    if (options.tempOutputDir && options._fileJpgPathMap) {
+      const newJpgPaths = new Set(
+        results.map((r) => r.jpgPath).filter(Boolean) as string[],
+      );
+      const oldJpgPaths =
+        options._fileJpgPathMap.get(filePath) ?? new Set<string>();
+      const staleJpgPaths = [...oldJpgPaths].filter((p) => !newJpgPaths.has(p));
+      for (const stalePath of staleJpgPaths) {
+        console.warn(
+          `[remark-latex-compile] Removing orphaned jpg: ${stalePath}`,
+        );
+      }
+      await Promise.all(staleJpgPaths.map((p) => rm(p, { force: true })));
+      options._fileJpgPathMap.set(filePath, newJpgPaths);
     }
 
     // Apply AST mutations in reverse index order so earlier splices don't shift
