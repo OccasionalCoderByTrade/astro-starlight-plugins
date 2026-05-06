@@ -216,16 +216,7 @@ export function tabbedH2Content() {
 
   let activeTabIndex = 0;
 
-  function isTabNavVisible(): boolean {
-    const rect = tabNav.getBoundingClientRect();
-    return rect.top < window.innerHeight && rect.bottom > 0;
-  }
-
-  function activateTab(
-    targetIndex: number,
-    updateHash = true,
-    scrollToNav = false,
-  ) {
+  function activateTab(targetIndex: number, updateHash = true) {
     const applySwitch = () => {
       tabPanels[activeTabIndex].style.viewTransitionName = "";
       activeTabIndex = targetIndex;
@@ -261,9 +252,7 @@ export function tabbedH2Content() {
       block: "nearest",
       inline: "nearest",
     });
-    if (scrollToNav) {
-      tabNav.scrollIntoView({ behavior: scrollBehavior, block: "nearest" });
-    }
+
     if (updateHash) {
       const targetHeadingId = allSections[targetIndex].headingId;
       if (targetHeadingId) {
@@ -312,17 +301,24 @@ export function tabbedH2Content() {
       activateTab(targetPanelIndex, false);
   }
 
+  function isTabNavVisible(): boolean {
+    const rect = tabNav.getBoundingClientRect();
+    return rect.top < window.innerHeight && rect.bottom > 0;
+  }
+
   function wireInteractions(viewToggleCheckbox: HTMLInputElement) {
     prevTabButton.addEventListener("click", () => {
       if (activeTabIndex > 0) {
-        const scrollToNav = !isTabNavVisible();
-        activateTab(activeTabIndex - 1, true, scrollToNav);
+        if (!isTabNavVisible())
+          window.scrollTo({ top: 0, behavior: "instant" });
+        activateTab(activeTabIndex - 1);
       }
     });
     nextTabButton.addEventListener("click", () => {
       if (activeTabIndex < allSections.length - 1) {
-        const scrollToNav = !isTabNavVisible();
-        activateTab(activeTabIndex + 1, true, scrollToNav);
+        if (!isTabNavVisible())
+          window.scrollTo({ top: 0, behavior: "instant" });
+        activateTab(activeTabIndex + 1);
       }
     });
     tabButtons.forEach((tabButton, buttonIndex) => {
