@@ -18,7 +18,13 @@ import { visit, SKIP } from "unist-util-visit";
 import type { Code, Image, Paragraph, Parent, Root } from "mdast";
 import type { VFile } from "vfile";
 import { MetaOptions } from "@expressive-code/core";
-import { compileLatexToSvg, computeJpgPath, writeJpgFromSvg } from "./utils.js";
+import {
+  compileLatexToSvg,
+  computeJpgPath,
+  hashLatexCode,
+  writeJpgError,
+  writeJpgFromSvg,
+} from "./utils.js";
 
 export interface RemarkLatexCompileOptions {
   /**
@@ -35,11 +41,11 @@ export interface RemarkLatexCompileOptions {
   texInputDirs?: string[];
   /**
    * When set, a JPEG copy of each compiled diagram is written here, mirroring
-   * the folder structure of `src/content/docs/`. Filename format:
-   * `<originating-file>--<line-number>.jpg`.
-   * JPEGs are deleted automatically when their corresponding block fails
-   * compilation or is removed. The purpose of this directory is not for publishing these to the public,
-   * but to provide an easier way to locally inspect the generated diagrams.
+   * the folder structure of `src/content/docs/`. Only blocks that carry a
+   * `blockid=<n>` meta tag produce a JPEG. Filename format:
+   * `<originating-file>--<blockid>--<hash>.jpg`.
+   * JPEGs are deleted automatically when their block is removed or its content
+   * changes. Intended for local inspection, not for publishing.
    */
   tempOutputDir?: string;
   /**
@@ -85,12 +91,10 @@ export function remarkLatexCompile(options: RemarkLatexCompileOptions) {
     // Compile all blocks in parallel, collecting results before mutating the tree
     const results = await Promise.all(
       nodes.map(async ({ node, index, parent }) => {
-        const lineNumber = node.position?.start.line;
-        const lineNumberStr = lineNumber ?? "?";
-        const jpgPath =
-          options.tempOutputDir && lineNumber !== undefined
-            ? computeJpgPath(options.tempOutputDir, filePath, lineNumber)
-            : null;
+        const lineNumberStr = node.position?.start.line ?? "?";
+        const blockId = new MetaOptions(node.meta ?? "").getInteger("blockid");
+        const contentHash = hashLatexCode(node.value);
+        const canWriteJpg = !!options.tempOutputDir && blockId !== undefined;
         try {
           const result = await compileLatexToSvg(
             node.value,
@@ -103,6 +107,9 @@ export function remarkLatexCompile(options: RemarkLatexCompileOptions) {
             );
           }
           options._referencedHashes?.add(result.hash);
+          const jpgPath = canWriteJpg
+            ? computeJpgPath(options.tempOutputDir!, filePath, blockId!, contentHash)
+            : null;
           if (jpgPath && !existsSync(jpgPath)) {
             await writeJpgFromSvg(result.svgPath, jpgPath);
             console.log(
@@ -124,8 +131,15 @@ export function remarkLatexCompile(options: RemarkLatexCompileOptions) {
           console.error(
             `[remark-latex-compile] ${filePath}:${lineNumberStr}\n${details}`,
           );
-          if (jpgPath) {
-            await rm(jpgPath, { force: true });
+          const jpgPath = canWriteJpg
+            ? computeJpgPath(options.tempOutputDir!, filePath, blockId!, `${contentHash}--error`)
+            : null;
+          if (jpgPath && !existsSync(jpgPath)) {
+            await writeJpgError(
+              jpgPath,
+              `${filePath}:${lineNumberStr}`,
+              errorMsg,
+            );
           }
           return {
             index,
@@ -133,7 +147,7 @@ export function remarkLatexCompile(options: RemarkLatexCompileOptions) {
             result: null,
             error: err,
             hash: null,
-            jpgPath: null,
+            jpgPath,
           };
         }
       }),

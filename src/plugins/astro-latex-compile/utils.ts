@@ -46,7 +46,8 @@ export const LATEX_BLOCK_REGEX =
 export function computeJpgPath(
   tempOutputDir: string,
   filePath: string,
-  lineNumber: number,
+  blockId: number,
+  hash: string,
 ): string {
   const normalized = filePath.replace(/\\/g, "/");
   const idx = normalized.indexOf(CONTENT_ROOT);
@@ -57,7 +58,7 @@ export function computeJpgPath(
 
   const dir = dirname(relativePath);
   const filename = basename(relativePath);
-  const jpgFilename = `${filename}--${lineNumber}.jpg`;
+  const jpgFilename = `${filename}--${blockId}--${hash}.jpg`;
 
   const base = resolve(tempOutputDir);
   return dir === "." ? join(base, jpgFilename) : join(base, dir, jpgFilename);
@@ -69,6 +70,83 @@ export async function writeJpgFromSvg(
 ): Promise<void> {
   mkdirSync(dirname(jpgPath), { recursive: true });
   await sharp(svgPath)
+    .flatten({ background: { r: 255, g: 255, b: 255 } })
+    .jpeg({ quality: 90 })
+    .toFile(jpgPath);
+}
+
+function stripAnsi(text: string): string {
+  // eslint-disable-next-line no-control-regex
+  return text.replace(/\x1b\[[0-9;]*m/g, "");
+}
+
+function escapeXml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function wrapText(text: string, maxChars: number): string[] {
+  const lines: string[] = [];
+  for (const raw of text.split("\n")) {
+    if (raw.length <= maxChars) {
+      lines.push(raw);
+    } else {
+      let remaining = raw;
+      while (remaining.length > maxChars) {
+        lines.push(remaining.slice(0, maxChars));
+        remaining = remaining.slice(maxChars);
+      }
+      if (remaining) lines.push(remaining);
+    }
+  }
+  return lines;
+}
+
+export async function writeJpgError(
+  jpgPath: string,
+  header: string,
+  errorText: string,
+): Promise<void> {
+  const MAX_LINES = 40;
+  const clean = stripAnsi(errorText);
+
+  // Strip the verbose LaTeX source listing — show only the error summary
+  const sourceIdx = clean.indexOf("LaTeX source:");
+  const summary = (sourceIdx !== -1 ? clean.slice(0, sourceIdx) : clean).trimEnd();
+
+  let lines = wrapText(summary, 90);
+  if (lines.length > MAX_LINES) {
+    lines = lines.slice(0, MAX_LINES);
+    lines.push("...");
+  }
+
+  const fontSize = 13;
+  const lineHeight = 18;
+  const padding = 20;
+  const headerHeight = 55;
+  const width = 800;
+  const height = padding * 2 + headerHeight + lines.length * lineHeight;
+
+  const textLines = lines
+    .map(
+      (line, i) =>
+        `<text x="${padding}" y="${padding + headerHeight + i * lineHeight}" font-family="monospace" font-size="${fontSize}" fill="#333333">${escapeXml(line)}</text>`,
+    )
+    .join("\n  ");
+
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
+  <rect width="${width}" height="${height}" fill="white"/>
+  <rect x="0" y="0" width="${width}" height="4" fill="#cc0000"/>
+  <text x="${padding}" y="${padding + 20}" font-family="monospace" font-size="16" font-weight="bold" fill="#cc0000">LaTeX Compilation Error</text>
+  <text x="${padding}" y="${padding + 40}" font-family="monospace" font-size="12" fill="#666666">${escapeXml(header)}</text>
+  ${textLines}
+</svg>`;
+
+  mkdirSync(dirname(jpgPath), { recursive: true });
+  await sharp(Buffer.from(svg))
     .flatten({ background: { r: 255, g: 255, b: 255 } })
     .jpeg({ quality: 90 })
     .toFile(jpgPath);

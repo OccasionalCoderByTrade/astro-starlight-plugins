@@ -24,6 +24,7 @@ title: "LaTeX Compilation Examples"
   \draw [->] (q1) -- node[above] {1} (q2);
   \draw [->] (q0) to[loop above] node {0} (q0);
   \draw [->] (q1) to[loop above] node {0} (q1);
+  \badcommand{this will break};
 \end{tikzpicture}
 ```
 
@@ -51,6 +52,8 @@ title: "LaTeX Compilation Examples"
 ### Graph Structures
 
 #### Binary Tree
+
+<!-- updated -->
 
 ```tex compile
 \usepackage{tikz}
@@ -122,10 +125,10 @@ title: "LaTeX Compilation Examples"
 
 \begin{tikzpicture}
   \draw [thick] (0,0) rectangle (1,4);
-  \node at (0.5, 3.5) {5};
-  \node at (0.5, 2.5) {3};
-  \node at (0.5, 1.5) {7};
-  \node at (0.5, 0.5) {2};
+  \node at (0.5, 3.5) {9};
+  \node at (0.5, 2.5) {6};
+  \node at (0.5, 1.5) {4};
+  \node at (0.5, 0.5) {1};
 
   \draw [dashed] (0, 3.75) -- (1, 3.75);
   \draw [dashed] (0, 2.75) -- (1, 2.75);
