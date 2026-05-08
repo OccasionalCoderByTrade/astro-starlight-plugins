@@ -142,7 +142,8 @@ dvisvgm --version
 
 - `svgOutputDir` (required): Directory where compiled SVG files are written. Must be inside `public/` so Astro serves them as static assets.
 - `removeOrphanedSvgs` (optional, default: `false`): When `true`, SVG files that are no longer referenced by any `tex compile` block are deleted automatically. In dev mode, stale SVGs are removed immediately when a block is edited. On build, any remaining orphans are swept at the end.
-- `texInputDirs` (optional): Directories added to the TeX input search path (`TEXINPUTS`), allowing `\input{}` and `\include{}` to resolve files from your project. Use a trailing `/` to search only that directory, or `//` to search it recursively. Multiple directories are supported.
+- `svgClassname` (optional): Default CSS class(es) applied to every compiled SVG `<img>` element. Individual blocks can override this with a `class` meta tag value. The `tex-compiled` class is always present and cannot be overridden.
+- `texInputDirs` (optional): Directories added to the TeX input search path (`TEXINPUTS`), allowing `\input{}` and `\include{}` to resolve files from your project. Use a trailing `/` to search only that directory, or `//` to search it recursively. Multiple directories are supported. When any file in these directories changes, all cached SVGs are invalidated and recompiled.
 - `tempOutputDir` (optional): When set, a JPEG copy of each compiled diagram is written to this directory, mirroring the folder structure of `src/content/docs/`. Only blocks that carry a `blockid=<n>` meta tag produce a JPEG — blocks without it are ignored. The filename format is `<originating-file>--<blockid>--<hash>.jpg` (e.g. `tex-test.md--5--abc123.jpg`). JPEGs are deleted automatically when their block is removed, its `blockid` changes, or its content changes. SVG output is unaffected — the JPEG is complementary and intended for local inspection.
 
 ```ts

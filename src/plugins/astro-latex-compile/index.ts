@@ -35,6 +35,12 @@ export interface RemarkLatexCompileOptions {
    */
   svgOutputDir: string;
   /**
+   * Default CSS class(es) applied to every compiled SVG `<img>` element.
+   * Individual blocks can override this with a `class` meta tag value.
+   * The `tex-compiled` class is always present and cannot be overridden.
+   */
+  svgClassname?: string;
+  /**
    * Directories added to the TeX input search path via TEXINPUTS, allowing
    * \input{} and \include{} to resolve files from your project. Use a trailing
    * slash for the directory itself, or double trailing slash for recursive
@@ -239,8 +245,12 @@ export function remarkLatexCompile(options: RemarkLatexCompileOptions) {
       }
 
       const metaOptions = new MetaOptions(node.meta ?? "");
-      const customClasses =
-        metaOptions.getString("class")?.split(/\s+/).filter(Boolean) ?? [];
+      const blockClass = metaOptions.getString("class");
+      const extraClasses = (
+        blockClass !== undefined ? blockClass : (options.svgClassname ?? "")
+      )
+        .split(/\s+/)
+        .filter(Boolean);
       const altText = metaOptions.getString("alt") ?? "LaTeX diagram";
 
       const imageNode: Image = {
@@ -248,7 +258,7 @@ export function remarkLatexCompile(options: RemarkLatexCompileOptions) {
         url: `/static/tex-svgs/${result.hash}.svg`,
         alt: altText,
         data: {
-          hProperties: { className: ["tex-compiled", ...customClasses] },
+          hProperties: { className: ["tex-compiled", ...extraClasses] },
         },
       };
 
