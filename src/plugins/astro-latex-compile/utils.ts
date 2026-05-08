@@ -67,7 +67,7 @@ export async function writeJpgFromSvg(
   jpgPath: string,
 ): Promise<void> {
   mkdirSync(dirname(jpgPath), { recursive: true });
-  await sharp(svgPath)
+  await sharp(svgPath, { density: 300 })
     .flatten({ background: { r: 255, g: 255, b: 255 } })
     .jpeg({ quality: 90 })
     .toFile(jpgPath);
