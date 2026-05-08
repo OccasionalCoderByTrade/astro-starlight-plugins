@@ -23,6 +23,7 @@ import {
   buildErrorHtml,
   compileLatexToSvg,
   computeJpgPath,
+  computeTexInputDirsSalt,
   writeJpgError,
   writeJpgFromSvg,
 } from "./utils.js";
@@ -108,6 +109,7 @@ export function remarkLatexCompile(options: RemarkLatexCompileOptions) {
       filePath !== "unknown" ? relative(process.cwd(), filePath) : "unknown";
     const frontmatterOffset =
       filePath !== "unknown" ? getFrontmatterOffset(filePath) : 0;
+    const inputsSalt = computeTexInputDirsSalt(options.texInputDirs ?? []);
 
     // Compile all blocks in parallel, collecting results before mutating the tree
     const results = await Promise.all(
@@ -126,6 +128,7 @@ export function remarkLatexCompile(options: RemarkLatexCompileOptions) {
             node.value,
             svgOutputDir,
             options.texInputDirs ?? [],
+            inputsSalt,
           );
           if (result.wasCompiled) {
             console.log(

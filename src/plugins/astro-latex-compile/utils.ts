@@ -13,11 +13,13 @@ import { createHash } from "node:crypto";
 import {
   existsSync,
   mkdirSync,
+  readdirSync,
+  readFileSync,
   writeFileSync,
   rmSync,
   mkdtempSync,
 } from "node:fs";
-import { basename, dirname, join, resolve } from "node:path";
+import { basename, dirname, join, relative, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import sharp from "sharp";
 import { createCompilationErrorMessage } from "./error-parser.js";
@@ -227,7 +229,44 @@ export function buildErrorHtml(
   </div>`.toString();
 }
 
-export function hashLatexCode(code: string): string {
+function collectTexInputFiles(dir: string, recursive: boolean): string[] {
+  const files: string[] = [];
+  try {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const full = join(dir, entry.name);
+      if (entry.isDirectory() && recursive) {
+        files.push(...collectTexInputFiles(full, recursive));
+      } else if (entry.isFile()) {
+        files.push(full);
+      }
+    }
+  } catch {
+    // directory missing or unreadable — skip silently
+  }
+  return files.sort();
+}
+
+export function computeTexInputDirsSalt(texInputDirs: string[]): string {
+  if (texInputDirs.length === 0) return "";
+  const hash = createHash("md5");
+  let hasAnyFile = false;
+  for (const dir of texInputDirs) {
+    const recursive = dir.endsWith("//");
+    const resolved = resolve(dir.endsWith("/") ? dir.slice(0, -1) : dir);
+    for (const filePath of collectTexInputFiles(resolved, recursive)) {
+      try {
+        hash.update(relative(process.cwd(), filePath));
+        hash.update(readFileSync(filePath));
+        hasAnyFile = true;
+      } catch {
+        // skip unreadable files
+      }
+    }
+  }
+  return hasAnyFile ? hash.digest("hex").slice(0, 16) : "";
+}
+
+export function hashLatexCode(code: string, salt = ""): string {
   const normalized = code
     .split("\n")
     .map((line) => line.trim())
@@ -240,7 +279,9 @@ export function hashLatexCode(code: string): string {
   // MD5 truncated to 16 chars (8 bytes, 64 bits) is fast and provides
   // ~2^32 collision resistance (4 billion diagrams) which is more than sufficient
   // for build caching of non-adversarial content.
-  return createHash("md5").update(normalized).digest("hex").slice(0, 16);
+  const h = createHash("md5").update(normalized);
+  if (salt) h.update(salt);
+  return h.digest("hex").slice(0, 16);
 }
 
 function buildLatexSource(latexCode: string): string {
@@ -268,8 +309,9 @@ export async function compileLatexToSvg(
   latexCode: string,
   svgOutputDir: string,
   texInputDirs: string[] = [],
+  inputsSalt = "",
 ): Promise<CompilationResult> {
-  const hash = hashLatexCode(latexCode);
+  const hash = hashLatexCode(latexCode, inputsSalt);
   const svgPath = join(svgOutputDir, `${hash}.svg`);
 
   // If already compiled, return early
