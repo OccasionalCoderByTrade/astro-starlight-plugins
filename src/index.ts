@@ -10,7 +10,6 @@ export {
 } from "./plugins/astro-sync-docs-to-public/index.js";
 export { rehypeValidateLinks } from "./plugins/rehype-validate-links.js";
 export { astroNormalizePaths } from "./plugins/astro-normalize-paths/index.js";
-export { remarkLatexCompile } from "./plugins/astro-latex-compile/index.js";
 export { expressiveCodeEmphasis } from "./plugins/expressive-code-emphasis/index.js";
 export {
   astroLatexCompile,

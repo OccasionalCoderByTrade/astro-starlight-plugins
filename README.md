@@ -231,28 +231,6 @@ The following attributes can be added to the opening fence:
 ```
 ````
 
-### Remark LaTeX Compile (low-level)
-
-The underlying remark plugin used by `astroLatexCompile`. Use this directly if you need to wire the transformer into a custom pipeline — most users should use `astroLatexCompile` instead.
-
-**Usage:**
-
-```ts
-// astro.config.mjs
-import { defineConfig } from "astro/config";
-import { remarkLatexCompile } from "starlight-cannoli-plugins/astro-latex-compile";
-
-export default defineConfig({
-  markdown: {
-    remarkPlugins: [
-      [remarkLatexCompile, { svgOutputDir: "public/static/tex-svgs" }],
-    ],
-  },
-});
-```
-
-Note: when used directly (without `astroLatexCompile`), the Starlight content layer cache is not cleared automatically, so SVGs may not recompile on repeat builds in Starlight projects.
-
 ### Rehype Validate Links
 
 A rehype plugin that validates all internal links in your Markdown/MDX files at build time. Links without matching files will cause the build to fail.

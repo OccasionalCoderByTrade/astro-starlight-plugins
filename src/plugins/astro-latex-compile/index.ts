@@ -1,16 +1,3 @@
-/**
- * Remark plugin that compiles fenced `tex compile` or `latex compile` code blocks to SVG.
- *
- * Usage:
- *   import { remarkLatexCompile } from "...";
- *
- *   // In astro.config.mjs:
- *   markdown: {
- *     remarkPlugins: [
- *       [remarkLatexCompile, { svgOutputDir: "public/static/tex-svgs" }],
- *     ],
- *   }
- */
 import { readFileSync } from "node:fs";
 import { rm } from "node:fs/promises";
 import { parseFrontmatter } from "@astrojs/markdown-remark";
