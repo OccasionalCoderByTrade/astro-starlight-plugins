@@ -405,6 +405,50 @@ export default defineConfig({
 });
 ```
 
+### Expressive Code Emphasis
+
+An Expressive Code plugin that highlights specific terms inside code blocks using the `emph` meta attribute. Matched terms are wrapped in a `<span class="fw-supreme">` for custom styling.
+
+**Features:**
+
+- Comma-separated list of terms to emphasize per code block
+- Exact-word matching: terms surrounded by word boundaries or whitespace/string edges are matched; partial substrings are not
+- Supports non-word characters (e.g. `(`, `]`, `;`) as well as identifiers
+
+**Usage:**
+
+Register the plugin with Expressive Code:
+
+```ts
+// astro.config.mjs
+import { defineConfig } from "astro/config";
+import starlight from "@astrojs/starlight";
+import { expressiveCodeEmphasis } from "starlight-cannoli-plugins";
+
+export default defineConfig({
+  integrations: [
+    starlight({
+      title: "My Docs",
+      expressiveCode: {
+        plugins: [expressiveCodeEmphasis()],
+      },
+    }),
+  ],
+});
+```
+
+Then use the `emph` meta attribute on any code block:
+
+````markdown
+```js emph="foo,bar,()"
+function foo() {
+  return bar() || ();
+}
+```
+````
+
+Multiple terms are separated by commas. Each term is matched as a whole unit — it must be surrounded by whitespace, start/end of line, or (for terms that start/end with word characters) word boundaries.
+
 ## CLI Utilities
 
 ### cannoli-latex-cleanup

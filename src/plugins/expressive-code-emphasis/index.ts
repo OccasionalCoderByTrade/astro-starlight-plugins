@@ -31,7 +31,12 @@ export function expressiveCodeEmphasis() {
 
         for (const line of context.codeBlock.getLines()) {
           for (const term of terms) {
-            const regex = new RegExp(`\\b${escapeRegex(term)}\\b`, "g");
+            const left = /\w/.test(term[0]) ? "\\b" : "(?<!\\S)";
+            const right = /\w/.test(term[term.length - 1]) ? "\\b" : "(?!\\S)";
+            const regex = new RegExp(
+              `${left}${escapeRegex(term)}${right}`,
+              "g",
+            );
             for (const match of line.text.matchAll(regex)) {
               line.addAnnotation(
                 new EmphasisAnnotation({
