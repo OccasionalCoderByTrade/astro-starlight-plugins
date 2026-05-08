@@ -47,7 +47,6 @@ export function computeJpgPath(
   tempOutputDir: string,
   filePath: string,
   blockId: number,
-  hash: string,
 ): string {
   const normalized = filePath.replace(/\\/g, "/");
   const idx = normalized.indexOf(CONTENT_ROOT);
@@ -58,7 +57,7 @@ export function computeJpgPath(
 
   const dir = dirname(relativePath);
   const filename = basename(relativePath);
-  const jpgFilename = `${filename}--${blockId}--${hash}.jpg`;
+  const jpgFilename = `${filename}--${blockId}.jpg`;
 
   const base = resolve(tempOutputDir);
   return dir === "." ? join(base, jpgFilename) : join(base, dir, jpgFilename);
@@ -115,7 +114,9 @@ export async function writeJpgError(
 
   // Strip the verbose LaTeX source listing — show only the error summary
   const sourceIdx = clean.indexOf("LaTeX source:");
-  const summary = (sourceIdx !== -1 ? clean.slice(0, sourceIdx) : clean).trimEnd();
+  const summary = (
+    sourceIdx !== -1 ? clean.slice(0, sourceIdx) : clean
+  ).trimEnd();
 
   let lines = wrapText(summary, 90);
   if (lines.length > MAX_LINES) {

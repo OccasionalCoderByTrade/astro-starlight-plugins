@@ -11,7 +11,6 @@
  *     ],
  *   }
  */
-import { existsSync } from "node:fs";
 import { rm } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { visit, SKIP } from "unist-util-visit";
@@ -21,7 +20,6 @@ import { MetaOptions } from "@expressive-code/core";
 import {
   compileLatexToSvg,
   computeJpgPath,
-  hashLatexCode,
   writeJpgError,
   writeJpgFromSvg,
 } from "./utils.js";
@@ -93,8 +91,10 @@ export function remarkLatexCompile(options: RemarkLatexCompileOptions) {
       nodes.map(async ({ node, index, parent }) => {
         const lineNumberStr = node.position?.start.line ?? "?";
         const blockId = new MetaOptions(node.meta ?? "").getInteger("blockid");
-        const contentHash = hashLatexCode(node.value);
-        const canWriteJpg = !!options.tempOutputDir && blockId !== undefined;
+        const jpgPath =
+          options.tempOutputDir && blockId !== undefined
+            ? computeJpgPath(options.tempOutputDir, filePath, blockId)
+            : null;
         try {
           const result = await compileLatexToSvg(
             node.value,
@@ -107,10 +107,7 @@ export function remarkLatexCompile(options: RemarkLatexCompileOptions) {
             );
           }
           options._referencedHashes?.add(result.hash);
-          const jpgPath = canWriteJpg
-            ? computeJpgPath(options.tempOutputDir!, filePath, blockId!, contentHash)
-            : null;
-          if (jpgPath && !existsSync(jpgPath)) {
+          if (jpgPath) {
             await writeJpgFromSvg(result.svgPath, jpgPath);
             console.log(
               `[remark-latex-compile] ${filePath}:${lineNumberStr}: wrote ${jpgPath}`,
@@ -131,10 +128,7 @@ export function remarkLatexCompile(options: RemarkLatexCompileOptions) {
           console.error(
             `[remark-latex-compile] ${filePath}:${lineNumberStr}\n${details}`,
           );
-          const jpgPath = canWriteJpg
-            ? computeJpgPath(options.tempOutputDir!, filePath, blockId!, `${contentHash}--error`)
-            : null;
-          if (jpgPath && !existsSync(jpgPath)) {
+          if (jpgPath) {
             await writeJpgError(
               jpgPath,
               `${filePath}:${lineNumberStr}`,
