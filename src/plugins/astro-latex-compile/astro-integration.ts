@@ -4,6 +4,28 @@ import { join, resolve } from "node:path";
 import type { AstroConfig, AstroIntegration } from "astro";
 import { remarkLatexCompile, type RemarkLatexCompileOptions } from "./index.js";
 
+const js = String.raw;
+const DARK_MODE_ROTATE = "178deg";
+
+const INJECTED_CSS = `
+:root {
+  --cannoli-error-low: hsl(0, 70%, 94%);
+  --cannoli-error: hsl(0, 72%, 42%);
+  --cannoli-error-high: hsl(0, 72%, 28%);
+}
+[data-theme="dark"] {
+  --cannoli-error-low: hsl(0, 55%, 16%);
+  --cannoli-error: hsl(0, 75%, 60%);
+  --cannoli-error-high: hsl(0, 80%, 82%);
+}
+.tex-compiled {
+  background-color: transparent;
+}
+html[data-theme="dark"] .tex-compiled {
+  filter: invert(1) hue-rotate(${DARK_MODE_ROTATE});
+}
+`;
+
 export interface LatexCompileOptions extends RemarkLatexCompileOptions {
   /**
    * When `true`, SVG files in `svgOutputDir` that are no longer referenced by
@@ -38,8 +60,18 @@ export function astroLatexCompile(
   return {
     name: "astro-latex-compile",
     hooks: {
-      "astro:config:setup": async ({ command, config, updateConfig }) => {
+      "astro:config:setup": async ({
+        command,
+        config,
+        updateConfig,
+        injectScript,
+      }) => {
         if (command !== "build" && command !== "dev") return;
+
+        injectScript(
+          "page",
+          js`{ const s = document.createElement("style"); s.textContent = ${JSON.stringify(INJECTED_CSS)}; document.head.appendChild(s); }`,
+        );
 
         if (command === "build") {
           await clearContentLayerCache(config);
