@@ -9,12 +9,11 @@ title: "LaTeX Compilation Examples"
 #### Simple State Machine
 
 ```tex compile
+\documentclass[border=5pt]{standalone}
 \usepackage{tikz}
-
-%===
-
 \usetikzlibrary{positioning,arrows.meta}
-
+\begin{document}
+\Large
 \begin{tikzpicture}[node distance=3cm]
   \node (q0) [circle, draw] {$q_0$};
   \node (q1) [circle, draw, right of=q0] {$q_1$};
@@ -24,19 +23,19 @@ title: "LaTeX Compilation Examples"
   \draw [->] (q1) -- node[above] {1} (q2);
   \draw [->] (q0) to[loop above] node {0} (q0);
   \draw [->] (q1) to[loop above] node {0} (q1);
-  \badcommand{this will break};
+  % \badcommand{this will break}
 \end{tikzpicture}
+\end{document}
 ```
 
 #### DFA with Transitions
 
 ```tex compile
+\documentclass[border=5pt]{standalone}
 \usepackage{tikz}
-
-%===
-
 \usetikzlibrary{positioning}
-
+\begin{document}
+\Large
 \begin{tikzpicture}[node distance=2.5cm]
   \node (start) [circle, draw, fill=lightgray] {Start};
   \node (s1) [circle, draw, right of=start] {$S_1$};
@@ -47,6 +46,7 @@ title: "LaTeX Compilation Examples"
   \draw [->] (s1) -- node[above] {$b$} (s2);
   \draw [->] (s2) -- node[right] {$\epsilon$} (accept);
 \end{tikzpicture}
+\end{document}
 ```
 
 ### Graph Structures
@@ -56,10 +56,10 @@ title: "LaTeX Compilation Examples"
 <!-- updated -->
 
 ```tex compile
+\documentclass[border=5pt]{standalone}
 \usepackage{tikz}
-
-%===
-
+\begin{document}
+\Large
 \begin{tikzpicture}[level distance=1.5cm, sibling distance=1cm]
   \node (root) {$A$}
     child { node {$B$}
@@ -71,15 +71,16 @@ title: "LaTeX Compilation Examples"
       child { node {$G$} }
     };
 \end{tikzpicture}
+\end{document}
 ```
 
 #### Directed Acyclic Graph (DAG)
 
 ```tex compile
+\documentclass[border=5pt]{standalone}
 \usepackage{tikz}
-
-%===
-
+\begin{document}
+\Large
 \begin{tikzpicture}
   \node (a) at (0,0) {A};
   \node (b) at (2,1) {B};
@@ -91,15 +92,16 @@ title: "LaTeX Compilation Examples"
   \draw [->] (b) -- (d);
   \draw [->] (c) -- (d);
 \end{tikzpicture}
+\end{document}
 ```
 
 #### Undirected Graph
 
 ```tex compile
+\documentclass[border=5pt]{standalone}
 \usepackage{tikz}
-
-%===
-
+\begin{document}
+\Large
 \begin{tikzpicture}
   \node (v1) at (0,0) {1};
   \node (v2) at (2,1) {2};
@@ -112,6 +114,7 @@ title: "LaTeX Compilation Examples"
   \draw (v3) -- (v4);
   \draw (v2) -- (v3);
 \end{tikzpicture}
+\end{document}
 ```
 
 ### Algorithm Visualization
@@ -119,10 +122,10 @@ title: "LaTeX Compilation Examples"
 #### Stack Data Structure
 
 ```tex compile
+\documentclass[border=5pt]{standalone}
 \usepackage{tikz}
-
-%===
-
+\begin{document}
+\Large
 \begin{tikzpicture}
   \draw [thick] (0,0) rectangle (1,4);
   \node at (0.5, 3.5) {9};
@@ -135,17 +138,17 @@ title: "LaTeX Compilation Examples"
   \draw [dashed] (0, 1.75) -- (1, 1.75);
   \draw [dashed] (0, 0.75) -- (1, 0.75);
 \end{tikzpicture}
+\end{document}
 ```
 
 #### Linked List with Rectangle Split
 
 ```tex compile
+\documentclass[border=5pt]{standalone}
 \usepackage{tikz}
-
-%===
-
 \usetikzlibrary{shapes.multipart,positioning}
-
+\begin{document}
+\Large
 \begin{tikzpicture}
   \node [rectangle split, rectangle split parts=2, draw] (n1) {1 \nodepart{two} $\rightarrow$};
   \node [rectangle split, rectangle split parts=2, draw, right=of n1] (n2) {2 \nodepart{two} $\rightarrow$};
@@ -154,17 +157,17 @@ title: "LaTeX Compilation Examples"
   \draw [->] (n1.east) -- (n2.west);
   \draw [->] (n2.east) -- (n3.west);
 \end{tikzpicture}
+\end{document}
 ```
 
 ### Network Topology
 
 ```tex compile
+\documentclass[border=5pt]{standalone}
 \usepackage{tikz}
-
-%===
-
 \usetikzlibrary{positioning}
-
+\begin{document}
+\Large
 \begin{tikzpicture}
   \node (center) [circle, draw, fill=blue!20] {Server};
   \node (c1) [circle, draw, above left of=center] {Client 1};
@@ -177,6 +180,7 @@ title: "LaTeX Compilation Examples"
   \draw [<->] (center) -- (c3);
   \draw [<->] (center) -- (c4);
 \end{tikzpicture}
+\end{document}
 ```
 
 ## Mathematics
@@ -186,10 +190,10 @@ title: "LaTeX Compilation Examples"
 #### Coordinate System
 
 ```tex compile
+\documentclass[border=5pt]{standalone}
 \usepackage{tikz}
-
-%===
-
+\begin{document}
+\Large
 \begin{tikzpicture}
   \draw [->] (-2,0) -- (2,0) node [right] {$x$};
   \draw [->] (0,-2) -- (0,2) node [above] {$y$};
@@ -197,15 +201,16 @@ title: "LaTeX Compilation Examples"
   \node [circle, draw, fill=red, inner sep=2pt] at (1,1) {};
   \node [right] at (1,1) {$(1, 1)$};
 \end{tikzpicture}
+\end{document}
 ```
 
 #### Circle and Tangent Line
 
 ```tex compile
+\documentclass[border=5pt]{standalone}
 \usepackage{tikz}
-
-%===
-
+\begin{document}
+\Large
 \begin{tikzpicture}
   \draw [thick] (0,0) circle (1cm);
   \node [circle, fill, inner sep=1.5pt] at (0,0) {};
@@ -217,15 +222,16 @@ title: "LaTeX Compilation Examples"
 
   \draw [dashed] (0,0) -- (0,1);
 \end{tikzpicture}
+\end{document}
 ```
 
 #### Triangle with Angles
 
 ```tex compile
+\documentclass[border=5pt]{standalone}
 \usepackage{tikz}
-
-%===
-
+\begin{document}
+\Large
 \begin{tikzpicture}
   \node (a) at (0,0) [circle, fill, inner sep=2pt] {};
   \node (b) at (3,0) [circle, fill, inner sep=2pt] {};
@@ -237,15 +243,16 @@ title: "LaTeX Compilation Examples"
   \node [below right] at (b) {B};
   \node [above] at (c) {C};
 \end{tikzpicture}
+\end{document}
 ```
 
 #### Coordinate Axes with Point
 
 ```tex compile
+\documentclass[border=5pt]{standalone}
 \usepackage{tikz}
-
-%===
-
+\begin{document}
+\Large
 \begin{tikzpicture}
   \draw [thick, ->] (0,0) -- (3,0) node [right] {$x$};
   \draw [thick, ->] (0,0) -- (0,3) node [above] {$y$};
@@ -254,6 +261,7 @@ title: "LaTeX Compilation Examples"
   \node [circle, fill=red, inner sep=2pt] at (2,2) {};
   \node [above right] at (2,2) {P};
 \end{tikzpicture}
+\end{document}
 ```
 
 ### Calculus
@@ -261,10 +269,10 @@ title: "LaTeX Compilation Examples"
 #### Parabola Function
 
 ```tex compile
+\documentclass[border=5pt]{standalone}
 \usepackage{tikz}
-
-%===
-
+\begin{document}
+\Large
 \begin{tikzpicture}
   \draw [->] (-2.5,0) -- (2.5,0) node [right] {$x$};
   \draw [->] (0,-0.5) -- (0,2.5) node [above] {$y$};
@@ -272,15 +280,16 @@ title: "LaTeX Compilation Examples"
   \draw [domain=-2:2, samples=50, thick, blue] plot (\x, {(\x)^2/2});
   \node [right, blue] at (1.5, 1.1) {$y = x^2/2$};
 \end{tikzpicture}
+\end{document}
 ```
 
 #### Vector Representation
 
 ```tex compile
+\documentclass[border=5pt]{standalone}
 \usepackage{tikz}
-
-%===
-
+\begin{document}
+\Large
 \begin{tikzpicture}
   \draw [->] (-0.5,0) -- (3,0);
   \draw [->] (0,-0.5) -- (0,3);
@@ -288,15 +297,16 @@ title: "LaTeX Compilation Examples"
   \draw [->, thick, blue] (0,0) -- (1,2) node [right] {$\vec{v}$};
   \draw [->, thick, green, dashed] (0,0) -- (3,3) node [above right] {$\vec{u} + \vec{v}$};
 \end{tikzpicture}
+\end{document}
 ```
 
 #### Area Under Curve
 
 ```tex compile
+\documentclass[border=5pt]{standalone}
 \usepackage{tikz}
-
-%===
-
+\begin{document}
+\Large
 \begin{tikzpicture}
   \draw [->] (0,0) -- (4,0) node [right] {$x$};
   \draw [->] (0,0) -- (0,2) node [above] {$f(x)$};
@@ -308,6 +318,7 @@ title: "LaTeX Compilation Examples"
     \fill [blue, opacity=0.2] (\x, 0) -- (\x, {sin(\x r) + 1});
   }
 \end{tikzpicture}
+\end{document}
 ```
 
 ### Linear Algebra
@@ -315,10 +326,10 @@ title: "LaTeX Compilation Examples"
 #### Vectors in 2D
 
 ```tex compile
+\documentclass[border=5pt]{standalone}
 \usepackage{tikz}
-
-%===
-
+\begin{document}
+\Large
 \begin{tikzpicture}
   \draw [thick, ->] (-1,0) -- (4,0) node [right] {$x_1$};
   \draw [thick, ->] (0,-1) -- (0,4) node [above] {$x_2$};
@@ -326,28 +337,30 @@ title: "LaTeX Compilation Examples"
   \draw [->, thick, red] (0,0) -- (2,1) node [below right] {$\vec{a}$};
   \draw [->, thick, blue] (0,0) -- (1,3) node [above left] {$\vec{b}$};
 \end{tikzpicture}
+\end{document}
 ```
 
 #### Matrix
 
 ```tex compile
+\documentclass[border=5pt]{standalone}
 \usepackage{amsmath}
-
-%===
-
+\begin{document}
+\Large
 $\begin{pmatrix} 1 & 2 \\ 3 & 4 \end{pmatrix}$
 $\begin{bmatrix} 1 & 2 \\ 3 & 4 \end{bmatrix}$
 $\begin{vmatrix} 1 & 2 \\ 3 & 4 \end{vmatrix}$
+\end{document}
 ```
 
 #### Matrix as Transformation
 
 ```tex compile
+\documentclass[border=5pt]{standalone}
 \usepackage{tikz}
 \usepackage{amsmath}
-
-%===
-
+\begin{document}
+\Large
 \begin{tikzpicture}
   \node at (0,1) {$A = \left(\begin{smallmatrix} 2 & 0 \\ 0 & 1 \end{smallmatrix}\right)$};
 
@@ -355,6 +368,7 @@ $\begin{vmatrix} 1 & 2 \\ 3 & 4 \end{vmatrix}$
 
   \node at (0, -1.5) {Scales $x$ by 2, keeps $y$ unchanged};
 \end{tikzpicture}
+\end{document}
 ```
 
 ## Algorithms and Data Structures
@@ -362,25 +376,26 @@ $\begin{vmatrix} 1 & 2 \\ 3 & 4 \end{vmatrix}$
 ### Sorting Visualization
 
 ```tex compile
+\documentclass[border=5pt]{standalone}
 \usepackage{tikz}
-
-%===
-
+\begin{document}
+\Large
 \begin{tikzpicture}
   \foreach \i/\h in {1/2, 2/4, 3/3, 4/1, 5/5} {
     \draw [fill=blue!40] (\i-0.4, 0) rectangle (\i+0.4, \h);
     \node at (\i, -0.5) {\i};
   }
 \end{tikzpicture}
+\end{document}
 ```
 
 #### Binary Search Tree
 
 ```tex compile
+\documentclass[border=5pt]{standalone}
 \usepackage{tikz}
-
-%===
-
+\begin{document}
+\Large
 \begin{tikzpicture}[
   level 1/.style={sibling distance=4cm},
   level 2/.style={sibling distance=2cm},
@@ -396,16 +411,16 @@ $\begin{vmatrix} 1 & 2 \\ 3 & 4 \end{vmatrix}$
     child {node {14}}
   };
 \end{tikzpicture}
-
+\end{document}
 ```
 
 ### Complexity Analysis
 
 ```tex compile
+\documentclass[border=5pt]{standalone}
 \usepackage{tikz}
-
-%===
-
+\begin{document}
+\Large
 \begin{tikzpicture}
   \draw [->] (0,0) -- (5,0) node [right] {$n$};
   \draw [->] (0,0) -- (0,4) node [above] {Time};
@@ -414,6 +429,7 @@ $\begin{vmatrix} 1 & 2 \\ 3 & 4 \end{vmatrix}$
   \draw [domain=0.5:2.8, samples=50, thick, blue] plot (\x, {ln(\x) + 1});
   \node [blue, above] at (2.5, 1.9) {$O(\log n)$};
 \end{tikzpicture}
+\end{document}
 ```
 
 ## Statistics and Probability
@@ -423,10 +439,10 @@ $\begin{vmatrix} 1 & 2 \\ 3 & 4 \end{vmatrix}$
 #### Venn Diagram
 
 ```tex compile
+\documentclass[border=5pt]{standalone}
 \usepackage{tikz}
-
-%===
-
+\begin{document}
+\Large
 \begin{tikzpicture}
   \draw (0,0) circle (1cm) node [left] {A};
   \draw (1.5,0) circle (1cm) node [right] {B};
@@ -434,15 +450,16 @@ $\begin{vmatrix} 1 & 2 \\ 3 & 4 \end{vmatrix}$
   \fill [blue, opacity=0.3] (0,0) circle (1cm);
   \fill [red, opacity=0.3] (1.5,0) circle (1cm);
 \end{tikzpicture}
+\end{document}
 ```
 
 #### Set Relationships
 
 ```tex compile
+\documentclass[border=5pt]{standalone}
 \usepackage{tikz}
-
-%===
-
+\begin{document}
+\Large
 \begin{tikzpicture}
   \draw [thick] (0,0) rectangle (4,3) node [above left] {$U$};
 
@@ -452,6 +469,7 @@ $\begin{vmatrix} 1 & 2 \\ 3 & 4 \end{vmatrix}$
   \draw [thick] (3,1) circle (0.8cm);
   \node [above] at (3, 1.8) {$B$};
 \end{tikzpicture}
+\end{document}
 ```
 
 ## Graphics and Diagrams
@@ -459,10 +477,10 @@ $\begin{vmatrix} 1 & 2 \\ 3 & 4 \end{vmatrix}$
 ### Simple Shapes
 
 ```tex compile
+\documentclass[border=5pt]{standalone}
 \usepackage{tikz}
-
-%===
-
+\begin{document}
+\Large
 \begin{tikzpicture}
   \draw [fill=red!20] (0,0) circle (0.5cm);
   \draw [fill=blue!20] (1.5,0) rectangle (2.5,1);
@@ -472,17 +490,17 @@ $\begin{vmatrix} 1 & 2 \\ 3 & 4 \end{vmatrix}$
   \node at (2, -0.8) {Rectangle};
   \node at (3.75, -0.8) {Polygon};
 \end{tikzpicture}
+\end{document}
 ```
 
 ### Flow Chart
 
 ```tex compile
+\documentclass[border=5pt]{standalone}
 \usepackage{tikz}
-
-%===
-
 \usetikzlibrary{shapes.geometric,positioning}
-
+\begin{document}
+\Large
 \begin{tikzpicture}[node distance=2.5cm]
   \node (start) [rectangle, draw, fill=gray!20, rounded corners] {Start};
   \node (process) [rectangle, draw, below=of start] {Process};
@@ -494,15 +512,16 @@ $\begin{vmatrix} 1 & 2 \\ 3 & 4 \end{vmatrix}$
   \draw [->, thick] (decision) -- node [right, pos=0.5] {Yes} (end);
   \draw [->, thick] (decision.west) -- (-1, 0.5) -- (-1, 2.5) -- (process.west) node [left, pos=0.5] {No};
 \end{tikzpicture}
+\end{document}
 ```
 
 ### Pie Chart Sections
 
 ```tex compile
+\documentclass[border=5pt]{standalone}
 \usepackage{tikz}
-
-%===
-
+\begin{document}
+\Large
 \begin{tikzpicture}
   \draw (0,0) circle (1cm);
   \draw [fill=red!40] (0,0) -- (0,1) arc (90:234:1) -- cycle;
@@ -511,30 +530,32 @@ $\begin{vmatrix} 1 & 2 \\ 3 & 4 \end{vmatrix}$
 
   \node at (0, 1.5) {Distribution};
 \end{tikzpicture}
+\end{document}
 ```
 
 ### Sine Wave
 
 ```tex compile
+\documentclass[border=5pt]{standalone}
 \usepackage{tikz}
-
-%===
-
+\begin{document}
+\Large
 \begin{tikzpicture}
   \draw [->] (0,0) -- (6,0) node [right] {$x$};
   \draw [->] (0,-1.5) -- (0,1.5) node [above] {$\sin(x)$};
   \draw [domain=0:2*pi, samples=100, thick, blue] plot (\x, {sin(\x r)});
   \node [blue, above] at (3.14, 0.2) {$y = \sin(x)$};
 \end{tikzpicture}
+\end{document}
 ```
 
 ### Geometric Pattern
 
 ```tex compile
+\documentclass[border=5pt]{standalone}
 \usepackage{tikz}
-
-%===
-
+\begin{document}
+\Large
 \begin{tikzpicture}
   \foreach \i in {0,45,90,135,180,225,270,315} {
     \draw [thick] (0,0) -- (\i:2cm);
@@ -544,4 +565,5 @@ $\begin{vmatrix} 1 & 2 \\ 3 & 4 \end{vmatrix}$
     \node [circle, fill, inner sep=2pt] at (\i:2cm) {};
   }
 \end{tikzpicture}
+\end{document}
 ```

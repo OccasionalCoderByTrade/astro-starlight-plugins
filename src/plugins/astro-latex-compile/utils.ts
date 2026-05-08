@@ -5,13 +5,9 @@
  *   - pdflatex  (e.g. texlive-latex-base on Debian, MacTeX on macOS)
  *   - dvisvgm   (e.g. texlive-extra-utils on Debian, included in MacTeX)
  *
- * Users can optionally separate preamble from content using %=== separator:
- *   \usepackage{amsmath}
- *   %===
- *   $\begin{pmatrix} ... \end{pmatrix}$
- *
- * Spaces between % and === are optional. Content without separator is treated
- * entirely as document content.
+ * Code blocks must either be a complete standalone LaTeX document (containing
+ * both \documentclass and \begin{document}), or raw content that the plugin
+ * wraps in a minimal standalone document automatically.
  */
 import { createHash } from "node:crypto";
 import {
@@ -26,6 +22,7 @@ import { tmpdir } from "node:os";
 import sharp from "sharp";
 import { createCompilationErrorMessage } from "./error-parser.js";
 import { execProcess } from "../utils/process-utils.js";
+import { html, HtmlString } from "../utils/html-builder.js";
 
 const CONTENT_ROOT = "src/content/docs/";
 
@@ -153,6 +150,83 @@ export async function writeJpgError(
     .toFile(jpgPath);
 }
 
+function computeLineOffset(_latexCode: string): number {
+  // Complete documents are passed through as-is, so pdflatex line numbers
+  // map directly to node.value line numbers.
+  return 0;
+}
+
+export function buildErrorHtml(
+  header: string,
+  errorMsg: string,
+  latexCode: string,
+): string {
+  const clean = stripAnsi(errorMsg);
+  const sourceIdx = clean.indexOf("LaTeX source:");
+  const summary = (
+    sourceIdx !== -1 ? clean.slice(0, sourceIdx) : clean
+  ).trimEnd();
+
+  // Extract pdflatex-reported line numbers (e.g. "Error (line 5):")
+  const compiledLineNums: number[] = [];
+  const linePattern = /Error \(line (\d+)\)/g;
+  let m;
+  while ((m = linePattern.exec(summary)) !== null) {
+    compiledLineNums.push(parseInt(m[1], 10));
+  }
+
+  const offset = computeLineOffset(latexCode);
+  const errorLineSet = new Set(
+    compiledLineNums.map((n) => n - offset).filter((n) => n > 0),
+  );
+
+  const codeLines = latexCode.split("\n");
+  const lineWidth = String(codeLines.length).length;
+
+  const summaryLines = summary
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => html`<div>${line}</div>`);
+
+  // Joined without newlines — extra whitespace inside <pre> renders as blank lines
+  const codeBlock = new HtmlString(
+    codeLines
+      .map((line, i) => {
+        const lineNum = i + 1;
+        const isError = errorLineSet.has(lineNum);
+        const gutter = String(lineNum).padStart(lineWidth);
+        const bg = isError ? "background:var(--cannoli-error-low);" : "";
+
+        return html`<span style="${bg}display:block;padding:0 14px"
+          ><span style="color:var(--sl-color-gray-3);user-select:none"
+            >${gutter} │ </span
+          >${line}</span
+        >`.toString();
+      })
+      .join(""),
+  );
+
+  return html`<div
+    class="not-content"
+    style="border:1px solid var(--cannoli-error-low);border-radius:6px;overflow:hidden;margin:1.5em 0;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;line-height:1.5;display:flex;flex-direction:column"
+  >
+    <div
+      style="background:var(--cannoli-error);color:var(--sl-color-black);padding:8px 14px;font-weight:700"
+    >
+      &#9888;&nbsp;LaTeX Compilation Error &mdash; ${header}
+    </div>
+    <div
+      style="background:var(--cannoli-error-low);color:var(--cannoli-error-high);padding:10px 14px;border-bottom:1px solid var(--cannoli-error)"
+    >
+      $${summaryLines}
+    </div>
+    <pre
+      style="margin:0;background:var(--sl-color-gray-6);color:var(--sl-color-text);overflow-x:auto"
+    ><code style="display:block;padding:8px 0;font-size:12px">$${codeBlock}</code></pre>
+  </div>`.toString();
+}
+
 export function hashLatexCode(code: string): string {
   const normalized = code
     .split("\n")
@@ -170,33 +244,16 @@ export function hashLatexCode(code: string): string {
 }
 
 function buildLatexSource(latexCode: string): string {
-  // If user provided a complete document structure, use it as-is
   if (
     latexCode.includes("\\documentclass") &&
     latexCode.includes("\\begin{document}")
   ) {
     return latexCode.trim();
   }
-
-  // Split on %=== separator (with optional spaces/tabs, not newlines): preamble %=== content
-  const separatorRegex = /%[ \t]*===/;
-  const parts = latexCode.split(separatorRegex);
-  let preamble = "";
-  let content = latexCode.trim();
-
-  if (parts.length === 2) {
-    preamble = parts[0].trim();
-    content = parts[1].trim();
-  }
-
-  return [
-    "\\documentclass[border=5pt]{standalone}",
-    preamble,
-    "\\begin{document}",
-    "\\Large",
-    content,
-    "\\end{document}",
-  ].join("\n");
+  throw new Error(
+    `[remark-latex-compile] Code block is not a complete LaTeX document. ` +
+      `Blocks must contain both \\documentclass and \\begin{document}.`,
+  );
 }
 
 /**

@@ -121,7 +121,6 @@ Automatically compiles fenced `tex compile` and `latex compile` code blocks to S
 - Compiles LaTeX/TikZ code blocks to SVG automatically
 - Caches compiled SVGs by content hash (no recompilation if unchanged)
 - Comprehensive error reporting with line numbers and formatted LaTeX source
-- Supports custom preamble via `% ===` separator in code blocks
 - Works with Starlight and plain Astro projects
 - Requires `svgOutputDir` configuration (no defaults)
 
@@ -178,46 +177,22 @@ Use either ` ```tex compile ` or ` ```latex compile ` — both work identically:
 
 ````markdown
 ```tex compile
+\documentclass[border=5pt]{standalone}
+\usepackage{tikz}
+\begin{document}
+\Large
 \begin{tikzpicture}
   \node (A) at (0,0) {A};
   \node (B) at (2,0) {B};
   \draw (A) -- (B);
 \end{tikzpicture}
-```
-````
-
-**Minimal approach:**
-
-Use `% ===` to separate an optional custom preamble from your diagram content. The plugin wraps everything in the following document structure:
-
-```latex
-\documentclass[border=5pt]{standalone}
-{your preamble}
-\begin{document}
-\Large
-{your content}
 \end{document}
 ```
-
-Example **minimal** tex code block:
-
-````markdown
-```tex compile
-\usepackage{tikz-3dplot}
-
-% ===
-
-\begin{tikzpicture}
-  % diagram code here
-\end{tikzpicture}
-```
 ````
 
-If no `% ===` separator is present, the entire block is treated as content and wrapped in the same default document structure (with an empty preamble).
+**Document structure:**
 
-**Complete Document Control:**
-
-If your code block contains both `\documentclass` and `\begin{document}`, the plugin treats it as a complete, self-contained LaTeX document and uses it as-is without checking for a `% ===` separator for a preamble:
+Each code block must be a complete, self-contained LaTeX document:
 
 ````markdown
 ```tex compile
@@ -244,9 +219,14 @@ The following attributes can be added to the opening fence:
 
 ````markdown
 ```tex compile class="bg-white rounded-1" alt="A commutative diagram"
+\documentclass[border=5pt]{standalone}
+\usepackage{tikz}
+\begin{document}
+\Large
 \begin{tikzpicture}
   \node {Custom styled diagram};
 \end{tikzpicture}
+\end{document}
 ```
 ````
 

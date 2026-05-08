@@ -11,13 +11,16 @@
  *     ],
  *   }
  */
+import { readFileSync } from "node:fs";
 import { rm } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { parseFrontmatter } from "@astrojs/markdown-remark";
+import { join, relative, resolve } from "node:path";
 import { visit, SKIP } from "unist-util-visit";
-import type { Code, Image, Paragraph, Parent, Root } from "mdast";
+import type { Code, Html, Image, Paragraph, Parent, Root } from "mdast";
 import type { VFile } from "vfile";
 import { MetaOptions } from "@expressive-code/core";
 import {
+  buildErrorHtml,
   compileLatexToSvg,
   computeJpgPath,
   writeJpgError,
@@ -63,6 +66,22 @@ export interface RemarkLatexCompileOptions {
   _fileJpgPathMap?: Map<string, Set<string>>;
 }
 
+/**
+ * Astro strips frontmatter before passing markdown to remark, so remark's line
+ * numbers are relative to the body. This reads the original file to compute how
+ * many lines (frontmatter + blank separator) were removed.
+ */
+function getFrontmatterOffset(absoluteFilePath: string): number {
+  try {
+    const original = readFileSync(absoluteFilePath, "utf-8");
+    const { rawFrontmatter } = parseFrontmatter(original);
+    if (!rawFrontmatter) return 0;
+    return rawFrontmatter.split("\n").length - 1 + 2;
+  } catch {
+    return 0;
+  }
+}
+
 export function remarkLatexCompile(options: RemarkLatexCompileOptions) {
   const svgOutputDir = resolve(options.svgOutputDir);
 
@@ -85,11 +104,18 @@ export function remarkLatexCompile(options: RemarkLatexCompileOptions) {
     if (nodes.length === 0) return;
 
     const filePath = file.path || "unknown";
+    const relFilePath =
+      filePath !== "unknown" ? relative(process.cwd(), filePath) : "unknown";
+    const frontmatterOffset =
+      filePath !== "unknown" ? getFrontmatterOffset(filePath) : 0;
 
     // Compile all blocks in parallel, collecting results before mutating the tree
     const results = await Promise.all(
       nodes.map(async ({ node, index, parent }) => {
-        const lineNumberStr = node.position?.start.line ?? "?";
+        const lineNumberStr =
+          node.position?.start.line !== undefined
+            ? String(node.position.start.line + frontmatterOffset)
+            : "?";
         const blockId = new MetaOptions(node.meta ?? "").getInteger("blockid");
         const jpgPath =
           options.tempOutputDir && blockId !== undefined
@@ -103,14 +129,14 @@ export function remarkLatexCompile(options: RemarkLatexCompileOptions) {
           );
           if (result.wasCompiled) {
             console.log(
-              `[remark-latex-compile] ${filePath}:${lineNumberStr}: compiled ${result.hash}.svg`,
+              `[remark-latex-compile] ${relFilePath}:${lineNumberStr}: compiled ${result.hash}.svg`,
             );
           }
           options._referencedHashes?.add(result.hash);
           if (jpgPath) {
             await writeJpgFromSvg(result.svgPath, jpgPath);
             console.log(
-              `[remark-latex-compile] ${filePath}:${lineNumberStr}: wrote ${jpgPath}`,
+              `[remark-latex-compile] ${relFilePath}:${lineNumberStr}: wrote ${jpgPath}`,
             );
           }
           return {
@@ -126,12 +152,12 @@ export function remarkLatexCompile(options: RemarkLatexCompileOptions) {
           const match = errorMsg.match(/\n\n([\s\S]+)/);
           const details = match ? match[1] : errorMsg;
           console.error(
-            `[remark-latex-compile] ${filePath}:${lineNumberStr}\n${details}`,
+            `[remark-latex-compile] ${relFilePath}:${lineNumberStr}\n${details}`,
           );
           if (jpgPath) {
             await writeJpgError(
               jpgPath,
-              `${filePath}:${lineNumberStr}`,
+              `${relFilePath}:${lineNumberStr}`,
               errorMsg,
             );
           }
@@ -188,9 +214,26 @@ export function remarkLatexCompile(options: RemarkLatexCompileOptions) {
     // Apply AST mutations in reverse index order so earlier splices don't shift
     // the indices of later nodes sharing the same parent.
     for (let i = results.length - 1; i >= 0; i--) {
-      const { index, parent, result } = results[i];
+      const { index, parent, result, error } = results[i];
       const { node } = nodes[i];
-      if (!result) continue;
+
+      if (!result) {
+        const lineNumberStr =
+          node.position?.start.line !== undefined
+            ? String(node.position.start.line + frontmatterOffset)
+            : "?";
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        const errorNode: Html = {
+          type: "html",
+          value: buildErrorHtml(
+            `${relFilePath}:${lineNumberStr}`,
+            errorMsg,
+            node.value,
+          ),
+        };
+        parent.children.splice(index, 1, errorNode);
+        continue;
+      }
 
       const metaOptions = new MetaOptions(node.meta ?? "");
       const customClasses =

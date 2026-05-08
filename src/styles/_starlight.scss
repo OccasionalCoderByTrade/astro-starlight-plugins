@@ -2,6 +2,21 @@
 
 $DARK_MODE_ROTATE: 178deg;
 
+/********** Custom Error Colors **********/
+// Starlight's --sl-color-red-* sit at hsl(349°) which reads as pink/magenta.
+// These replacements use true red (0°) for a more conventional error appearance.
+:root {
+  --cannoli-error-low: hsl(0, 70%, 94%);
+  --cannoli-error: hsl(0, 72%, 42%);
+  --cannoli-error-high: hsl(0, 72%, 28%);
+}
+
+[data-theme="dark"] {
+  --cannoli-error-low: hsl(0, 55%, 16%);
+  --cannoli-error: hsl(0, 75%, 60%);
+  --cannoli-error-high: hsl(0, 80%, 82%);
+}
+
 .sl-container:where(.astro-7nkwcw3z) {
   max-width: 50rem;
 }
