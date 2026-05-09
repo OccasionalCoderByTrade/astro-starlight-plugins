@@ -2,7 +2,10 @@ import fs from "node:fs";
 import { readdir, rm } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import type { AstroConfig, AstroIntegration } from "astro";
-import { remarkLatexCompile, type RemarkLatexCompileOptions } from "./index.js";
+import {
+  latexCompileTransformer,
+  type LatexCompilePluginOptions,
+} from "./index.js";
 
 const js = String.raw;
 const DARK_MODE_ROTATE = "178deg";
@@ -26,7 +29,7 @@ html[data-theme="dark"] .tex-compiled {
 }
 `;
 
-export interface LatexCompileOptions extends RemarkLatexCompileOptions {
+export interface LatexCompileOptions extends LatexCompilePluginOptions {
   /**
    * When `true`, SVG files in `svgOutputDir` that are no longer referenced by
    * any `tex compile` block are deleted automatically. In dev mode, stale SVGs
@@ -81,7 +84,7 @@ export function astroLatexCompile(
           ? config.markdown.remarkPlugins.filter(Boolean)
           : [];
 
-        const remarkOptions: RemarkLatexCompileOptions = {
+        const pluginOptions: LatexCompilePluginOptions = {
           ...options,
           _fileHashMap: options.removeOrphanedSvgs ? fileHashMap : undefined,
           _referencedHashes:
@@ -95,7 +98,7 @@ export function astroLatexCompile(
           markdown: {
             remarkPlugins: [
               ...existingPlugins,
-              [remarkLatexCompile, remarkOptions],
+              [latexCompileTransformer, pluginOptions],
             ],
           },
         });

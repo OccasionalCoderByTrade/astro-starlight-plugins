@@ -143,7 +143,7 @@ export function formatLatexError(parsed: ParsedLatexError): string {
     (e) => e.severity === "warning",
   ).length;
 
-  let output = `${RED}[remark-latex-compile] LaTeX compilation failed${RESET}\n`;
+  let output = `${RED}[astro-latex-compile] LaTeX compilation failed${RESET}\n`;
   output += `${RED}${errorCount} error${errorCount !== 1 ? "s" : ""}${RESET}`;
   if (warningCount > 0) {
     output += `, ${YELLOW}${warningCount} warning${warningCount !== 1 ? "s" : ""}${RESET}`;

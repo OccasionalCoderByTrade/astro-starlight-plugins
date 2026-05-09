@@ -15,7 +15,7 @@ import {
   writeJpgFromSvg,
 } from "./utils.js";
 
-export interface RemarkLatexCompileOptions {
+export interface LatexCompilePluginOptions {
   /**
    * Directory where SVG files should be written.
    * Must be inside `public/` so Astro serves them as static assets.
@@ -50,12 +50,12 @@ export interface RemarkLatexCompileOptions {
   _referencedHashes?: Set<string>;
   /**
    * @internal Maps each file path to the set of hashes it produced on the
-   * previous remark run. Used to delete stale SVGs when a block changes.
+   * previous run. Used to delete stale SVGs when a block changes.
    */
   _fileHashMap?: Map<string, Set<string>>;
   /**
    * @internal Maps each file path to the set of JPG paths it produced on the
-   * previous remark run. Used to delete stale JPGs when a block changes.
+   * previous run. Used to delete stale JPGs when a block changes.
    */
   _fileJpgPathMap?: Map<string, Set<string>>;
 }
@@ -76,7 +76,7 @@ function getFrontmatterOffset(absoluteFilePath: string): number {
   }
 }
 
-export function remarkLatexCompile(options: RemarkLatexCompileOptions) {
+export function latexCompileTransformer(options: LatexCompilePluginOptions) {
   const svgOutputDir = resolve(options.svgOutputDir);
 
   return async function transformer(tree: Root, file: VFile) {
@@ -125,14 +125,14 @@ export function remarkLatexCompile(options: RemarkLatexCompileOptions) {
           );
           if (result.wasCompiled) {
             console.log(
-              `[remark-latex-compile] ${relFilePath}:${lineNumberStr}: compiled ${result.hash}.svg`,
+              `[astro-latex-compile] ${relFilePath}:${lineNumberStr}: compiled ${result.hash}.svg`,
             );
           }
           options._referencedHashes?.add(result.hash);
           if (jpgPath) {
             await writeJpgFromSvg(result.svgPath, jpgPath);
             console.log(
-              `[remark-latex-compile] ${relFilePath}:${lineNumberStr}: wrote ${jpgPath}`,
+              `[astro-latex-compile] ${relFilePath}:${lineNumberStr}: wrote ${jpgPath}`,
             );
           }
           return {
@@ -148,7 +148,7 @@ export function remarkLatexCompile(options: RemarkLatexCompileOptions) {
           const match = errorMsg.match(/\n\n([\s\S]+)/);
           const details = match ? match[1] : errorMsg;
           console.error(
-            `[remark-latex-compile] ${relFilePath}:${lineNumberStr}\n${details}`,
+            `[astro-latex-compile] ${relFilePath}:${lineNumberStr}\n${details}`,
           );
           if (jpgPath) {
             await writeJpgError(
@@ -178,7 +178,7 @@ export function remarkLatexCompile(options: RemarkLatexCompileOptions) {
       const staleHashes = [...oldHashes].filter((h) => !newHashes.has(h));
       for (const staleHash of staleHashes) {
         console.warn(
-          `[remark-latex-compile] Removing orphaned svg: ${staleHash}.svg`,
+          `[astro-latex-compile] Removing orphaned svg: ${staleHash}.svg`,
         );
       }
 
@@ -200,7 +200,7 @@ export function remarkLatexCompile(options: RemarkLatexCompileOptions) {
       const staleJpgPaths = [...oldJpgPaths].filter((p) => !newJpgPaths.has(p));
       for (const stalePath of staleJpgPaths) {
         console.warn(
-          `[remark-latex-compile] Removing orphaned jpg: ${stalePath}`,
+          `[astro-latex-compile] Removing orphaned jpg: ${stalePath}`,
         );
       }
       await Promise.all(staleJpgPaths.map((p) => rm(p, { force: true })));

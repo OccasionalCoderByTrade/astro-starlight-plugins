@@ -292,7 +292,7 @@ function buildLatexSource(latexCode: string): string {
     return latexCode.trim();
   }
   throw new Error(
-    `[remark-latex-compile] Code block is not a complete LaTeX document. ` +
+    `[astro-latex-compile] Code block is not a complete LaTeX document. ` +
       `Blocks must contain both \\documentclass and \\begin{document}.`,
   );
 }
@@ -348,7 +348,7 @@ export async function compileLatexToSvg(
     } catch (err) {
       const code = (err as NodeJS.ErrnoException).code;
       throw new Error(
-        `[remark-latex-compile] pdflatex not found on PATH (${code}).`,
+        `[astro-latex-compile] pdflatex not found on PATH (${code}).`,
         { cause: err },
       );
     }
@@ -375,7 +375,7 @@ export async function compileLatexToSvg(
     } catch (err) {
       const code = (err as NodeJS.ErrnoException).code;
       throw new Error(
-        `[remark-latex-compile] dvisvgm not found on PATH (${code}).`,
+        `[astro-latex-compile] dvisvgm not found on PATH (${code}).`,
         { cause: err },
       );
     }
@@ -383,7 +383,7 @@ export async function compileLatexToSvg(
     if (svgResult.status !== 0) {
       const errorOutput = svgResult.stderr || svgResult.stdout || "";
       throw new Error(
-        `[remark-latex-compile] PDF to SVG conversion failed (hash: ${hash}).\n` +
+        `[astro-latex-compile] PDF to SVG conversion failed (hash: ${hash}).\n` +
           `Error: ${errorOutput}`,
       );
     }
