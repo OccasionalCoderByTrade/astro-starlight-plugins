@@ -69,6 +69,17 @@ function createActionBar(): HTMLDivElement {
       },
     },
     {
+      label: "Copy raw URL",
+      action: () => {
+        setLoading(true);
+        getRawMdUrl()
+          .then((url) => navigator.clipboard.writeText(url))
+          .then(() => showBanner("Raw URL copied to clipboard!", "success"))
+          .catch(() => showBanner("Failed to copy raw URL.", "error"))
+          .finally(() => setLoading(false));
+      },
+    },
+    {
       label: "View raw",
       action: () => {
         setLoading(true);
