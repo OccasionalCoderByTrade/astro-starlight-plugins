@@ -25,6 +25,14 @@ export interface DomPatchesOptions {
    */
   offerToggleAllDetails?: boolean;
   /**
+   * Prepend icons to links based on their destination.
+   * Each key enables a specific icon; omitting a key or setting it to `false` disables it.
+   */
+  decorateExternalLinks?: {
+    /** Prepend a YouTube play-button icon to links pointing to youtube.com or youtu.be. */
+    youtube?: boolean;
+  };
+  /**
    * @deprecated Use `limitDetailsElementHeight` instead.
    */
   wrapDetailsContent?: boolean;
@@ -129,6 +137,7 @@ export function starlightDomPatches(
     limitDetailsElementHeight: limitDetailsElementHeightOption = false,
     offerTabbedContent = false,
     offerToggleAllDetails = false,
+    decorateExternalLinks,
     wrapDetailsContent,
   } = options;
 
@@ -181,11 +190,19 @@ export function starlightDomPatches(
           limitDetailsElementHeight ? "limitDetailsElementHeight" : null,
           offerTabbedContent ? "tabbedH2Content" : null,
           offerToggleAllDetails ? "toggleAllDetails" : null,
+          decorateExternalLinks ? "decorateExternalLinks" : null,
         ].filter(Boolean);
 
         if (imports.length === 0) return;
 
-        const calls = imports.map((fn) => `${fn}();`).join("\n");
+        const calls = imports
+          .map((fn) => {
+            if (fn === "decorateExternalLinks" && decorateExternalLinks) {
+              return `${fn}(${JSON.stringify(decorateExternalLinks)});`;
+            }
+            return `${fn}();`;
+          })
+          .join("\n");
         injectScript(
           "page",
           `import { ${imports.join(", ")} } from ${scriptPath};\n${calls}`,

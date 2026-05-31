@@ -71,6 +71,9 @@ export default defineConfig({
       syncTocLabelsFromHeadings: true,
       offerTabbedContent: true,
       offerToggleAllDetails: true,
+      decorateExternalLinks: {
+        youtube: true,
+      },
     }),
     astroNormalizePaths(),
     starlight({
