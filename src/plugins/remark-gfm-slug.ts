@@ -28,8 +28,10 @@ const remarkGfmSlug: Plugin<[], Root> = () => {
     visit(tree, "heading", (node: Heading) => {
       const text = headingText(node);
       const id = slugger.slug(text);
-      (node.data ??= {}).id = id;
-      ((node.data.hProperties ??= {}) as Record<string, unknown>).id = id;
+      const data = (node.data ??= {}) as Record<string, unknown>;
+      data.id = id;
+      data.hProperties ??= {} as Record<string, unknown>;
+      (data.hProperties as Record<string, unknown>).id = id;
     });
   };
 };
