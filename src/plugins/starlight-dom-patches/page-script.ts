@@ -74,8 +74,6 @@ type TabbedSection = {
 };
 
 export function tabbedH2Content() {
-  const LS_KEY = "starlight-dom-patches:tabbed-content";
-
   const contentContainer = document.querySelector<HTMLElement>(
     ".main-pane .sl-markdown-content",
   );
@@ -331,19 +329,12 @@ export function tabbedH2Content() {
     );
     viewToggleCheckbox.addEventListener("change", () => {
       setEnabled(viewToggleCheckbox.checked);
-      localStorage.setItem(
-        LS_KEY,
-        viewToggleCheckbox.checked ? "enabled" : "disabled",
-      );
     });
   }
 
   const viewToggleCheckbox = buildToggle();
 
-  // Restore persisted state (default: disabled).
-  const initialEnabled = localStorage.getItem(LS_KEY) === "enabled";
-  viewToggleCheckbox.checked = initialEnabled;
-  setEnabled(initialEnabled);
+  setEnabled(false);
   if (window.location.hash) navigateToHash(window.location.hash);
 
   wireInteractions(viewToggleCheckbox);
