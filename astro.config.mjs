@@ -11,6 +11,7 @@ import {
   astroNormalizePaths,
   expressiveCodeEmphasis,
   rehypeValidateLinks,
+  remarkGfmSlug,
   starlightDomPatches,
   starlightIndexSourcedSidebar,
   syncDocsToPublic,
@@ -43,6 +44,7 @@ const STARLIGHT_SOURCED_SIDEBAR_CONFIG = starlightIndexSourcedSidebar({
 export default defineConfig({
   markdown: {
     remarkPlugins: [
+      remarkGfmSlug, // assign heading IDs using GFM slug algorithm (matches VS Code)
       remarkMath, // adds support for math
     ],
     rehypePlugins: [

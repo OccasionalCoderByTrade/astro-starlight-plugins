@@ -6,6 +6,7 @@ description: A comprehensive reference page showcasing various Markdown elements
 ## Links
 
 - [Auto Lists](./auto-list-syntax)
+- [Complex Headings Example](examples-complex-headings)
 - [Tex Test](./tex-test)
 - [CSCI 328 Playlist](https://www.youtube.com/playlist?list=PL3i6InCQ0J3-P65BA2Xgw11L5TSXifVvy)
 - [First Video](https://www.youtube.com/watch?v=TIkRpEkAOlU&list=PL3i6InCQ0J3-P65BA2Xgw11L5TSXifVvy&index=1&t=60s&pp=iAQBsAgC)

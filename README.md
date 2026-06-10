@@ -231,6 +231,28 @@ The following attributes can be added to the opening fence:
 ```
 ````
 
+### Remark GFM Slug
+
+A remark plugin that assigns heading IDs using the same GFM slug algorithm as VS Code and GitHub, before Astro's internal `rehypeHeadingIds` runs. Since `rehypeHeadingIds` skips headings that already have an `id`, this takes precedence and produces fragment anchors that match what VS Code's markdown link resolver expects.
+
+This is especially useful when headings contain inline math or other syntax that Astro/Starlight would otherwise slugify from the rendered HTML output (producing long encoded IDs that differ from VS Code's raw-text slugification).
+
+**Usage:**
+
+```ts
+// astro.config.mjs
+import { defineConfig } from "astro/config";
+import { remarkGfmSlug } from "starlight-cannoli-plugins";
+
+export default defineConfig({
+  markdown: {
+    remarkPlugins: [
+      remarkGfmSlug, // must come before remark-math or other transforming plugins
+    ],
+  },
+});
+```
+
 ### Rehype Validate Links
 
 A rehype plugin that validates all internal links in your Markdown/MDX files at build time. Links without matching files will cause the build to fail.

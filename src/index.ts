@@ -9,6 +9,7 @@ export {
   type SyncDocsToPublicOptions,
 } from "./plugins/astro-sync-docs-to-public/index.js";
 export { rehypeValidateLinks } from "./plugins/rehype-validate-links.js";
+export { default as remarkGfmSlug } from "./plugins/remark-gfm-slug.js";
 export { astroNormalizePaths } from "./plugins/astro-normalize-paths/index.js";
 export { expressiveCodeEmphasis } from "./plugins/expressive-code-emphasis/index.js";
 export {
