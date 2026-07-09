@@ -364,11 +364,15 @@ export default defineConfig({
 
 - `preserveDirs` (required): Names of child directories inside `public/` to preserve during sync. These will not be deleted when re-syncing.
 - `ignorePatterns` (optional): Glob patterns for files to exclude from syncing. Patterns are matched against paths relative to `src/content/docs/`.
+- `exposePageSrcButton` (optional, default: `false`): Injects a client-side script on every page that adds a `⋮` dropdown next to the page's `<h1>` with "Copy Page", "Copy raw URL", and "View raw" actions for the page's raw markdown source.
+- `enableAskAiOption` (optional, default: `false`): Adds "Ask ChatGPT", "Ask Claude", and "Ask Gemini" entries to the same `⋮` dropdown, each opening the respective chat app in a new tab with a prompt pre-filled to read the page's raw markdown URL. Independent of `exposePageSrcButton` — enabling this on its own still injects the dropdown button, containing only the "Ask" entries.
 
 ```ts
 syncDocsToPublic({
   preserveDirs: ["static"],
   ignorePatterns: ["**/*.txt", "**/drafts/**"],
+  exposePageSrcButton: true,
+  enableAskAiOption: true,
 });
 ```
 

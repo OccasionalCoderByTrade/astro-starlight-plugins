@@ -37,7 +37,33 @@ async function getRawMdUrl(): Promise<string> {
   return new URL("index.md", base).toString();
 }
 
-function createActionBar(): HTMLDivElement {
+const LLM_ASK_TARGETS: {
+  label: string;
+  buildUrl: (prompt: string) => string;
+}[] = [
+  {
+    label: "Ask ChatGPT",
+    buildUrl: (prompt) =>
+      `https://chatgpt.com/?${new URLSearchParams({ q: prompt })}`,
+  },
+  {
+    label: "Ask Claude",
+    buildUrl: (prompt) =>
+      `https://claude.ai/new?${new URLSearchParams({ q: prompt })}`,
+  },
+  {
+    label: "Ask Gemini",
+    buildUrl: (prompt) =>
+      `https://gemini.google.com/app?${new URLSearchParams({ q: prompt })}`,
+  },
+];
+
+interface ActionBarOptions {
+  exposePageSrcButton: boolean;
+  enableAskAiOption: boolean;
+}
+
+function createActionBar(options: ActionBarOptions): HTMLDivElement {
   const bar = document.createElement("div");
   bar.className = "page-src-action-bar";
 
@@ -54,42 +80,66 @@ function createActionBar(): HTMLDivElement {
   const menu = document.createElement("div");
   menu.className = "page-src-action-bar__menu";
 
-  const menuItems: { label: string; action: () => void }[] = [
-    {
-      label: "Copy Page",
-      action: () => {
-        setLoading(true);
-        getRawMdUrl()
-          .then((url) => fetch(url))
-          .then((resp) => resp.text())
-          .then((text) => navigator.clipboard.writeText(text))
-          .then(() => showBanner("Page source copied to clipboard!", "success"))
-          .catch(() => showBanner("Failed to copy page source.", "error"))
-          .finally(() => setLoading(false));
+  const menuItems: { label: string; action: () => void }[] = [];
+
+  if (options.exposePageSrcButton) {
+    menuItems.push(
+      {
+        label: "Copy Page",
+        action: () => {
+          setLoading(true);
+          getRawMdUrl()
+            .then((url) => fetch(url))
+            .then((resp) => resp.text())
+            .then((text) => navigator.clipboard.writeText(text))
+            .then(() =>
+              showBanner("Page source copied to clipboard!", "success"),
+            )
+            .catch(() => showBanner("Failed to copy page source.", "error"))
+            .finally(() => setLoading(false));
+        },
       },
-    },
-    {
-      label: "Copy raw URL",
-      action: () => {
-        setLoading(true);
-        getRawMdUrl()
-          .then((url) => navigator.clipboard.writeText(url))
-          .then(() => showBanner("Raw URL copied to clipboard!", "success"))
-          .catch(() => showBanner("Failed to copy raw URL.", "error"))
-          .finally(() => setLoading(false));
+      {
+        label: "Copy raw URL",
+        action: () => {
+          setLoading(true);
+          getRawMdUrl()
+            .then((url) => navigator.clipboard.writeText(url))
+            .then(() => showBanner("Raw URL copied to clipboard!", "success"))
+            .catch(() => showBanner("Failed to copy raw URL.", "error"))
+            .finally(() => setLoading(false));
+        },
       },
-    },
-    {
-      label: "View raw",
-      action: () => {
-        setLoading(true);
-        getRawMdUrl()
-          .then((url) => window.open(url, "_blank"))
-          .catch(() => showBanner("Failed to open raw source.", "error"))
-          .finally(() => setLoading(false));
+      {
+        label: "View raw",
+        action: () => {
+          setLoading(true);
+          getRawMdUrl()
+            .then((url) => window.open(url, "_blank"))
+            .catch(() => showBanner("Failed to open raw source.", "error"))
+            .finally(() => setLoading(false));
+        },
       },
-    },
-  ];
+    );
+  }
+
+  if (options.enableAskAiOption) {
+    for (const { label, buildUrl } of LLM_ASK_TARGETS) {
+      menuItems.push({
+        label,
+        action: () => {
+          setLoading(true);
+          getRawMdUrl()
+            .then((url) => {
+              const prompt = `Read from ${url} so I can ask questions about it.`;
+              window.open(buildUrl(prompt), "_blank");
+            })
+            .catch(() => showBanner(`Failed to open ${label}.`, "error"))
+            .finally(() => setLoading(false));
+        },
+      });
+    }
+  }
 
   for (const item of menuItems) {
     const btn = document.createElement("button");
@@ -130,7 +180,7 @@ function createActionBar(): HTMLDivElement {
   return bar;
 }
 
-function main() {
+export function initPageActionBar(options: ActionBarOptions) {
   const h1 = document.querySelector<HTMLHeadingElement>(".sl-container > h1");
   if (h1 === null) return;
 
@@ -139,7 +189,5 @@ function main() {
 
   h1.replaceWith(wrapper);
   wrapper.appendChild(h1);
-  wrapper.appendChild(createActionBar());
+  wrapper.appendChild(createActionBar(options));
 }
-
-main();

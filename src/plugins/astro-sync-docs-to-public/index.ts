@@ -158,6 +158,15 @@ export interface SyncDocsToPublicOptions {
    * dev and build modes.
    */
   exposePageSrcButton?: boolean;
+  /**
+   * When true, adds "Ask ChatGPT", "Ask Claude", and "Ask Gemini" entries to
+   * the page action dropdown menu, each opening the respective chat app with
+   * a prompt pre-filled to read the current page's raw markdown URL.
+   *
+   * Independent of `exposePageSrcButton` — enabling this on its own still
+   * injects the dropdown button, containing only the "Ask" entries.
+   */
+  enableAskAiOption?: boolean;
 }
 
 const DEFAULT_SRC_DIR = "src/content/docs";
@@ -166,7 +175,8 @@ const DEFAULT_PUBLIC_DIR = "public";
 function validateOptions(options: SyncDocsToPublicOptions): void {
   const mdProbePaths = ["test.md", "test.mdx", "foo/test.md", "foo/test.mdx"];
 
-  if (!options.exposePageSrcButton) return;
+  const needsRawMd = options.exposePageSrcButton || options.enableAskAiOption;
+  if (!needsRawMd) return;
 
   const offendingMdPatterns = (options.ignorePatterns ?? []).filter((pattern) =>
     mdProbePaths.some((probe) => minimatch(probe, pattern, { dot: true })),
@@ -178,8 +188,8 @@ function validateOptions(options: SyncDocsToPublicOptions): void {
 
   if (offendingMdPatterns.length > 0) {
     throw new Error(
-      `The 'exposePageSrcButton' option is enabled but the following 'ignorePatterns' values conflict with it: \n${offendingMtPatternsStr}\n\n` +
-        `Since these ignore patterns match md/mdx files, the page source button would break. Either disable 'exposePageSrcButton' or remove these patterns.`,
+      `The 'exposePageSrcButton'/'enableAskAiOption' option is enabled but the following 'ignorePatterns' values conflict with it: \n${offendingMtPatternsStr}\n\n` +
+        `Since these ignore patterns match md/mdx files, the page action button would break. Either disable these options or remove these patterns.`,
     );
   }
 }
@@ -349,6 +359,7 @@ export function syncDocsToPublic(
     preserveDirs: rawPreserveDirs,
     ignorePatterns = [],
     exposePageSrcButton = false,
+    enableAskAiOption = false,
   } = options;
   const preserveDirs = rawPreserveDirs.map((d) => d.replace(/\/+$/, ""));
 
@@ -357,7 +368,7 @@ export function syncDocsToPublic(
     hooks: {
       "astro:config:setup": ({ injectScript }) => {
         validateOptions(options);
-        if (exposePageSrcButton) {
+        if (exposePageSrcButton || enableAskAiOption) {
           injectScript(
             "page",
             `
@@ -385,8 +396,15 @@ export function syncDocsToPublic(
               import.meta.url,
             );
           }
-          const scriptPath = fileURLToPath(pageScriptUrl);
-          injectScript("page", `import ${JSON.stringify(scriptPath)};`);
+          const scriptPath = JSON.stringify(fileURLToPath(pageScriptUrl));
+          const actionBarOptions = JSON.stringify({
+            exposePageSrcButton,
+            enableAskAiOption,
+          });
+          injectScript(
+            "page",
+            `import { initPageActionBar } from ${scriptPath};\ninitPageActionBar(${actionBarOptions});`,
+          );
         }
       },
 

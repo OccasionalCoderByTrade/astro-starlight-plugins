@@ -65,7 +65,8 @@ export default defineConfig({
     }),
     syncDocsToPublic({
       preserveDirs: ["static"],
-      exposePageSrcButton: true,
+      exposePageSrcButton: false,
+      enableAskAiOption: true,
     }),
     starlightDomPatches({
       hideSingleLineGutters: true,
