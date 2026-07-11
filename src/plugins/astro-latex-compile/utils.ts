@@ -19,7 +19,7 @@ import {
   rmSync,
   mkdtempSync,
 } from "node:fs";
-import { basename, dirname, join, relative, resolve } from "node:path";
+import { basename, dirname, extname, join, relative, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import sharp from "sharp";
 import { createCompilationErrorMessage } from "./error-parser.js";
@@ -43,7 +43,7 @@ export const LATEX_BLOCK_REGEX =
   /```(?:tex|latex)\s+compile[^\r\n]*\r?\n([\s\S]*?)\r?\n```/g;
 
 export function computeJpgPath(
-  tempOutputDir: string,
+  outputDir: string,
   filePath: string,
   blockId: number,
 ): string {
@@ -55,11 +55,11 @@ export function computeJpgPath(
       : basename(normalized);
 
   const dir = dirname(relativePath);
-  const filename = basename(relativePath);
-  const jpgFilename = `${filename}--${blockId}.jpg`;
+  const filename = basename(relativePath, extname(relativePath));
+  const dirChecksum = createHash("md5").update(dir).digest("hex").slice(0, 8);
+  const jpgFilename = `${filename}--${blockId}-${dirChecksum}.jpg`;
 
-  const base = resolve(tempOutputDir);
-  return dir === "." ? join(base, jpgFilename) : join(base, dir, jpgFilename);
+  return join(resolve(outputDir), jpgFilename);
 }
 
 export async function writeJpgFromSvg(

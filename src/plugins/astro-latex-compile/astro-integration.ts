@@ -80,6 +80,21 @@ export function astroLatexCompile(
           await clearContentLayerCache(config);
         }
 
+        if (command === "dev" && options.debug) {
+          const debugOutputDir = resolve(options.debug.outputDir);
+          let entries: string[];
+          try {
+            entries = await readdir(debugOutputDir);
+          } catch {
+            entries = [];
+          }
+          await Promise.all(
+            entries
+              .filter((f) => f.endsWith(".jpg"))
+              .map((f) => rm(join(debugOutputDir, f), { force: true })),
+          );
+        }
+
         const existingPlugins = Array.isArray(config.markdown?.remarkPlugins)
           ? config.markdown.remarkPlugins.filter(Boolean)
           : [];
@@ -91,7 +106,7 @@ export function astroLatexCompile(
             command === "build" && options.removeOrphanedSvgs
               ? referencedHashes
               : undefined,
-          _fileJpgPathMap: options.tempOutputDir ? fileJpgPathMap : undefined,
+          _fileJpgPathMap: options.debug ? fileJpgPathMap : undefined,
         };
 
         updateConfig({

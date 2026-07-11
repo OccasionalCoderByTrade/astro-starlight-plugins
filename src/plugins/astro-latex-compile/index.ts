@@ -6,6 +6,7 @@ import { visit, SKIP } from "unist-util-visit";
 import type { Code, Html, Image, Paragraph, Parent, Root } from "mdast";
 import type { VFile } from "vfile";
 import { MetaOptions } from "@expressive-code/core";
+import { RotatingFileLogger } from "../utils/rotating-file-logger.js";
 import {
   buildErrorHtml,
   compileLatexToSvg,
@@ -14,6 +15,9 @@ import {
   writeJpgError,
   writeJpgFromSvg,
 } from "./utils.js";
+
+const DEBUG_LOG_MAX_SIZE_BYTES = 5 * 1024 * 1024;
+const DEBUG_LOG_BACKUP_COUNT = 3;
 
 export interface LatexCompilePluginOptions {
   /**
@@ -35,14 +39,20 @@ export interface LatexCompilePluginOptions {
    */
   texInputDirs?: string[];
   /**
-   * When set, a JPEG copy of each compiled diagram is written here, mirroring
-   * the folder structure of `src/content/docs/`. Only blocks that carry a
-   * `blockid=<n>` meta tag produce a JPEG. Filename format:
-   * `<originating-file>--<blockid>--<hash>.jpg`.
+   * When set, a JPEG copy of each compiled diagram is written to a flat
+   * directory. Only blocks that carry a `blockid=<n>` meta tag produce a
+   * JPEG. Filename format: `<originating-file>-<8-char-dir-checksum>--<blockid>.jpg`,
+   * where the checksum namespaces files originating from different
+   * directories to avoid collisions between files with the same name.
    * JPEGs are deleted automatically when their block is removed or its content
    * changes. Intended for local inspection, not for publishing.
    */
-  tempOutputDir?: string;
+  debug?: {
+    /** Directory where debug JPEGs are written, as a flat file list. */
+    outputDir: string;
+    /** Path to a log file that records every JPEG (re)write. Rotates by size. */
+    logFile: string;
+  };
   /**
    * @internal Populated by the Astro integration to track which hashes were
    * referenced during a build, used for full orphan cleanup at build:done.
@@ -78,6 +88,14 @@ function getFrontmatterOffset(absoluteFilePath: string): number {
 
 export function latexCompileTransformer(options: LatexCompilePluginOptions) {
   const svgOutputDir = resolve(options.svgOutputDir);
+  const debugLogger = options.debug
+    ? new RotatingFileLogger({
+        identifier: "astro-latex-compile",
+        filePath: options.debug.logFile,
+        maxSizeBytes: DEBUG_LOG_MAX_SIZE_BYTES,
+        backupCount: DEBUG_LOG_BACKUP_COUNT,
+      })
+    : null;
 
   return async function transformer(tree: Root, file: VFile) {
     type NodeEntry = { node: Code; index: number; parent: Parent };
@@ -113,8 +131,8 @@ export function latexCompileTransformer(options: LatexCompilePluginOptions) {
             : "?";
         const blockId = new MetaOptions(node.meta ?? "").getInteger("blockid");
         const jpgPath =
-          options.tempOutputDir && blockId !== undefined
-            ? computeJpgPath(options.tempOutputDir, filePath, blockId)
+          options.debug && blockId !== undefined
+            ? computeJpgPath(options.debug.outputDir, filePath, blockId)
             : null;
         try {
           const result = await compileLatexToSvg(
@@ -131,8 +149,8 @@ export function latexCompileTransformer(options: LatexCompilePluginOptions) {
           options._referencedHashes?.add(result.hash);
           if (jpgPath) {
             await writeJpgFromSvg(result.svgPath, jpgPath);
-            console.log(
-              `[astro-latex-compile] ${relFilePath}:${lineNumberStr}: wrote ${jpgPath}`,
+            await debugLogger?.write(
+              `${relFilePath}:${lineNumberStr}: wrote ${jpgPath}`,
             );
           }
           return {
@@ -191,7 +209,7 @@ export function latexCompileTransformer(options: LatexCompilePluginOptions) {
     }
 
     // Delete JPGs that this file previously produced but no longer references
-    if (options.tempOutputDir && options._fileJpgPathMap) {
+    if (options.debug && options._fileJpgPathMap) {
       const newJpgPaths = new Set(
         results.map((r) => r.jpgPath).filter(Boolean) as string[],
       );
