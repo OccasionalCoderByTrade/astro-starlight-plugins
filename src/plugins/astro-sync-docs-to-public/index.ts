@@ -87,6 +87,22 @@ const pageSrcStyles = css`
     background: var(--sl-color-bg-nav);
   }
 
+  @keyframes page-src-glow {
+    0% {
+      box-shadow: 0 0 0 0 transparent;
+    }
+    30% {
+      box-shadow: 0 0 12px 4px var(--sl-color-accent);
+    }
+    100% {
+      box-shadow: 0 0 0 0 transparent;
+    }
+  }
+
+  .page-src-action-bar__btn--glow {
+    animation: page-src-glow 1s ease-out;
+  }
+
   .page-src-action-bar__btn--loading {
     cursor: default;
     pointer-events: none;

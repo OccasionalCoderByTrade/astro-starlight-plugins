@@ -177,6 +177,13 @@ function createActionBar(options: ActionBarOptions): HTMLDivElement {
   bar.appendChild(menuBtn);
   bar.appendChild(menu);
 
+  menuBtn.classList.add("page-src-action-bar__btn--glow");
+  menuBtn.addEventListener(
+    "animationend",
+    () => menuBtn.classList.remove("page-src-action-bar__btn--glow"),
+    { once: true },
+  );
+
   return bar;
 }
 
