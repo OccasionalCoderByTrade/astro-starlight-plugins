@@ -138,6 +138,8 @@ pdflatex --version
 dvisvgm --version
 ```
 
+If either tool is missing from `PATH` when a `tex compile` block needs compiling, `astro build` fails and `astro dev` stops.
+
 **Options:**
 
 - `svgOutputDir` (required): Directory where compiled SVG files are written. Resolved against the project root, and must be a subdirectory of Astro's `publicDir` (usually `public/`), or Astro fails to start. Image URLs are derived from it, so `public/diagrams` with `base: "/docs"` produces `/docs/diagrams/<hash>.svg`.

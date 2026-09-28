@@ -122,6 +122,7 @@ export function astroLatexCompile(
   const referencedHashes = new Set<string>();
   const fileHashMap = new Map<string, Set<string>>();
   const fileJpgPathMap = new Map<string, Set<string>>();
+  const missingTools = new Set<string>();
   let svgOutput: { dir: string; urlPrefix: string } | undefined;
 
   return {
@@ -167,6 +168,8 @@ export function astroLatexCompile(
         const state: LatexCompileState = {
           svgOutputDir: svgOutput.dir,
           svgUrlPrefix: svgOutput.urlPrefix,
+          missingTools,
+          exitOnMissingToolchain: command === "dev",
           fileHashMap: options.removeOrphanedSvgs ? fileHashMap : undefined,
           referencedHashes:
             command === "build" && options.removeOrphanedSvgs
@@ -186,6 +189,14 @@ export function astroLatexCompile(
       },
 
       "astro:build:done": async () => {
+        // Starlight's content loader only logs errors thrown while rendering
+        // markdown, so a missing toolchain has to fail the build from here.
+        if (missingTools.size > 0) {
+          throw new Error(
+            `[astro-latex-compile] ${[...missingTools].join(" and ")} not found on PATH; tex compile blocks could not be compiled.`,
+          );
+        }
+
         if (!options.removeOrphanedSvgs || !svgOutput) return;
 
         const svgDir = svgOutput.dir;

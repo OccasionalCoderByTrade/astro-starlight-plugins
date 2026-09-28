@@ -2,16 +2,11 @@
  * LaTeX error parser - extracts meaningful error messages from verbose LaTeX output
  */
 
-interface LatexErrorMessage {
+export interface LatexErrorMessage {
   message: string;
   line?: number;
   context: string[];
-  severity: "error" | "warning" | "fatal";
-}
-
-interface ParsedLatexError {
-  errors: LatexErrorMessage[];
-  hasFatal: boolean;
+  severity: "error" | "warning";
 }
 
 /**
@@ -19,13 +14,12 @@ interface ParsedLatexError {
  * Continues scanning after each error to find subsequent ones.
  *
  * @param latexOutput - Raw stderr/stdout from LaTeX compilation
- * @returns Parsed errors with messages, line numbers, and context lines
+ * @returns Errors and warnings with messages, line numbers, and context lines
  */
-export function parseLatexError(latexOutput: string): ParsedLatexError {
+export function parseLatexErrors(latexOutput: string): LatexErrorMessage[] {
   const lines = latexOutput.split("\n");
   const errors: LatexErrorMessage[] = [];
   const seenMessages = new Set<string>(); // avoid duplicate messages
-  let hasFatal = false;
 
   // Scan for all "!" errors (most common LaTeX errors)
   for (let i = 0; i < lines.length; i++) {
@@ -80,18 +74,6 @@ export function parseLatexError(latexOutput: string): ParsedLatexError {
     }
   }
 
-  // Detect fatal errors (emergency stop, missing file)
-  for (const line of lines) {
-    if (
-      line.toLowerCase().includes("emergency stop") ||
-      line.toLowerCase().includes("fatal error") ||
-      line.toLowerCase().includes("not found")
-    ) {
-      hasFatal = true;
-      break;
-    }
-  }
-
   // If no structured errors found, try to extract any error-like message
   if (errors.length === 0 && latexOutput.length > 0) {
     for (const line of lines) {
@@ -124,106 +106,5 @@ export function parseLatexError(latexOutput: string): ParsedLatexError {
     });
   }
 
-  return { errors, hasFatal };
-}
-
-/**
- * Format parsed LaTeX errors into a readable report.
- *
- * @param parsed - Parsed error object containing all errors found
- * @returns Formatted error message string
- */
-export function formatLatexError(parsed: ParsedLatexError): string {
-  const RED = "\x1b[31m";
-  const YELLOW = "\x1b[33m";
-  const RESET = "\x1b[0m";
-
-  const errorCount = parsed.errors.filter((e) => e.severity === "error").length;
-  const warningCount = parsed.errors.filter(
-    (e) => e.severity === "warning",
-  ).length;
-
-  let output = `${RED}[astro-latex-compile] LaTeX compilation failed${RESET}\n`;
-  output += `${RED}${errorCount} error${errorCount !== 1 ? "s" : ""}${RESET}`;
-  if (warningCount > 0) {
-    output += `, ${YELLOW}${warningCount} warning${warningCount !== 1 ? "s" : ""}${RESET}`;
-  }
-  output += "\n\n";
-
-  // Group by severity: errors first, then warnings
-  const errorsByType = parsed.errors.reduce(
-    (acc, e) => {
-      if (!acc[e.severity]) acc[e.severity] = [];
-      acc[e.severity].push(e);
-      return acc;
-    },
-    {} as Record<string, LatexErrorMessage[]>,
-  );
-
-  // Display errors
-  for (const err of errorsByType["error"] || []) {
-    output += `${RED}Error${RESET}`;
-    if (err.line) output += ` (line ${err.line})`;
-    output += `: ${err.message}\n`;
-    if (err.context.length > 0) {
-      output += `  Context: ${err.context[0]}\n`;
-    }
-  }
-
-  // Display warnings
-  for (const warn of errorsByType["warning"] || []) {
-    output += `${YELLOW}Warning${RESET}: ${warn.message}\n`;
-  }
-
-  return output;
-}
-
-/**
- * Format LaTeX source with line numbers.
- */
-function formatLatexSourceWithLineNumbers(
-  latexSource: string,
-  errors: LatexErrorMessage[],
-): string {
-  const RED = "\x1b[31m";
-  const RESET = "\x1b[0m";
-
-  const lines = latexSource.split("\n");
-  const setwidthAmount = "[999]".length;
-  const errorLineNumbers = new Set(errors.map((e) => e.line).filter(Boolean));
-
-  const formattedLines = lines
-    .map((line, index) => {
-      const lineNum = index + 1;
-      const lineNumIdentifier = `[${lineNum}]`.padStart(setwidthAmount);
-
-      if (errorLineNumbers.has(lineNum)) {
-        return `${RED}${lineNumIdentifier}:${RESET} ${line}`;
-      }
-      return `${lineNumIdentifier}: ${line}`;
-    })
-    .join("\n");
-
-  return formattedLines;
-}
-
-/**
- * Create a user-friendly error message from LaTeX source and raw error output.
- *
- * @param latexSource - The LaTeX code that was compiled
- * @param rawError - Raw stderr/stdout from LaTeX
- * @returns User-friendly error message
- */
-export function createCompilationErrorMessage(
-  latexSource: string,
-  rawError: string,
-): string {
-  const parsed = parseLatexError(rawError);
-  const formatted = formatLatexError(parsed);
-  const formattedSource = formatLatexSourceWithLineNumbers(
-    latexSource,
-    parsed.errors,
-  );
-
-  return `${formatted}\n` + `LaTeX source:\n${formattedSource}\n`;
+  return errors;
 }

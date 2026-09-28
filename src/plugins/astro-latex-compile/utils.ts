@@ -5,9 +5,8 @@
  *   - pdflatex  (e.g. texlive-latex-base on Debian, MacTeX on macOS)
  *   - dvisvgm   (e.g. texlive-extra-utils on Debian, included in MacTeX)
  *
- * Code blocks must either be a complete standalone LaTeX document (containing
- * both \documentclass and \begin{document}), or raw content that the plugin
- * wraps in a minimal standalone document automatically.
+ * Code blocks must be a LaTeX document, containing both \documentclass and
+ * \begin{document}.
  */
 import { createHash } from "node:crypto";
 import {
@@ -22,25 +21,15 @@ import {
 import { basename, dirname, extname, join, relative, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import sharp from "sharp";
-import { createCompilationErrorMessage } from "./error-parser.js";
+import { parseLatexErrors } from "./error-parser.js";
+import type { TexCompileFailure } from "./tex-compile-error.js";
 import { execProcess } from "../utils/process-utils.js";
-import { html, HtmlString } from "../utils/html-builder.js";
 
 const CONTENT_ROOT = "src/content/docs/";
 
-export interface CompilationResult {
-  hash: string;
-  svgPath: string;
-  wasCompiled: boolean;
-}
-
-/**
- * Regex to match fenced ```tex compile or ```latex compile blocks in markdown.
- * Handles both LF and CRLF line endings.
- * Capture group 1: the raw block content.
- */
-export const LATEX_BLOCK_REGEX =
-  /```(?:tex|latex)\s+compile[^\r\n]*\r?\n([\s\S]*?)\r?\n```/g;
+export type CompileOutcome =
+  | { ok: true; hash: string; svgPath: string; wasCompiled: boolean }
+  | { ok: false; failure: TexCompileFailure };
 
 export function computeJpgPath(
   outputDir: string,
@@ -71,162 +60,6 @@ export async function writeJpgFromSvg(
     .flatten({ background: { r: 255, g: 255, b: 255 } })
     .jpeg({ quality: 90 })
     .toFile(jpgPath);
-}
-
-function stripAnsi(text: string): string {
-  // eslint-disable-next-line no-control-regex
-  return text.replace(/\x1b\[[0-9;]*m/g, "");
-}
-
-function escapeXml(text: string): string {
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
-
-function wrapText(text: string, maxChars: number): string[] {
-  const lines: string[] = [];
-  for (const raw of text.split("\n")) {
-    if (raw.length <= maxChars) {
-      lines.push(raw);
-    } else {
-      let remaining = raw;
-      while (remaining.length > maxChars) {
-        lines.push(remaining.slice(0, maxChars));
-        remaining = remaining.slice(maxChars);
-      }
-      if (remaining) lines.push(remaining);
-    }
-  }
-  return lines;
-}
-
-export async function writeJpgError(
-  jpgPath: string,
-  header: string,
-  errorText: string,
-): Promise<void> {
-  const MAX_LINES = 40;
-  const clean = stripAnsi(errorText);
-
-  // Strip the verbose LaTeX source listing — show only the error summary
-  const sourceIdx = clean.indexOf("LaTeX source:");
-  const summary = (
-    sourceIdx !== -1 ? clean.slice(0, sourceIdx) : clean
-  ).trimEnd();
-
-  let lines = wrapText(summary, 90);
-  if (lines.length > MAX_LINES) {
-    lines = lines.slice(0, MAX_LINES);
-    lines.push("...");
-  }
-
-  const fontSize = 13;
-  const lineHeight = 18;
-  const padding = 20;
-  const headerHeight = 55;
-  const width = 800;
-  const height = padding * 2 + headerHeight + lines.length * lineHeight;
-
-  const textLines = lines
-    .map(
-      (line, i) =>
-        `<text x="${padding}" y="${padding + headerHeight + i * lineHeight}" font-family="monospace" font-size="${fontSize}" fill="#333333">${escapeXml(line)}</text>`,
-    )
-    .join("\n  ");
-
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
-  <rect width="${width}" height="${height}" fill="white"/>
-  <rect x="0" y="0" width="${width}" height="4" fill="#cc0000"/>
-  <text x="${padding}" y="${padding + 20}" font-family="monospace" font-size="16" font-weight="bold" fill="#cc0000">LaTeX Compilation Error</text>
-  <text x="${padding}" y="${padding + 40}" font-family="monospace" font-size="12" fill="#666666">${escapeXml(header)}</text>
-  ${textLines}
-</svg>`;
-
-  mkdirSync(dirname(jpgPath), { recursive: true });
-  await sharp(Buffer.from(svg))
-    .flatten({ background: { r: 255, g: 255, b: 255 } })
-    .jpeg({ quality: 90 })
-    .toFile(jpgPath);
-}
-
-function computeLineOffset(_latexCode: string): number {
-  // Complete documents are passed through as-is, so pdflatex line numbers
-  // map directly to node.value line numbers.
-  return 0;
-}
-
-export function buildErrorHtml(
-  header: string,
-  errorMsg: string,
-  latexCode: string,
-): string {
-  const clean = stripAnsi(errorMsg);
-  const sourceIdx = clean.indexOf("LaTeX source:");
-  const summary = (
-    sourceIdx !== -1 ? clean.slice(0, sourceIdx) : clean
-  ).trimEnd();
-
-  // Extract pdflatex-reported line numbers (e.g. "Error (line 5):")
-  const compiledLineNums: number[] = [];
-  const linePattern = /Error \(line (\d+)\)/g;
-  let m;
-  while ((m = linePattern.exec(summary)) !== null) {
-    compiledLineNums.push(parseInt(m[1], 10));
-  }
-
-  const offset = computeLineOffset(latexCode);
-  const errorLineSet = new Set(
-    compiledLineNums.map((n) => n - offset).filter((n) => n > 0),
-  );
-
-  const codeLines = latexCode.split("\n");
-  const lineWidth = String(codeLines.length).length;
-
-  const summaryLines = summary
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => html`<div>${line}</div>`);
-
-  // Joined without newlines — extra whitespace inside <pre> renders as blank lines
-  const codeBlock = new HtmlString(
-    codeLines
-      .map((line, i) => {
-        const lineNum = i + 1;
-        const isError = errorLineSet.has(lineNum);
-        const gutter = String(lineNum).padStart(lineWidth);
-        const bg = isError ? "background:var(--cannoli-error-low);" : "";
-
-        return html`<span style="${bg}display:block;padding:0 14px"
-          ><span style="color:var(--sl-color-gray-3);user-select:none"
-            >${gutter} │ </span
-          >${line}</span
-        >`.toString();
-      })
-      .join(""),
-  );
-
-  return html`<div
-    class="not-content"
-    style="border:1px solid var(--cannoli-error-low);border-radius:6px;overflow:hidden;margin:1.5em 0;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;line-height:1.5;display:flex;flex-direction:column"
-  >
-    <div
-      style="background:var(--cannoli-error);color:var(--sl-color-black);padding:8px 14px;font-weight:700"
-    >
-      &#9888;&nbsp;LaTeX Compilation Error &mdash; ${header}
-    </div>
-    <div
-      style="background:var(--cannoli-error-low);color:var(--cannoli-error-high);padding:10px 14px;border-bottom:1px solid var(--cannoli-error)"
-    >
-      $${summaryLines}
-    </div>
-    <pre
-      style="margin:0;background:var(--sl-color-gray-6);color:var(--sl-color-text);overflow-x:auto"
-    ><code style="display:block;padding:8px 0;font-size:12px">$${codeBlock}</code></pre>
-  </div>`.toString();
 }
 
 function collectTexInputFiles(dir: string, recursive: boolean): string[] {
@@ -284,39 +117,61 @@ export function hashLatexCode(code: string, salt = ""): string {
   return h.digest("hex").slice(0, 16);
 }
 
-function buildLatexSource(latexCode: string): string {
-  if (
+function isLatexDocument(latexCode: string): boolean {
+  return (
     latexCode.includes("\\documentclass") &&
     latexCode.includes("\\begin{document}")
-  ) {
-    return latexCode.trim();
-  }
-  throw new Error(
-    `[astro-latex-compile] Code block is not a complete LaTeX document. ` +
-      `Blocks must contain both \\documentclass and \\begin{document}.`,
   );
 }
 
 /**
- * Compile LaTeX code to SVG.
+ * Runs `command`, or returns `null` when its executable is not on PATH.
+ */
+async function execTool(
+  command: "pdflatex" | "dvisvgm",
+  args: string[],
+  options?: { env?: NodeJS.ProcessEnv },
+): Promise<{ status: number; stdout: string; stderr: string } | null> {
+  try {
+    return await execProcess(command, args, options);
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") return null;
+    throw err;
+  }
+}
+
+/**
+ * Compile a `tex compile` block's LaTeX to a compiled tex diagram, reusing
+ * the SVG when one with the same hash already exists.
  *
- * @param latexCode - The LaTeX code to compile (e.g., TikZ, pgfplots, etc.)
+ * @param latexCode - The LaTeX document to compile (e.g., TikZ, pgfplots, etc.)
  * @param svgOutputDir - The directory where SVG files should be written
- * @returns Result object with hash, svgPath, and whether compilation occurred
- * @throws Error if compilation fails
+ * @returns The SVG's hash and path, or why the block produced no diagram
  */
 export async function compileLatexToSvg(
   latexCode: string,
   svgOutputDir: string,
   texInputDirs: string[] = [],
   inputsSalt = "",
-): Promise<CompilationResult> {
+): Promise<CompileOutcome> {
+  if (!isLatexDocument(latexCode)) {
+    return {
+      ok: false,
+      failure: {
+        kind: "invalid-block",
+        reason:
+          "Code block is not a LaTeX document. " +
+          "Blocks must contain both \\documentclass and \\begin{document}.",
+      },
+    };
+  }
+
   const hash = hashLatexCode(latexCode, inputsSalt);
   const svgPath = join(svgOutputDir, `${hash}.svg`);
 
   // If already compiled, return early
   if (existsSync(svgPath)) {
-    return { hash, svgPath, wasCompiled: false };
+    return { ok: true, hash, svgPath, wasCompiled: false };
   }
 
   mkdirSync(svgOutputDir, { recursive: true });
@@ -324,7 +179,7 @@ export async function compileLatexToSvg(
   const workDir = mkdtempSync(join(tmpdir(), "latex-compile-"));
   const texFile = join(workDir, "diagram.tex");
   const pdfFile = join(workDir, "diagram.pdf");
-  const latexSource = buildLatexSource(latexCode);
+  const latexSource = latexCode.trim();
 
   try {
     writeFileSync(texFile, latexSource, "utf-8");
@@ -338,54 +193,50 @@ export async function compileLatexToSvg(
         : undefined;
 
     // Compile LaTeX to PDF
-    let result;
-    try {
-      result = await execProcess(
-        "pdflatex",
-        ["-interaction=nonstopmode", "-output-directory", workDir, texFile],
-        { env: pdflatexEnv },
-      );
-    } catch (err) {
-      const code = (err as NodeJS.ErrnoException).code;
-      throw new Error(
-        `[astro-latex-compile] pdflatex not found on PATH (${code}).`,
-        { cause: err },
-      );
+    const result = await execTool(
+      "pdflatex",
+      ["-interaction=nonstopmode", "-output-directory", workDir, texFile],
+      { env: pdflatexEnv },
+    );
+    if (!result) {
+      return {
+        ok: false,
+        failure: { kind: "toolchain-missing", tool: "pdflatex" },
+      };
     }
-
     if (result.status !== 0) {
-      const errorOutput = result.stderr || result.stdout || "";
-      const userMessage = createCompilationErrorMessage(
-        latexSource,
-        errorOutput,
-      );
-      throw new Error(userMessage);
+      return {
+        ok: false,
+        failure: {
+          kind: "latex",
+          errors: parseLatexErrors(result.stderr || result.stdout || ""),
+          source: latexSource,
+        },
+      };
     }
 
     // Convert PDF to SVG
-    let svgResult;
-    try {
-      svgResult = await execProcess("dvisvgm", [
-        "--pdf",
-        "--bbox=dvi",
-        pdfFile,
-        "-o",
-        svgPath,
-      ]);
-    } catch (err) {
-      const code = (err as NodeJS.ErrnoException).code;
-      throw new Error(
-        `[astro-latex-compile] dvisvgm not found on PATH (${code}).`,
-        { cause: err },
-      );
+    const svgResult = await execTool("dvisvgm", [
+      "--pdf",
+      "--bbox=dvi",
+      pdfFile,
+      "-o",
+      svgPath,
+    ]);
+    if (!svgResult) {
+      return {
+        ok: false,
+        failure: { kind: "toolchain-missing", tool: "dvisvgm" },
+      };
     }
-
     if (svgResult.status !== 0) {
-      const errorOutput = svgResult.stderr || svgResult.stdout || "";
-      throw new Error(
-        `[astro-latex-compile] PDF to SVG conversion failed (hash: ${hash}).\n` +
-          `Error: ${errorOutput}`,
-      );
+      return {
+        ok: false,
+        failure: {
+          kind: "conversion",
+          output: svgResult.stderr || svgResult.stdout || "",
+        },
+      };
     }
   } finally {
     try {
@@ -395,5 +246,5 @@ export async function compileLatexToSvg(
     }
   }
 
-  return { hash, svgPath, wasCompiled: true };
+  return { ok: true, hash, svgPath, wasCompiled: true };
 }

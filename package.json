@@ -64,7 +64,8 @@
     "prepublishOnly": "npm run lib:build",
     "tree:index": "tree -P index.md src/content/docs",
     "tree:depth": "bash scripts/tree-depth.sh",
-    "clean:empty-dirs": "find src/content/docs -type d -empty -delete"
+    "clean:empty-dirs": "find src/content/docs -type d -empty -delete",
+    "test": "vitest run"
   },
   "dependencies": {
     "eslint-cannoli-plugins": "^1.0.13",
@@ -125,6 +126,7 @@
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.56.1",
-    "vfile": "^6.0.0"
+    "vfile": "^6.0.0",
+    "vitest": "^5.0.2"
   }
 }

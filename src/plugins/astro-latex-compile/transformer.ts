@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, writeSync } from "node:fs";
 import { rm } from "node:fs/promises";
 import { parseFrontmatter } from "@astrojs/markdown-remark";
 import { join, relative } from "node:path";
@@ -9,11 +9,16 @@ import { MetaOptions } from "@expressive-code/core";
 import type { LatexCompileOptions } from "./index.js";
 import { RotatingFileLogger } from "../utils/rotating-file-logger.js";
 import {
-  buildErrorHtml,
+  renderConsole,
+  renderHtml,
+  writeDebugImage,
+  type TexCompileFailure,
+} from "./tex-compile-error.js";
+import {
   compileLatexToSvg,
+  type CompileOutcome,
   computeJpgPath,
   computeTexInputDirsSalt,
-  writeJpgError,
   writeJpgFromSvg,
 } from "./utils.js";
 
@@ -29,6 +34,13 @@ export interface LatexCompileState {
   svgOutputDir: string;
   /** URL path that `svgOutputDir` is served from, without trailing slash. */
   svgUrlPrefix: string;
+  /**
+   * Tools found missing from PATH. Each is logged once; on build, the
+   * integration fails the build at `astro:build:done`.
+   */
+  missingTools: Set<string>;
+  /** When `true` (dev), a missing tool stops the dev server. */
+  exitOnMissingToolchain: boolean;
   /** Hashes referenced during a build, used for orphan cleanup at build:done. */
   referencedHashes?: Set<string>;
   /** Hashes each file produced on its previous run, used to delete orphaned tex diagrams. */
@@ -56,6 +68,27 @@ function getFrontmatterOffset(absoluteFilePath: string): number {
   }
 }
 
+function errorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
+/**
+ * Debug tex diagram images are for local inspection only, so failing to write
+ * one is logged and never affects the page.
+ */
+async function writeDebugOutput(
+  location: string,
+  write: () => Promise<void>,
+): Promise<void> {
+  try {
+    await write();
+  } catch (err) {
+    console.warn(
+      `[astro-latex-compile] ${location}: could not write debug tex diagram image: ${errorMessage(err)}`,
+    );
+  }
+}
+
 export function latexCompileTransformer(
   options: LatexCompileOptions,
   state: LatexCompileState,
@@ -69,6 +102,22 @@ export function latexCompileTransformer(
         backupCount: DEBUG_LOG_BACKUP_COUNT,
       })
     : null;
+
+  function reportFailure(failure: TexCompileFailure, location: string) {
+    if (failure.kind === "toolchain-missing") {
+      if (state.missingTools.has(failure.tool)) return;
+      state.missingTools.add(failure.tool);
+    }
+    const report = renderConsole(failure, location);
+    // Starlight's content loader swallows errors thrown here, so exit directly.
+    // Write synchronously first: a piped stderr is async on macOS/Windows, and
+    // process.exit would drop the message.
+    if (failure.kind === "toolchain-missing" && state.exitOnMissingToolchain) {
+      writeSync(2, `${report}\n`);
+      process.exit(1);
+    }
+    console.error(report);
+  }
 
   return async function transformer(tree: Root, file: VFile) {
     type NodeEntry = { node: Code; index: number; parent: Parent };
@@ -107,56 +156,57 @@ export function latexCompileTransformer(
           options.debug && blockId !== undefined
             ? computeJpgPath(options.debug.outputDir, filePath, blockId)
             : null;
+        const location = `${relFilePath}:${lineNumberStr}`;
+
+        // Anything thrown here must stay confined to this block: rejecting
+        // would lose every block on the page, and Starlight only logs it.
+        let outcome: CompileOutcome;
         try {
-          const result = await compileLatexToSvg(
+          outcome = await compileLatexToSvg(
             node.value,
             svgOutputDir,
             options.texInputDirs ?? [],
             inputsSalt,
           );
-          if (result.wasCompiled) {
-            console.log(
-              `[astro-latex-compile] ${relFilePath}:${lineNumberStr}: compiled ${result.hash}.svg`,
-            );
-          }
-          state.referencedHashes?.add(result.hash);
-          if (jpgPath) {
-            await writeJpgFromSvg(result.svgPath, jpgPath);
-            await debugLogger?.write(
-              `${relFilePath}:${lineNumberStr}: wrote ${jpgPath}`,
-            );
-          }
-          return {
-            index,
-            parent,
-            result,
-            error: null,
-            hash: result.hash,
-            jpgPath,
-          };
         } catch (err) {
-          const errorMsg = err instanceof Error ? err.message : String(err);
-          const match = errorMsg.match(/\n\n([\s\S]+)/);
-          const details = match ? match[1] : errorMsg;
-          console.error(
-            `[astro-latex-compile] ${relFilePath}:${lineNumberStr}\n${details}`,
-          );
-          if (jpgPath) {
-            await writeJpgError(
-              jpgPath,
-              `${relFilePath}:${lineNumberStr}`,
-              errorMsg,
-            );
-          }
-          return {
-            index,
-            parent,
-            result: null,
-            error: err,
-            hash: null,
-            jpgPath,
+          outcome = {
+            ok: false,
+            failure: { kind: "unexpected", message: errorMessage(err) },
           };
         }
+
+        if (!outcome.ok) {
+          reportFailure(outcome.failure, location);
+          if (jpgPath) {
+            const { failure } = outcome;
+            await writeDebugOutput(location, () =>
+              writeDebugImage(failure, location, jpgPath),
+            );
+          }
+          return { index, parent, outcome, location, hash: null, jpgPath };
+        }
+
+        if (outcome.wasCompiled) {
+          console.log(
+            `[astro-latex-compile] ${location}: compiled ${outcome.hash}.svg`,
+          );
+        }
+        state.referencedHashes?.add(outcome.hash);
+        if (jpgPath) {
+          const { svgPath } = outcome;
+          await writeDebugOutput(location, async () => {
+            await writeJpgFromSvg(svgPath, jpgPath);
+            await debugLogger?.write(`${location}: wrote ${jpgPath}`);
+          });
+        }
+        return {
+          index,
+          parent,
+          outcome,
+          location,
+          hash: outcome.hash,
+          jpgPath,
+        };
       }),
     );
 
@@ -201,22 +251,13 @@ export function latexCompileTransformer(
     // Apply AST mutations in reverse index order so earlier splices don't shift
     // the indices of later nodes sharing the same parent.
     for (let i = results.length - 1; i >= 0; i--) {
-      const { index, parent, result, error } = results[i];
+      const { index, parent, outcome, location } = results[i];
       const { node } = nodes[i];
 
-      if (!result) {
-        const lineNumberStr =
-          node.position?.start.line !== undefined
-            ? String(node.position.start.line + frontmatterOffset)
-            : "?";
-        const errorMsg = error instanceof Error ? error.message : String(error);
+      if (!outcome.ok) {
         const errorNode: Html = {
           type: "html",
-          value: buildErrorHtml(
-            `${relFilePath}:${lineNumberStr}`,
-            errorMsg,
-            node.value,
-          ),
+          value: renderHtml(outcome.failure, location, node.value),
         };
         parent.children.splice(index, 1, errorNode);
         continue;
@@ -233,7 +274,7 @@ export function latexCompileTransformer(
 
       const imageNode: Image = {
         type: "image",
-        url: `${state.svgUrlPrefix}/${result.hash}.svg`,
+        url: `${state.svgUrlPrefix}/${outcome.hash}.svg`,
         alt: altText,
         data: {
           hProperties: { className: ["tex-compiled", ...extraClasses] },

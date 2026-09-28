@@ -21,3 +21,7 @@ _Avoid_: orphaned SVG, stale SVG (the `removeOrphanedSvgs` option keeps its name
 **Debug tex diagram image**:
 A JPEG copy of a compiled tex diagram, produced only for `tex compile` blocks that carry a `blockid`, meant for local inspection and never published.
 _Avoid_: debug JPG, temp output, snapshot
+
+**Tex compile error**:
+The failure of a `tex compile` block to produce a compiled tex diagram, shown in the page in place of the diagram.
+_Avoid_: LaTeX compilation error, compile failure, error block
