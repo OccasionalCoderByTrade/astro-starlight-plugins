@@ -1,10 +1,10 @@
 /**
  * Standalone test for LaTeX compilation.
- * Run with: npx tsx src/plugins/tests/remark-latex-compile.ts
+ * Run with: npx tsx src/plugins/tests/test-latex-compile.ts
  */
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
-import { compileLatexToSvg } from "../astro-latex-compile";
+import { compileLatexToSvg } from "../astro-latex-compile/utils.js";
 
 const testOutputDir = resolve("test-latex-output");
 

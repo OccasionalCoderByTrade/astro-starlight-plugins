@@ -1,28 +1,41 @@
-import { readFileSync } from "node:fs";
-import { rm } from "node:fs/promises";
-import { parseFrontmatter } from "@astrojs/markdown-remark";
-import { join, relative, resolve } from "node:path";
-import { visit, SKIP } from "unist-util-visit";
-import type { Code, Html, Image, Paragraph, Parent, Root } from "mdast";
-import type { VFile } from "vfile";
-import { MetaOptions } from "@expressive-code/core";
-import { RotatingFileLogger } from "../utils/rotating-file-logger.js";
+import fs from "node:fs";
+import { readdir, rm } from "node:fs/promises";
+import { isAbsolute, join, relative, resolve, sep } from "node:path";
+import { fileURLToPath } from "node:url";
+import type { AstroConfig, AstroIntegration } from "astro";
 import {
-  buildErrorHtml,
-  compileLatexToSvg,
-  computeJpgPath,
-  computeTexInputDirsSalt,
-  writeJpgError,
-  writeJpgFromSvg,
-} from "./utils.js";
+  latexCompileTransformer,
+  type LatexCompileState,
+} from "./transformer.js";
 
-const DEBUG_LOG_MAX_SIZE_BYTES = 5 * 1024 * 1024;
-const DEBUG_LOG_BACKUP_COUNT = 3;
+const js = String.raw;
+const DARK_MODE_ROTATE = "178deg";
 
-export interface LatexCompilePluginOptions {
+const INJECTED_CSS = `
+:root {
+  --cannoli-error-low: hsl(0, 70%, 94%);
+  --cannoli-error: hsl(0, 72%, 42%);
+  --cannoli-error-high: hsl(0, 72%, 28%);
+}
+[data-theme="dark"] {
+  --cannoli-error-low: hsl(0, 55%, 16%);
+  --cannoli-error: hsl(0, 75%, 60%);
+  --cannoli-error-high: hsl(0, 80%, 82%);
+}
+.tex-compiled {
+  background-color: transparent;
+}
+html[data-theme="dark"] .tex-compiled {
+  filter: invert(1) hue-rotate(${DARK_MODE_ROTATE});
+}
+`;
+
+export interface LatexCompileOptions {
   /**
    * Directory where SVG files should be written.
-   * Must be inside `public/` so Astro serves them as static assets.
+   * Resolved against the project root. Must be a subdirectory of Astro's
+   * `publicDir`; image URLs are derived from its path relative to `publicDir`,
+   * prefixed with `base`.
    */
   svgOutputDir: string;
   /**
@@ -54,227 +67,149 @@ export interface LatexCompilePluginOptions {
     logFile: string;
   };
   /**
-   * @internal Populated by the Astro integration to track which hashes were
-   * referenced during a build, used for full orphan cleanup at build:done.
+   * When `true`, SVG files in `svgOutputDir` that are no longer referenced by
+   * any `tex compile` block are deleted automatically. In dev mode, stale SVGs
+   * are removed immediately when a block is edited. On build, any remaining
+   * orphans are swept at the end.
+   * @default false
    */
-  _referencedHashes?: Set<string>;
-  /**
-   * @internal Maps each file path to the set of hashes it produced on the
-   * previous run. Used to delete stale SVGs when a block changes.
-   */
-  _fileHashMap?: Map<string, Set<string>>;
-  /**
-   * @internal Maps each file path to the set of JPG paths it produced on the
-   * previous run. Used to delete stale JPGs when a block changes.
-   */
-  _fileJpgPathMap?: Map<string, Set<string>>;
+  removeOrphanedSvgs?: boolean;
+}
+
+const DATA_STORE_FILE = "data-store.json";
+
+function getDataStoreFile(config: AstroConfig): URL {
+  return new URL(DATA_STORE_FILE, config.cacheDir);
 }
 
 /**
- * Astro strips frontmatter before passing markdown to remark, so remark's line
- * numbers are relative to the body. This reads the original file to compute how
- * many lines (frontmatter + blank separator) were removed.
+ * Resolves `svgOutputDir` against the project root and returns it along with
+ * the URL path it is served from, e.g. `/docs/static/tex-svgs` for
+ * `public/static/tex-svgs` with `base: "/docs"`. Throws unless it is a
+ * subdirectory of `publicDir`.
  */
-function getFrontmatterOffset(absoluteFilePath: string): number {
-  try {
-    const original = readFileSync(absoluteFilePath, "utf-8");
-    const { rawFrontmatter } = parseFrontmatter(original);
-    if (!rawFrontmatter) return 0;
-    return rawFrontmatter.split("\n").length - 1 + 2;
-  } catch {
-    return 0;
+function resolveSvgOutput(
+  config: AstroConfig,
+  svgOutputDir: string,
+): { dir: string; urlPrefix: string } {
+  const publicDir = fileURLToPath(config.publicDir);
+  const dir = resolve(fileURLToPath(config.root), svgOutputDir);
+  const rel = relative(publicDir, dir);
+  if (
+    rel === "" ||
+    rel === ".." ||
+    rel.startsWith(`..${sep}`) ||
+    isAbsolute(rel)
+  ) {
+    throw new Error(
+      `[astro-latex-compile] svgOutputDir "${svgOutputDir}" must be a subdirectory of publicDir "${publicDir}".`,
+    );
+  }
+  const base = config.base.replace(/\/+$/, "");
+  return { dir, urlPrefix: `${base}/${rel.split(sep).join("/")}` };
+}
+
+async function clearContentLayerCache(config: AstroConfig): Promise<void> {
+  const dataStore = getDataStoreFile(config);
+  if (fs.existsSync(dataStore)) {
+    await fs.promises.rm(dataStore, { force: true });
   }
 }
 
-export function latexCompileTransformer(options: LatexCompilePluginOptions) {
-  const svgOutputDir = resolve(options.svgOutputDir);
-  const debugLogger = options.debug
-    ? new RotatingFileLogger({
-        identifier: "astro-latex-compile",
-        filePath: options.debug.logFile,
-        maxSizeBytes: DEBUG_LOG_MAX_SIZE_BYTES,
-        backupCount: DEBUG_LOG_BACKUP_COUNT,
-      })
-    : null;
+export function astroLatexCompile(
+  options: LatexCompileOptions,
+): AstroIntegration {
+  const referencedHashes = new Set<string>();
+  const fileHashMap = new Map<string, Set<string>>();
+  const fileJpgPathMap = new Map<string, Set<string>>();
+  let svgOutput: { dir: string; urlPrefix: string } | undefined;
 
-  return async function transformer(tree: Root, file: VFile) {
-    type NodeEntry = { node: Code; index: number; parent: Parent };
-    const nodes: NodeEntry[] = [];
+  return {
+    name: "astro-latex-compile",
+    hooks: {
+      "astro:config:setup": async ({
+        command,
+        config,
+        updateConfig,
+        injectScript,
+      }) => {
+        svgOutput = resolveSvgOutput(config, options.svgOutputDir);
+        if (command !== "build" && command !== "dev") return;
 
-    visit(tree, "code", (node, index, parent) => {
-      if (
-        (node.lang === "tex" || node.lang === "latex") &&
-        node.meta?.includes("compile") &&
-        parent &&
-        index !== undefined
-      ) {
-        nodes.push({ node, index, parent });
-      }
-      return SKIP;
-    });
+        injectScript(
+          "page",
+          js`{ const s = document.createElement("style"); s.textContent = ${JSON.stringify(INJECTED_CSS)}; document.head.appendChild(s); }`,
+        );
 
-    if (nodes.length === 0) return;
-
-    const filePath = file.path || "unknown";
-    const relFilePath =
-      filePath !== "unknown" ? relative(process.cwd(), filePath) : "unknown";
-    const frontmatterOffset =
-      filePath !== "unknown" ? getFrontmatterOffset(filePath) : 0;
-    const inputsSalt = computeTexInputDirsSalt(options.texInputDirs ?? []);
-
-    // Compile all blocks in parallel, collecting results before mutating the tree
-    const results = await Promise.all(
-      nodes.map(async ({ node, index, parent }) => {
-        const lineNumberStr =
-          node.position?.start.line !== undefined
-            ? String(node.position.start.line + frontmatterOffset)
-            : "?";
-        const blockId = new MetaOptions(node.meta ?? "").getInteger("blockid");
-        const jpgPath =
-          options.debug && blockId !== undefined
-            ? computeJpgPath(options.debug.outputDir, filePath, blockId)
-            : null;
-        try {
-          const result = await compileLatexToSvg(
-            node.value,
-            svgOutputDir,
-            options.texInputDirs ?? [],
-            inputsSalt,
-          );
-          if (result.wasCompiled) {
-            console.log(
-              `[astro-latex-compile] ${relFilePath}:${lineNumberStr}: compiled ${result.hash}.svg`,
-            );
-          }
-          options._referencedHashes?.add(result.hash);
-          if (jpgPath) {
-            await writeJpgFromSvg(result.svgPath, jpgPath);
-            await debugLogger?.write(
-              `${relFilePath}:${lineNumberStr}: wrote ${jpgPath}`,
-            );
-          }
-          return {
-            index,
-            parent,
-            result,
-            error: null,
-            hash: result.hash,
-            jpgPath,
-          };
-        } catch (err) {
-          const errorMsg = err instanceof Error ? err.message : String(err);
-          const match = errorMsg.match(/\n\n([\s\S]+)/);
-          const details = match ? match[1] : errorMsg;
-          console.error(
-            `[astro-latex-compile] ${relFilePath}:${lineNumberStr}\n${details}`,
-          );
-          if (jpgPath) {
-            await writeJpgError(
-              jpgPath,
-              `${relFilePath}:${lineNumberStr}`,
-              errorMsg,
-            );
-          }
-          return {
-            index,
-            parent,
-            result: null,
-            error: err,
-            hash: null,
-            jpgPath,
-          };
+        if (command === "build") {
+          await clearContentLayerCache(config);
         }
-      }),
-    );
 
-    // Delete SVGs that this file previously produced but no longer references
-    if (options._fileHashMap) {
-      const newHashes = new Set(
-        results.map((r) => r.hash).filter(Boolean) as string[],
-      );
-      const oldHashes = options._fileHashMap.get(filePath) ?? new Set<string>();
-      const staleHashes = [...oldHashes].filter((h) => !newHashes.has(h));
-      for (const staleHash of staleHashes) {
-        console.warn(
-          `[astro-latex-compile] Removing orphaned svg: ${staleHash}.svg`,
-        );
-      }
+        if (command === "dev" && options.debug) {
+          const debugOutputDir = resolve(options.debug.outputDir);
+          let entries: string[];
+          try {
+            entries = await readdir(debugOutputDir);
+          } catch {
+            entries = [];
+          }
+          await Promise.all(
+            entries
+              .filter((f) => f.endsWith(".jpg"))
+              .map((f) => rm(join(debugOutputDir, f), { force: true })),
+          );
+        }
 
-      await Promise.all(
-        staleHashes.map((h) =>
-          rm(join(svgOutputDir, `${h}.svg`), { force: true }),
-        ),
-      );
-      options._fileHashMap.set(filePath, newHashes);
-    }
+        const existingPlugins = Array.isArray(config.markdown?.remarkPlugins)
+          ? config.markdown.remarkPlugins.filter(Boolean)
+          : [];
 
-    // Delete JPGs that this file previously produced but no longer references
-    if (options.debug && options._fileJpgPathMap) {
-      const newJpgPaths = new Set(
-        results.map((r) => r.jpgPath).filter(Boolean) as string[],
-      );
-      const oldJpgPaths =
-        options._fileJpgPathMap.get(filePath) ?? new Set<string>();
-      const staleJpgPaths = [...oldJpgPaths].filter((p) => !newJpgPaths.has(p));
-      for (const stalePath of staleJpgPaths) {
-        console.warn(
-          `[astro-latex-compile] Removing orphaned jpg: ${stalePath}`,
-        );
-      }
-      await Promise.all(staleJpgPaths.map((p) => rm(p, { force: true })));
-      options._fileJpgPathMap.set(filePath, newJpgPaths);
-    }
-
-    // Apply AST mutations in reverse index order so earlier splices don't shift
-    // the indices of later nodes sharing the same parent.
-    for (let i = results.length - 1; i >= 0; i--) {
-      const { index, parent, result, error } = results[i];
-      const { node } = nodes[i];
-
-      if (!result) {
-        const lineNumberStr =
-          node.position?.start.line !== undefined
-            ? String(node.position.start.line + frontmatterOffset)
-            : "?";
-        const errorMsg = error instanceof Error ? error.message : String(error);
-        const errorNode: Html = {
-          type: "html",
-          value: buildErrorHtml(
-            `${relFilePath}:${lineNumberStr}`,
-            errorMsg,
-            node.value,
-          ),
+        const state: LatexCompileState = {
+          svgOutputDir: svgOutput.dir,
+          svgUrlPrefix: svgOutput.urlPrefix,
+          fileHashMap: options.removeOrphanedSvgs ? fileHashMap : undefined,
+          referencedHashes:
+            command === "build" && options.removeOrphanedSvgs
+              ? referencedHashes
+              : undefined,
+          fileJpgPathMap: options.debug ? fileJpgPathMap : undefined,
         };
-        parent.children.splice(index, 1, errorNode);
-        continue;
-      }
 
-      const metaOptions = new MetaOptions(node.meta ?? "");
-      const blockClass = metaOptions.getString("class");
-      const extraClasses = (
-        blockClass !== undefined ? blockClass : (options.svgClassname ?? "")
-      )
-        .split(/\s+/)
-        .filter(Boolean);
-      const altText = metaOptions.getString("alt") ?? "LaTeX diagram";
+        updateConfig({
+          markdown: {
+            remarkPlugins: [
+              ...existingPlugins,
+              () => latexCompileTransformer(options, state),
+            ],
+          },
+        });
+      },
 
-      const imageNode: Image = {
-        type: "image",
-        url: `/static/tex-svgs/${result.hash}.svg`,
-        alt: altText,
-        data: {
-          hProperties: { className: ["tex-compiled", ...extraClasses] },
-        },
-      };
+      "astro:build:done": async () => {
+        if (!options.removeOrphanedSvgs || !svgOutput) return;
 
-      const paragraph: Paragraph = {
-        type: "paragraph",
-        children: [imageNode],
-      };
+        const svgDir = svgOutput.dir;
+        let entries: string[];
+        try {
+          entries = await readdir(svgDir);
+        } catch {
+          return; // directory doesn't exist, nothing to clean
+        }
 
-      parent.children.splice(index, 1, paragraph);
-    }
+        const orphans = entries.filter(
+          (f) => f.endsWith(".svg") && !referencedHashes.has(f.slice(0, -4)),
+        );
+
+        await Promise.all(
+          orphans.map((f) => rm(join(svgDir, f), { force: true })),
+        );
+
+        if (orphans.length > 0) {
+          console.log(
+            `[astro-latex-compile] Removed ${orphans.length} orphaned SVG${orphans.length === 1 ? "" : "s"}.`,
+          );
+        }
+      },
+    },
   };
 }
-
-export { compileLatexToSvg };

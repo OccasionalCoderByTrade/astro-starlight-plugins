@@ -15,4 +15,4 @@ export { expressiveCodeEmphasis } from "./plugins/expressive-code-emphasis/index
 export {
   astroLatexCompile,
   type LatexCompileOptions,
-} from "./plugins/astro-latex-compile/astro-integration.js";
+} from "./plugins/astro-latex-compile/index.js";

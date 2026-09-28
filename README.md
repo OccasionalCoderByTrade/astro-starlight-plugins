@@ -140,7 +140,7 @@ dvisvgm --version
 
 **Options:**
 
-- `svgOutputDir` (required): Directory where compiled SVG files are written. Must be inside `public/` so Astro serves them as static assets.
+- `svgOutputDir` (required): Directory where compiled SVG files are written. Resolved against the project root, and must be a subdirectory of Astro's `publicDir` (usually `public/`), or Astro fails to start. Image URLs are derived from it, so `public/diagrams` with `base: "/docs"` produces `/docs/diagrams/<hash>.svg`.
 - `removeOrphanedSvgs` (optional, default: `false`): When `true`, SVG files that are no longer referenced by any `tex compile` block are deleted automatically. In dev mode, stale SVGs are removed immediately when a block is edited. On build, any remaining orphans are swept at the end.
 - `svgClassname` (optional): Default CSS class(es) applied to every compiled SVG `<img>` element. Individual blocks can override this with a `class` meta tag value. The `tex-compiled` class is always present and cannot be overridden.
 - `texInputDirs` (optional): Directories added to the TeX input search path (`TEXINPUTS`), allowing `\input{}` and `\include{}` to resolve files from your project. Use a trailing `/` to search only that directory, or `//` to search it recursively. Multiple directories are supported. When any file in these directories changes, all cached SVGs are invalidated and recompiled.
@@ -160,6 +160,7 @@ astroLatexCompile({
 import { defineConfig } from "astro/config";
 import starlight from "@astrojs/starlight";
 import { astroLatexCompile } from "starlight-cannoli-plugins";
+// or: import { astroLatexCompile } from "starlight-cannoli-plugins/astro-latex-compile";
 
 export default defineConfig({
   integrations: [

@@ -1,0 +1,23 @@
+# Starlight Cannoli Plugins
+
+A collection of Astro integrations and Starlight plugins for documentation sites, shipped as one npm package.
+
+## Language
+
+### LaTeX compile
+
+**`tex compile` block**:
+A fenced code block in a Markdown doc, tagged `tex` or `latex` with `compile` in its meta, that holds a complete LaTeX document to be rendered as a diagram. `latex compile` is an accepted spelling in source, but prose always says `tex compile` block.
+_Avoid_: LaTeX block, compile block, code block, `latex compile` block (in prose)
+
+**Compiled tex diagram**:
+The SVG produced from one `tex compile` block, named by the hash of its content.
+_Avoid_: tex SVG, compiled SVG, diagram
+
+**Orphaned tex diagram**:
+A compiled tex diagram that no `tex compile` block references anymore.
+_Avoid_: orphaned SVG, stale SVG (the `removeOrphanedSvgs` option keeps its name for compatibility)
+
+**Debug tex diagram image**:
+A JPEG copy of a compiled tex diagram, produced only for `tex compile` blocks that carry a `blockid`, meant for local inspection and never published.
+_Avoid_: debug JPG, temp output, snapshot
