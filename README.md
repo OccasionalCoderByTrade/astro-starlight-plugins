@@ -459,41 +459,6 @@ function foo() {
 
 Multiple terms are separated by commas. Each term is matched as a whole unit — it must be surrounded by whitespace, start/end of line, or (for terms that start/end with word characters) word boundaries.
 
-## CLI Utilities
-
-### cannoli-latex-cleanup
-
-A manual cleanup utility for the LaTeX compile plugin. Scans your markdown source files for all `tex compile` code blocks, hashes them, and identifies orphaned SVG files in the output directory that are no longer referenced by any code block.
-
-> **Note:** If you use `removeOrphanedSvgs: true` in your `astroLatexCompile` config, this CLI is generally not needed — orphaned SVGs are cleaned up automatically during both dev and build.
-
-**Usage:**
-
-Check for orphaned SVGs without deleting:
-
-```bash
-npx cannoli-latex-cleanup --svg-dir public/static/tex-svgs --check
-```
-
-Delete orphaned SVGs:
-
-```bash
-npx cannoli-latex-cleanup --svg-dir public/static/tex-svgs --delete
-```
-
-With custom docs directory (defaults to `src/content/docs`):
-
-```bash
-npx cannoli-latex-cleanup --svg-dir public/static/tex-svgs --docs-dir ./src/content/docs --delete
-```
-
-**Options:**
-
-- `--svg-dir` (required): Path to the SVG output directory configured in `astroLatexCompile`
-- `--docs-dir` (optional, default: `src/content/docs`): Path to markdown source directory
-- `--check`: List orphaned SVGs without deleting
-- `--delete`: Delete orphaned SVGs
-
 ## Installation
 
 ```bash
