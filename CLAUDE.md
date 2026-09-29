@@ -2,7 +2,7 @@
 
 - Never run `npm publish` on my behalf. Don't even ask me if you can run it. I will run it myself when I am ready.
 - Never run git commands that change repo state (commit, push, reset, checkout, branch, etc.) without asking first. Read-only git commands (status, log, diff, show) are fine to run freely.
-- Run `npm run lib:build` before committing a new change.
+- Run `npm run lib:build` as a sanity check before committing if the code has changed since the previous commit.
 
 If updating a plugin, or creating a new plugin, make sure to also update README.md in the root of this project to reflect the changes.
 
