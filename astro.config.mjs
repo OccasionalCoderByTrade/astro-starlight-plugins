@@ -61,10 +61,7 @@ export default defineConfig({
       svgOutputDir: "public/static/tex-svgs",
       removeOrphanedSvgs: true,
       // texInputDirs: [],
-      debug: {
-        outputDir: ".astro-latex-compile/",
-        logFile: ".astro-latex-compile/latex-compile.log",
-      },
+      debug: true,
     }),
     syncDocsToPublic({
       preserveDirs: ["static"],

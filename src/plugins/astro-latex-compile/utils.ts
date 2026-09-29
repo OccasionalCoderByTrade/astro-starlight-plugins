@@ -31,7 +31,19 @@ export type CompileOutcome =
   | { ok: true; hash: string; svgPath: string; wasCompiled: boolean }
   | { ok: false; failure: TexCompileFailure };
 
-export function computeJpgPath(
+/** File name of the compiled tex diagram with this content hash. */
+export function diagramFileName(hash: string): string {
+  return `${hash}.svg`;
+}
+
+/** Content hash of a compiled tex diagram's file name, or `undefined` for any other file. */
+export function diagramHashOf(fileName: string): string | undefined {
+  return fileName.endsWith(".svg")
+    ? fileName.slice(0, -".svg".length)
+    : undefined;
+}
+
+export function computeDebugImagePath(
   outputDir: string,
   filePath: string,
   blockId: number,
@@ -167,7 +179,7 @@ export async function compileLatexToSvg(
   }
 
   const hash = hashLatexCode(latexCode, inputsSalt);
-  const svgPath = join(svgOutputDir, `${hash}.svg`);
+  const svgPath = join(svgOutputDir, diagramFileName(hash));
 
   // If already compiled, return early
   if (existsSync(svgPath)) {

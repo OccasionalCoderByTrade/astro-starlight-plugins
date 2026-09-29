@@ -1,13 +1,13 @@
 import { readFileSync, writeSync } from "node:fs";
-import { rm } from "node:fs/promises";
 import { parseFrontmatter } from "@astrojs/markdown-remark";
-import { join, relative } from "node:path";
+import { relative } from "node:path";
 import { visit, SKIP } from "unist-util-visit";
 import type { Code, Html, Image, Paragraph, Parent, Root } from "mdast";
 import type { VFile } from "vfile";
 import { MetaOptions } from "@expressive-code/core";
 import type { LatexCompileOptions } from "./index.js";
 import { RotatingFileLogger } from "../utils/rotating-file-logger.js";
+import type { DocRender, TexDiagramLedger } from "./ledger.js";
 import {
   renderConsole,
   renderHtml,
@@ -17,8 +17,8 @@ import {
 import {
   compileLatexToSvg,
   type CompileOutcome,
-  computeJpgPath,
   computeTexInputDirsSalt,
+  diagramFileName,
   writeJpgFromSvg,
 } from "./utils.js";
 
@@ -27,11 +27,9 @@ const DEBUG_LOG_BACKUP_COUNT = 3;
 
 /**
  * Per-integration state shared by every markdown processor Astro creates, so
- * orphan tracking survives across processor invocations.
+ * the ledger survives across processor invocations.
  */
 export interface LatexCompileState {
-  /** Absolute path of `svgOutputDir`, resolved against the project root. */
-  svgOutputDir: string;
   /** URL path that `svgOutputDir` is served from, without trailing slash. */
   svgUrlPrefix: string;
   /**
@@ -41,15 +39,10 @@ export interface LatexCompileState {
   missingTools: Set<string>;
   /** When `true` (dev), a missing tool stops the dev server. */
   exitOnMissingToolchain: boolean;
-  /** Hashes referenced during a build, used for orphan cleanup at build:done. */
-  referencedHashes?: Set<string>;
-  /** Hashes each file produced on its previous run, used to delete orphaned tex diagrams. */
-  fileHashMap?: Map<string, Set<string>>;
-  /**
-   * Debug tex diagram images each file produced on its previous run, used to
-   * delete ones whose block was removed or changed.
-   */
-  fileJpgPathMap?: Map<string, Set<string>>;
+  /** Owns the output dirs, tracks which doc references which output, and deletes orphans. */
+  ledger: TexDiagramLedger;
+  /** Absolute path of the debug log file, when debug is on. */
+  debugLogFile?: string;
 }
 
 /**
@@ -93,11 +86,11 @@ export function latexCompileTransformer(
   options: LatexCompileOptions,
   state: LatexCompileState,
 ) {
-  const svgOutputDir = state.svgOutputDir;
-  const debugLogger = options.debug
+  const { ledger } = state;
+  const debugLogger = state.debugLogFile
     ? new RotatingFileLogger({
         identifier: "astro-latex-compile",
-        filePath: options.debug.logFile,
+        filePath: state.debugLogFile,
         maxSizeBytes: DEBUG_LOG_MAX_SIZE_BYTES,
         backupCount: DEBUG_LOG_BACKUP_COUNT,
       })
@@ -119,7 +112,7 @@ export function latexCompileTransformer(
     console.error(report);
   }
 
-  return async function transformer(tree: Root, file: VFile) {
+  async function renderDoc(tree: Root, filePath: string, render: DocRender) {
     type NodeEntry = { node: Code; index: number; parent: Parent };
     const nodes: NodeEntry[] = [];
 
@@ -135,9 +128,21 @@ export function latexCompileTransformer(
       return SKIP;
     });
 
-    if (nodes.length === 0) return;
+    if (nodes.length === 0) {
+      await ledger.recordDoc(render, { hashes: [], blockIds: [] });
+      return;
+    }
 
-    const filePath = file.path || "unknown";
+    const blockIds = nodes.map(({ node }) =>
+      new MetaOptions(node.meta ?? "").getInteger("blockid"),
+    );
+    // Blocks sharing a blockid would write the same debug tex diagram image,
+    // so only the last one in the doc writes it.
+    const lastIndexByBlockId = new Map<number, number>();
+    blockIds.forEach((id, i) => {
+      if (id !== undefined) lastIndexByBlockId.set(id, i);
+    });
+
     const relFilePath =
       filePath !== "unknown" ? relative(process.cwd(), filePath) : "unknown";
     const frontmatterOffset =
@@ -146,16 +151,16 @@ export function latexCompileTransformer(
 
     // Compile all blocks in parallel, collecting results before mutating the tree
     const results = await Promise.all(
-      nodes.map(async ({ node, index, parent }) => {
+      nodes.map(async ({ node, index, parent }, i) => {
         const lineNumberStr =
           node.position?.start.line !== undefined
             ? String(node.position.start.line + frontmatterOffset)
             : "?";
-        const blockId = new MetaOptions(node.meta ?? "").getInteger("blockid");
-        const jpgPath =
-          options.debug && blockId !== undefined
-            ? computeJpgPath(options.debug.outputDir, filePath, blockId)
-            : null;
+        const blockId = blockIds[i];
+        const debugImagePath =
+          blockId !== undefined && lastIndexByBlockId.get(blockId) === i
+            ? ledger.debugImagePath(filePath, blockId)
+            : undefined;
         const location = `${relFilePath}:${lineNumberStr}`;
 
         // Anything thrown here must stay confined to this block: rejecting
@@ -164,7 +169,7 @@ export function latexCompileTransformer(
         try {
           outcome = await compileLatexToSvg(
             node.value,
-            svgOutputDir,
+            ledger.svgDir,
             options.texInputDirs ?? [],
             inputsSalt,
           );
@@ -177,76 +182,35 @@ export function latexCompileTransformer(
 
         if (!outcome.ok) {
           reportFailure(outcome.failure, location);
-          if (jpgPath) {
+          if (debugImagePath) {
             const { failure } = outcome;
             await writeDebugOutput(location, () =>
-              writeDebugImage(failure, location, jpgPath),
+              writeDebugImage(failure, location, debugImagePath),
             );
           }
-          return { index, parent, outcome, location, hash: null, jpgPath };
+          return { index, parent, outcome, location, hash: null };
         }
 
         if (outcome.wasCompiled) {
           console.log(
-            `[astro-latex-compile] ${location}: compiled ${outcome.hash}.svg`,
+            `[astro-latex-compile] ${location}: compiled ${diagramFileName(outcome.hash)}`,
           );
         }
-        state.referencedHashes?.add(outcome.hash);
-        if (jpgPath) {
+        if (debugImagePath) {
           const { svgPath } = outcome;
           await writeDebugOutput(location, async () => {
-            await writeJpgFromSvg(svgPath, jpgPath);
-            await debugLogger?.write(`${location}: wrote ${jpgPath}`);
+            await writeJpgFromSvg(svgPath, debugImagePath);
+            await debugLogger?.write(`${location}: wrote ${debugImagePath}`);
           });
         }
-        return {
-          index,
-          parent,
-          outcome,
-          location,
-          hash: outcome.hash,
-          jpgPath,
-        };
+        return { index, parent, outcome, location, hash: outcome.hash };
       }),
     );
 
-    // Delete SVGs that this file previously produced but no longer references
-    if (state.fileHashMap) {
-      const newHashes = new Set(
-        results.map((r) => r.hash).filter(Boolean) as string[],
-      );
-      const oldHashes = state.fileHashMap.get(filePath) ?? new Set<string>();
-      const staleHashes = [...oldHashes].filter((h) => !newHashes.has(h));
-      for (const staleHash of staleHashes) {
-        console.warn(
-          `[astro-latex-compile] Removing orphaned svg: ${staleHash}.svg`,
-        );
-      }
-
-      await Promise.all(
-        staleHashes.map((h) =>
-          rm(join(svgOutputDir, `${h}.svg`), { force: true }),
-        ),
-      );
-      state.fileHashMap.set(filePath, newHashes);
-    }
-
-    // Delete JPGs that this file previously produced but no longer references
-    if (state.fileJpgPathMap) {
-      const newJpgPaths = new Set(
-        results.map((r) => r.jpgPath).filter(Boolean) as string[],
-      );
-      const oldJpgPaths =
-        state.fileJpgPathMap.get(filePath) ?? new Set<string>();
-      const staleJpgPaths = [...oldJpgPaths].filter((p) => !newJpgPaths.has(p));
-      for (const stalePath of staleJpgPaths) {
-        console.warn(
-          `[astro-latex-compile] Removing orphaned jpg: ${stalePath}`,
-        );
-      }
-      await Promise.all(staleJpgPaths.map((p) => rm(p, { force: true })));
-      state.fileJpgPathMap.set(filePath, newJpgPaths);
-    }
+    await ledger.recordDoc(render, {
+      hashes: results.flatMap((r) => r.hash ?? []),
+      blockIds: blockIds.flatMap((id) => id ?? []),
+    });
 
     // Apply AST mutations in reverse index order so earlier splices don't shift
     // the indices of later nodes sharing the same parent.
@@ -274,7 +238,7 @@ export function latexCompileTransformer(
 
       const imageNode: Image = {
         type: "image",
-        url: `${state.svgUrlPrefix}/${outcome.hash}.svg`,
+        url: `${state.svgUrlPrefix}/${diagramFileName(outcome.hash)}`,
         alt: altText,
         data: {
           hProperties: { className: ["tex-compiled", ...extraClasses] },
@@ -287,6 +251,18 @@ export function latexCompileTransformer(
       };
 
       parent.children.splice(index, 1, paragraph);
+    }
+  }
+
+  return async function transformer(tree: Root, file: VFile) {
+    const filePath = file.path || "unknown";
+    const render = ledger.beginDoc(filePath);
+    try {
+      await renderDoc(tree, filePath, render);
+    } finally {
+      // A render that throws before recording must still end, or the ledger
+      // holds back orphan deletion for good. A no-op once recorded.
+      await ledger.abandonDoc(render);
     }
   };
 }

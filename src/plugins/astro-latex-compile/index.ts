@@ -1,12 +1,15 @@
 import fs from "node:fs";
-import { readdir, rm } from "node:fs/promises";
-import { isAbsolute, join, relative, resolve, sep } from "node:path";
+import { isAbsolute, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { AstroConfig, AstroIntegration } from "astro";
+import { resolveDebugOutput, type DebugOptions } from "./debug-output.js";
+import { createLedger, type TexDiagramLedger } from "./ledger.js";
 import {
   latexCompileTransformer,
   type LatexCompileState,
 } from "./transformer.js";
+
+export type { DebugOptions as LatexCompileDebugOptions };
 
 const js = String.raw;
 const DARK_MODE_ROTATE = "178deg";
@@ -52,25 +55,25 @@ export interface LatexCompileOptions {
    */
   texInputDirs?: string[];
   /**
-   * When set, a JPEG copy of each compiled diagram is written to a flat
-   * directory. Only blocks that carry a `blockid=<n>` meta tag produce a
-   * JPEG. Filename format: `<originating-file>-<8-char-dir-checksum>--<blockid>.jpg`,
+   * When set, a debug tex diagram image (a JPEG copy of each compiled tex
+   * diagram) is written to a flat directory. Only blocks that carry a
+   * `blockid=<n>` meta tag produce one; if several blocks in a doc share a
+   * `blockid`, only the last one's is kept. Filename format: `<originating-file>--<blockid>-<8-char-dir-checksum>.jpg`,
    * where the checksum namespaces files originating from different
    * directories to avoid collisions between files with the same name.
-   * JPEGs are deleted automatically when their block is removed or its content
-   * changes. Intended for local inspection, not for publishing.
+   * Both paths live under the integration's codegen dir,
+   * `.astro/integrations/astro-latex-compile/`. Images are deleted when their
+   * block is removed or its content changes, and all are cleared at the start
+   * of a build. Intended for local inspection, not for publishing.
    */
-  debug?: {
-    /** Directory where debug JPEGs are written, as a flat file list. */
-    outputDir: string;
-    /** Path to a log file that records every JPEG (re)write. Rotates by size. */
-    logFile: string;
-  };
+  debug?: true | DebugOptions;
   /**
    * When `true`, SVG files in `svgOutputDir` that are no longer referenced by
-   * any `tex compile` block are deleted automatically. In dev mode, stale SVGs
-   * are removed immediately when a block is edited. On build, any remaining
-   * orphans are swept at the end.
+   * any `tex compile` block (orphaned tex diagrams) are deleted automatically.
+   * On build, every orphaned tex diagram is swept at the end. In dev, docs that
+   * weren't edited aren't re-rendered, so only compiled tex diagrams first
+   * written during the current dev session are deleted when a block is edited;
+   * older orphaned tex diagrams wait for the next build.
    * @default false
    */
   removeOrphanedSvgs?: boolean;
@@ -119,11 +122,8 @@ async function clearContentLayerCache(config: AstroConfig): Promise<void> {
 export function astroLatexCompile(
   options: LatexCompileOptions,
 ): AstroIntegration {
-  const referencedHashes = new Set<string>();
-  const fileHashMap = new Map<string, Set<string>>();
-  const fileJpgPathMap = new Map<string, Set<string>>();
   const missingTools = new Set<string>();
-  let svgOutput: { dir: string; urlPrefix: string } | undefined;
+  let ledger: TexDiagramLedger | undefined;
 
   return {
     name: "astro-latex-compile",
@@ -133,8 +133,12 @@ export function astroLatexCompile(
         config,
         updateConfig,
         injectScript,
+        createCodegenDir,
       }) => {
-        svgOutput = resolveSvgOutput(config, options.svgOutputDir);
+        const svgOutput = resolveSvgOutput(config, options.svgOutputDir);
+        const debug = options.debug
+          ? resolveDebugOutput(fileURLToPath(createCodegenDir()), options.debug)
+          : undefined;
         if (command !== "build" && command !== "dev") return;
 
         injectScript(
@@ -146,36 +150,31 @@ export function astroLatexCompile(
           await clearContentLayerCache(config);
         }
 
-        if (command === "dev" && options.debug) {
-          const debugOutputDir = resolve(options.debug.outputDir);
-          let entries: string[];
-          try {
-            entries = await readdir(debugOutputDir);
-          } catch {
-            entries = [];
-          }
-          await Promise.all(
-            entries
-              .filter((f) => f.endsWith(".jpg"))
-              .map((f) => rm(join(debugOutputDir, f), { force: true })),
+        if (debug) {
+          const root = fileURLToPath(config.root);
+          console.log(
+            `[astro-latex-compile] debug tex diagram images: ${relative(root, debug.outputDir)}`,
           );
         }
+
+        ledger = createLedger({
+          svgDir: svgOutput.dir,
+          debugImageDir: debug?.outputDir,
+          removeOrphanedSvgs: options.removeOrphanedSvgs ?? false,
+          command,
+        });
+        await ledger.start();
 
         const existingPlugins = Array.isArray(config.markdown?.remarkPlugins)
           ? config.markdown.remarkPlugins.filter(Boolean)
           : [];
 
         const state: LatexCompileState = {
-          svgOutputDir: svgOutput.dir,
           svgUrlPrefix: svgOutput.urlPrefix,
           missingTools,
           exitOnMissingToolchain: command === "dev",
-          fileHashMap: options.removeOrphanedSvgs ? fileHashMap : undefined,
-          referencedHashes:
-            command === "build" && options.removeOrphanedSvgs
-              ? referencedHashes
-              : undefined,
-          fileJpgPathMap: options.debug ? fileJpgPathMap : undefined,
+          ledger,
+          debugLogFile: debug?.logFile,
         };
 
         updateConfig({
@@ -197,29 +196,7 @@ export function astroLatexCompile(
           );
         }
 
-        if (!options.removeOrphanedSvgs || !svgOutput) return;
-
-        const svgDir = svgOutput.dir;
-        let entries: string[];
-        try {
-          entries = await readdir(svgDir);
-        } catch {
-          return; // directory doesn't exist, nothing to clean
-        }
-
-        const orphans = entries.filter(
-          (f) => f.endsWith(".svg") && !referencedHashes.has(f.slice(0, -4)),
-        );
-
-        await Promise.all(
-          orphans.map((f) => rm(join(svgDir, f), { force: true })),
-        );
-
-        if (orphans.length > 0) {
-          console.log(
-            `[astro-latex-compile] Removed ${orphans.length} orphaned SVG${orphans.length === 1 ? "" : "s"}.`,
-          );
-        }
+        await ledger?.sweep();
       },
     },
   };
