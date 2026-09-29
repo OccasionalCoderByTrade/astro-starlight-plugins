@@ -136,13 +136,19 @@ function buildItems(
     );
   }
 
-  const fm = parseFrontmatter(indexFile);
-  if (fm.draft || fm.pagefind === false || fm.sidebar?.hidden) return [];
+  const frontmatter = parseFrontmatter(indexFile);
+  if (
+    frontmatter.draft ||
+    frontmatter.pagefind === false ||
+    frontmatter.sidebar?.hidden
+  )
+    return [];
 
   const items: TSidebarItem[] = [];
 
   // The index page itself is always the first item in its group
-  const indexBaseLabel = fm.title ?? pathSegmentToLabel(path.basename(absDir));
+  const indexBaseLabel =
+    frontmatter.title ?? pathSegmentToLabel(path.basename(absDir));
   items.push({
     label: indexBaseLabel,
     slug: normalizeSlug(filePathToSlug(indexFile)),
@@ -169,11 +175,15 @@ function buildItems(
 
       if (resolvedFile.endsWith(".mdx")) {
         // index.mdx: add as a leaf item only — do not recurse into it
-        const subFm = parseFrontmatter(resolvedFile);
-        if (subFm.draft || subFm.pagefind === false || subFm.sidebar?.hidden)
+        const subFrontmatter = parseFrontmatter(resolvedFile);
+        if (
+          subFrontmatter.draft ||
+          subFrontmatter.pagefind === false ||
+          subFrontmatter.sidebar?.hidden
+        )
           continue;
         const subBaseLabel =
-          subFm.title ?? pathSegmentToLabel(path.basename(subDirPath));
+          subFrontmatter.title ?? pathSegmentToLabel(path.basename(subDirPath));
         items.push({
           label: subBaseLabel,
           slug: normalizeSlug(filePathToSlug(resolvedFile)),
@@ -202,13 +212,17 @@ function buildItems(
         }
       }
     } else {
-      const leafFm = parseFrontmatter(resolvedFile);
-      if (leafFm.draft || leafFm.pagefind === false || leafFm.sidebar?.hidden)
+      const leafFrontmatter = parseFrontmatter(resolvedFile);
+      if (
+        leafFrontmatter.draft ||
+        leafFrontmatter.pagefind === false ||
+        leafFrontmatter.sidebar?.hidden
+      )
         continue;
 
       items.push({
         label:
-          leafFm.title ??
+          leafFrontmatter.title ??
           pathSegmentToLabel(
             path.basename(resolvedFile, path.extname(resolvedFile)),
           ),

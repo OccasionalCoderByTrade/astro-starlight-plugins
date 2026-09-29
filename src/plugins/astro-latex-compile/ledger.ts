@@ -118,7 +118,9 @@ async function removeAll(paths: string[]): Promise<void> {
 }
 
 async function listDiagramHashes(svgDir: string): Promise<string[]> {
-  return (await listDir(svgDir)).flatMap((f) => diagramHashOf(f) ?? []);
+  return (await listDir(svgDir)).flatMap(
+    (fileName) => diagramHashOf(fileName) ?? [],
+  );
 }
 
 const keepDiagrams: DiagramRules = {
@@ -219,8 +221,12 @@ export function createLedger(
    */
   async function deleteHeldOrphans() {
     if (rendering.size > 0) return;
-    const orphanedDiagrams = [...heldDiagrams].filter((h) => !diagrams.has(h));
-    const orphanedImages = [...heldImages].filter((p) => !debugImages.has(p));
+    const orphanedDiagrams = [...heldDiagrams].filter(
+      (hash) => !diagrams.has(hash),
+    );
+    const orphanedImages = [...heldImages].filter(
+      (path) => !debugImages.has(path),
+    );
     heldDiagrams.clear();
     heldImages.clear();
 
@@ -247,10 +253,12 @@ export function createLedger(
     async start() {
       await diagramRules.start();
       if (wipesDebugImagesAtStart && debugImageDir) {
-        const images = (await listDir(debugImageDir)).filter((f) =>
-          f.endsWith(".jpg"),
+        const images = (await listDir(debugImageDir)).filter((fileName) =>
+          fileName.endsWith(".jpg"),
         );
-        await removeAll(images.map((f) => join(debugImageDir, f)));
+        await removeAll(
+          images.map((fileName) => join(debugImageDir, fileName)),
+        );
       }
     },
 

@@ -39,9 +39,9 @@ function getResolvedLink(href: string, currentFilePath: string): TLink | null {
     return null;
   }
 
-  const fragmentMatch = processedHref.split("#");
-  const withoutFragment = fragmentMatch[0];
-  const fragment = fragmentMatch[1] || "";
+  const hrefParts = processedHref.split("#");
+  const withoutFragment = hrefParts[0];
+  const fragment = hrefParts[1] || "";
 
   // skip hash-only links (fragments with no actual path)
   if (!withoutFragment) {
@@ -49,12 +49,12 @@ function getResolvedLink(href: string, currentFilePath: string): TLink | null {
   }
 
   let projectAbsolute: string;
-  let relativePath: string;
+  let docsRelativePath: string;
 
   if (withoutFragment.startsWith("/")) {
     // absolute link, resolve from docs root
-    relativePath = withoutFragment.slice(1);
-    projectAbsolute = join(PROJECT_DOCS_DIR, relativePath);
+    docsRelativePath = withoutFragment.slice(1);
+    projectAbsolute = join(PROJECT_DOCS_DIR, docsRelativePath);
   } else {
     // Relative link - resolve relative to current file's directory
     const currentFileDir = dirname(currentFilePath);
@@ -63,7 +63,7 @@ function getResolvedLink(href: string, currentFilePath: string): TLink | null {
 
     // Convert absolute path back to relative from PROJECT_DOCS_DIR
     const docsRootAbsolute = resolve(PROJECT_DOCS_DIR);
-    relativePath = relative(docsRootAbsolute, resolvedAbsPath);
+    docsRelativePath = relative(docsRootAbsolute, resolvedAbsPath);
   }
 
   const hasExtension = /\.[a-z0-9]+$/i.test(projectAbsolute);
@@ -78,7 +78,7 @@ function getResolvedLink(href: string, currentFilePath: string): TLink | null {
     finalProjectAbsoluteHref = projectAbsolute;
   }
 
-  let siteAbsoluteHref = "/" + relativePath;
+  let siteAbsoluteHref = "/" + docsRelativePath;
   if (fragment) {
     siteAbsoluteHref += "#" + fragment;
   }
@@ -153,7 +153,7 @@ export function rehypeValidateLinks(options?: TRehypeValidateLinksOptions) {
     if (errors.length > 0) {
       throw new Error(
         `Link validation errors in ${filePath}:\n` +
-          errors.map((e) => `  - ${e}`).join("\n"),
+          errors.map((error) => `  - ${error}`).join("\n"),
       );
     }
   };

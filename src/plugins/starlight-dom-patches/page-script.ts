@@ -401,12 +401,15 @@ export function decorateExternalLinks(options: DecorateExternalLinksOptions) {
     },
   ];
 
-  const enabledMatchers = MATCHERS.filter((m) => options[m.key]);
+  const enabledMatchers = MATCHERS.filter((matcher) => options[matcher.key]);
 
   function matchIcon(href: string) {
     try {
       const { hostname } = new URL(href);
-      return enabledMatchers.find((m) => m.domains.includes(hostname)) ?? null;
+      return (
+        enabledMatchers.find((matcher) => matcher.domains.includes(hostname)) ??
+        null
+      );
     } catch {
       return null;
     }

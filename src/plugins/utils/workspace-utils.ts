@@ -1,4 +1,4 @@
-import { parseFrontmatter as astroParseFile } from "@astrojs/markdown-remark";
+import { parseFrontmatter as astroParseFrontmatter } from "@astrojs/markdown-remark";
 import * as fs from "fs";
 
 type TFrontmatter = {
@@ -19,7 +19,7 @@ export function parseFrontmatter(filePath: string): TFrontmatter {
   }
 
   try {
-    const { frontmatter } = astroParseFile(content);
+    const { frontmatter } = astroParseFrontmatter(content);
     return frontmatter as TFrontmatter;
   } catch (err) {
     console.warn(

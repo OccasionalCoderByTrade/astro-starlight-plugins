@@ -33,13 +33,13 @@ function resolveInside(
   optionName: string,
 ): string {
   const resolved = resolve(codegenDir, path);
-  const rel = relative(codegenDir, resolved);
+  const relativePath = relative(codegenDir, resolved);
   if (
     isAbsolute(path) ||
-    rel === "" ||
-    rel === ".." ||
-    rel.startsWith(`..${sep}`) ||
-    isAbsolute(rel)
+    relativePath === "" ||
+    relativePath === ".." ||
+    relativePath.startsWith(`..${sep}`) ||
+    isAbsolute(relativePath)
   ) {
     throw new Error(
       `[astro-latex-compile] ${optionName} "${path}" must be a non-empty relative path inside "${codegenDir}".`,

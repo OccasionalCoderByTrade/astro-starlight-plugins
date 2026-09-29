@@ -17,24 +17,27 @@ function showBanner(message: string, variant: "success" | "error"): void {
 }
 
 async function getRawMdUrl(): Promise<string> {
-  const base = window.location.href.replace(/\/?$/, "/");
+  const baseUrl = window.location.href.replace(/\/?$/, "/");
 
   // Try index.{md,mdx} — covers pages backed by an index file
   for (const ext of [".md", ".mdx"]) {
-    const url = new URL(`index${ext}`, base).toString();
+    const url = new URL(`index${ext}`, baseUrl).toString();
     if ((await fetch(url, { method: "HEAD" })).ok) return url;
   }
 
   // Try ../segment.{md,mdx} — covers pages backed by a non-index file
   // e.g. page URL /reference/foo/ → file at /reference/foo.md
-  const segment = new URL(base).pathname.replace(/\/$/, "").split("/").pop()!;
-  const parentBase = new URL("../", base).toString();
+  const segment = new URL(baseUrl).pathname
+    .replace(/\/$/, "")
+    .split("/")
+    .pop()!;
+  const parentBaseUrl = new URL("../", baseUrl).toString();
   for (const ext of [".md", ".mdx"]) {
-    const url = new URL(`${segment}${ext}`, parentBase).toString();
+    const url = new URL(`${segment}${ext}`, parentBaseUrl).toString();
     if ((await fetch(url, { method: "HEAD" })).ok) return url;
   }
 
-  return new URL("index.md", base).toString();
+  return new URL("index.md", baseUrl).toString();
 }
 
 const LLM_ASK_TARGETS: {

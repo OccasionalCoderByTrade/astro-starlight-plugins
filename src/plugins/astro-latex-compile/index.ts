@@ -97,19 +97,22 @@ function resolveSvgOutput(
 ): { dir: string; urlPrefix: string } {
   const publicDir = fileURLToPath(config.publicDir);
   const dir = resolve(fileURLToPath(config.root), svgOutputDir);
-  const rel = relative(publicDir, dir);
+  const publicRelativeSvgDir = relative(publicDir, dir);
   if (
-    rel === "" ||
-    rel === ".." ||
-    rel.startsWith(`..${sep}`) ||
-    isAbsolute(rel)
+    publicRelativeSvgDir === "" ||
+    publicRelativeSvgDir === ".." ||
+    publicRelativeSvgDir.startsWith(`..${sep}`) ||
+    isAbsolute(publicRelativeSvgDir)
   ) {
     throw new Error(
       `[astro-latex-compile] svgOutputDir "${svgOutputDir}" must be a subdirectory of publicDir "${publicDir}".`,
     );
   }
-  const base = config.base.replace(/\/+$/, "");
-  return { dir, urlPrefix: `${base}/${rel.split(sep).join("/")}` };
+  const siteBase = config.base.replace(/\/+$/, "");
+  return {
+    dir,
+    urlPrefix: `${siteBase}/${publicRelativeSvgDir.split(sep).join("/")}`,
+  };
 }
 
 async function clearContentLayerCache(config: AstroConfig): Promise<void> {
@@ -136,30 +139,30 @@ export function astroLatexCompile(
         createCodegenDir,
       }) => {
         const svgOutput = resolveSvgOutput(config, options.svgOutputDir);
-        const debug = options.debug
+        const debugOutput = options.debug
           ? resolveDebugOutput(fileURLToPath(createCodegenDir()), options.debug)
           : undefined;
         if (command !== "build" && command !== "dev") return;
 
         injectScript(
           "page",
-          js`{ const s = document.createElement("style"); s.textContent = ${JSON.stringify(INJECTED_CSS)}; document.head.appendChild(s); }`,
+          js`{ const styleElement = document.createElement("style"); styleElement.textContent = ${JSON.stringify(INJECTED_CSS)}; document.head.appendChild(styleElement); }`,
         );
 
         if (command === "build") {
           await clearContentLayerCache(config);
         }
 
-        if (debug) {
+        if (debugOutput) {
           const root = fileURLToPath(config.root);
           console.log(
-            `[astro-latex-compile] debug tex diagram images: ${relative(root, debug.outputDir)}`,
+            `[astro-latex-compile] debug tex diagram images: ${relative(root, debugOutput.outputDir)}`,
           );
         }
 
         ledger = createLedger({
           svgDir: svgOutput.dir,
-          debugImageDir: debug?.outputDir,
+          debugImageDir: debugOutput?.outputDir,
           removeOrphanedSvgs: options.removeOrphanedSvgs ?? false,
           command,
         });
@@ -174,7 +177,7 @@ export function astroLatexCompile(
           missingTools,
           exitOnMissingToolchain: command === "dev",
           ledger,
-          debugLogFile: debug?.logFile,
+          debugLogFile: debugOutput?.logFile,
         };
 
         updateConfig({

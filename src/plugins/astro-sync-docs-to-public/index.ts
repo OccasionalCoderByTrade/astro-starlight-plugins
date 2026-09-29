@@ -198,13 +198,13 @@ function validateOptions(options: SyncDocsToPublicOptions): void {
     mdProbePaths.some((probe) => minimatch(probe, pattern, { dot: true })),
   );
 
-  const offendingMtPatternsStr = offendingMdPatterns
-    .map((p) => `    - "${p}"`)
+  const offendingMdPatternsList = offendingMdPatterns
+    .map((pattern) => `    - "${pattern}"`)
     .join("\n");
 
   if (offendingMdPatterns.length > 0) {
     throw new Error(
-      `The 'exposePageSrcButton'/'enableAskAiOption' option is enabled but the following 'ignorePatterns' values conflict with it: \n${offendingMtPatternsStr}\n\n` +
+      `The 'exposePageSrcButton'/'enableAskAiOption' option is enabled but the following 'ignorePatterns' values conflict with it: \n${offendingMdPatternsList}\n\n` +
         `Since these ignore patterns match md/mdx files, the page action button would break. Either disable these options or remove these patterns.`,
     );
   }
@@ -273,10 +273,12 @@ async function incrementalSync(
   publicDir: string,
   ignorePatterns: string[],
 ): Promise<void> {
-  const rel = relative(srcDir, changedFilePath);
+  const relativePath = relative(srcDir, changedFilePath);
 
   if (
-    ignorePatterns.some((pattern) => minimatch(rel, pattern, { dot: true }))
+    ignorePatterns.some((pattern) =>
+      minimatch(relativePath, pattern, { dot: true }),
+    )
   ) {
     return;
   }
@@ -294,7 +296,7 @@ async function incrementalSync(
   }
 
   if (srcStat.isDirectory()) {
-    await mkdir(resolve(publicDir, rel), { recursive: true });
+    await mkdir(resolve(publicDir, relativePath), { recursive: true });
     const files = await readdir(changedFilePath);
     await Promise.all(
       files.map((file) =>
@@ -315,13 +317,13 @@ async function incrementalSync(
     }
     await copyMdFile(changedFilePath, srcDir, publicDir);
   } else {
-    const destPath = resolve(publicDir, rel);
+    const destPath = resolve(publicDir, relativePath);
     await mkdir(dirname(destPath), { recursive: true });
     const content = await readFile(changedFilePath);
     await writeFile(destPath, content);
   }
 
-  console.log(`[starlight-sync-docs-to-public] Synced ${rel}`);
+  console.log(`[starlight-sync-docs-to-public] Synced ${relativePath}`);
 }
 
 /**
@@ -338,10 +340,12 @@ async function copyAll(
   await Promise.all(
     entries.map(async (entry) => {
       const srcPath = resolve(currentSrc, entry.name);
-      const rel = relative(srcDir, srcPath);
+      const relativePath = relative(srcDir, srcPath);
 
       if (
-        ignorePatterns.some((pattern) => minimatch(rel, pattern, { dot: true }))
+        ignorePatterns.some((pattern) =>
+          minimatch(relativePath, pattern, { dot: true }),
+        )
       ) {
         return;
       }
@@ -357,7 +361,7 @@ async function copyAll(
         }
         await copyMdFile(srcPath, srcDir, publicDir);
       } else {
-        const destPath = resolve(publicDir, rel);
+        const destPath = resolve(publicDir, relativePath);
         await mkdir(dirname(destPath), { recursive: true });
         const content = await readFile(srcPath);
         await writeFile(destPath, content);
@@ -377,7 +381,9 @@ export function syncDocsToPublic(
     exposePageSrcButton = false,
     enableAskAiOption = false,
   } = options;
-  const preserveDirs = rawPreserveDirs.map((d) => d.replace(/\/+$/, ""));
+  const preserveDirs = rawPreserveDirs.map((preserveDir) =>
+    preserveDir.replace(/\/+$/, ""),
+  );
 
   return {
     name: "astro-sync-docs-to-public",
@@ -388,9 +394,9 @@ export function syncDocsToPublic(
           injectScript(
             "page",
             `
-            const s = document.createElement('style');
-            s.textContent = ${JSON.stringify(pageSrcStyles)};
-            document.head.appendChild(s);
+            const styleElement = document.createElement('style');
+            styleElement.textContent = ${JSON.stringify(pageSrcStyles)};
+            document.head.appendChild(styleElement);
           `,
           );
           // Three contexts require three different paths to page-script.js:
@@ -441,15 +447,18 @@ export function syncDocsToPublic(
               const paths = [...pendingPaths];
               pendingPaths.clear();
               await Promise.all(
-                paths.map((p) =>
-                  incrementalSync(p, srcDir, publicDir, ignorePatterns).catch(
-                    (err) => {
-                      console.error(
-                        `[starlight-sync-docs-to-public] Error syncing ${p}:`,
-                        err,
-                      );
-                    },
-                  ),
+                paths.map((changedPath) =>
+                  incrementalSync(
+                    changedPath,
+                    srcDir,
+                    publicDir,
+                    ignorePatterns,
+                  ).catch((err) => {
+                    console.error(
+                      `[starlight-sync-docs-to-public] Error syncing ${changedPath}:`,
+                      err,
+                    );
+                  }),
                 ),
               );
             }

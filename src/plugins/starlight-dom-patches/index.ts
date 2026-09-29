@@ -178,7 +178,7 @@ export function starlightDomPatches(
           if (cssString) {
             injectScript(
               "page",
-              js`{ const s = document.createElement("style"); s.textContent = ${JSON.stringify(cssString)}; document.head.appendChild(s); }`,
+              js`{ const styleElement = document.createElement("style"); styleElement.textContent = ${JSON.stringify(cssString)}; document.head.appendChild(styleElement); }`,
             );
           }
         }
@@ -196,11 +196,14 @@ export function starlightDomPatches(
         if (imports.length === 0) return;
 
         const calls = imports
-          .map((fn) => {
-            if (fn === "decorateExternalLinks" && decorateExternalLinks) {
-              return `${fn}(${JSON.stringify(decorateExternalLinks)});`;
+          .map((functionName) => {
+            if (
+              functionName === "decorateExternalLinks" &&
+              decorateExternalLinks
+            ) {
+              return `${functionName}(${JSON.stringify(decorateExternalLinks)});`;
             }
-            return `${fn}();`;
+            return `${functionName}();`;
           })
           .join("\n");
         injectScript(

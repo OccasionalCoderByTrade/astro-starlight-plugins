@@ -36,8 +36,8 @@ function describeLatexErrors(
 ): string[] {
   const lines: string[] = [];
   for (const err of errors.filter((e) => e.severity === "error")) {
-    const at = err.line ? ` (line ${err.line})` : "";
-    lines.push(`${paint("Error", RED)}${at}: ${err.message}`);
+    const lineSuffix = err.line ? ` (line ${err.line})` : "";
+    lines.push(`${paint("Error", RED)}${lineSuffix}: ${err.message}`);
     if (err.context.length > 0) lines.push(`  Context: ${err.context[0]}`);
   }
   for (const warn of errors.filter((e) => e.severity === "warning")) {
@@ -100,12 +100,12 @@ export function renderConsole(
   failure: TexCompileFailure,
   location: string,
 ): string {
-  let out = `[astro-latex-compile] ${location}\n`;
-  out += describeFailure(failure, ansi).join("\n");
+  let report = `[astro-latex-compile] ${location}\n`;
+  report += describeFailure(failure, ansi).join("\n");
   if (failure.kind === "latex") {
-    out += `\n\nLaTeX source:\n${numberedSource(failure.source, errorLineNumbers(failure))}\n`;
+    report += `\n\nLaTeX source:\n${numberedSource(failure.source, errorLineNumbers(failure))}\n`;
   }
-  return out;
+  return report;
 }
 
 /**
@@ -133,11 +133,12 @@ export function renderHtml(
     codeLines
       .map((line, i) => {
         const gutter = String(i + 1).padStart(gutterWidth);
-        const bg = errorLines.has(i + 1)
+        const lineBackgroundStyle = errorLines.has(i + 1)
           ? "background:var(--cannoli-error-low);"
           : "";
 
-        return html`<span style="${bg}display:block;padding:0 14px"
+        return html`<span
+          style="${lineBackgroundStyle}display:block;padding:0 14px"
           ><span style="color:var(--sl-color-gray-3);user-select:none"
             >${gutter} │ </span
           >${line}</span

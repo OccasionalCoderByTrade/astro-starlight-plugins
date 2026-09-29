@@ -11,8 +11,8 @@ class EmphasisAnnotation extends ExpressiveCodeAnnotation {
   }
 }
 
-function escapeRegex(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+function escapeRegex(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 export function expressiveCodeEmphasis() {
@@ -24,7 +24,7 @@ export function expressiveCodeEmphasis() {
         const terms = emphValue
           ? emphValue
               .split(",")
-              .map((t) => t.trim())
+              .map((term) => term.trim())
               .filter(Boolean)
           : [];
         if (terms.length === 0) return;

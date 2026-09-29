@@ -14,9 +14,12 @@ export interface RotatingFileLoggerOptions {
 }
 
 function rotatedPath(filePath: string, index: number): string {
-  const ext = extname(filePath);
-  const base = filePath.slice(0, filePath.length - ext.length);
-  return `${base}-${index}${ext}`;
+  const extension = extname(filePath);
+  const pathWithoutExtension = filePath.slice(
+    0,
+    filePath.length - extension.length,
+  );
+  return `${pathWithoutExtension}-${index}${extension}`;
 }
 
 function formatTimestamp(date: Date): string {

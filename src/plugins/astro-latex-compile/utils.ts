@@ -49,10 +49,10 @@ export function computeDebugImagePath(
   blockId: number,
 ): string {
   const normalized = filePath.replace(/\\/g, "/");
-  const idx = normalized.indexOf(CONTENT_ROOT);
+  const contentRootIndex = normalized.indexOf(CONTENT_ROOT);
   const relativePath =
-    idx !== -1
-      ? normalized.slice(idx + CONTENT_ROOT.length)
+    contentRootIndex !== -1
+      ? normalized.slice(contentRootIndex + CONTENT_ROOT.length)
       : basename(normalized);
 
   const dir = dirname(relativePath);
@@ -78,11 +78,11 @@ function collectTexInputFiles(dir: string, recursive: boolean): string[] {
   const files: string[] = [];
   try {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
-      const full = join(dir, entry.name);
+      const fullPath = join(dir, entry.name);
       if (entry.isDirectory() && recursive) {
-        files.push(...collectTexInputFiles(full, recursive));
+        files.push(...collectTexInputFiles(fullPath, recursive));
       } else if (entry.isFile()) {
-        files.push(full);
+        files.push(fullPath);
       }
     }
   } catch {
@@ -124,9 +124,9 @@ export function hashLatexCode(code: string, salt = ""): string {
   // MD5 truncated to 16 chars (8 bytes, 64 bits) is fast and provides
   // ~2^32 collision resistance (4 billion diagrams) which is more than sufficient
   // for build caching of non-adversarial content.
-  const h = createHash("md5").update(normalized);
-  if (salt) h.update(salt);
-  return h.digest("hex").slice(0, 16);
+  const hash = createHash("md5").update(normalized);
+  if (salt) hash.update(salt);
+  return hash.digest("hex").slice(0, 16);
 }
 
 function isLatexDocument(latexCode: string): boolean {
@@ -205,23 +205,25 @@ export async function compileLatexToSvg(
         : undefined;
 
     // Compile LaTeX to PDF
-    const result = await execTool(
+    const pdflatexResult = await execTool(
       "pdflatex",
       ["-interaction=nonstopmode", "-output-directory", workDir, texFile],
       { env: pdflatexEnv },
     );
-    if (!result) {
+    if (!pdflatexResult) {
       return {
         ok: false,
         failure: { kind: "toolchain-missing", tool: "pdflatex" },
       };
     }
-    if (result.status !== 0) {
+    if (pdflatexResult.status !== 0) {
       return {
         ok: false,
         failure: {
           kind: "latex",
-          errors: parseLatexErrors(result.stderr || result.stdout || ""),
+          errors: parseLatexErrors(
+            pdflatexResult.stderr || pdflatexResult.stdout || "",
+          ),
           source: latexSource,
         },
       };

@@ -41,8 +41,8 @@ function getSlug(dirPath: string, rootDir: string): string {
 function hasIndexMdInSubtree(dirPath: string): boolean {
   const indexFile = findIndexMd(dirPath);
   if (indexFile) {
-    const fm = parseFrontmatter(indexFile);
-    if (fm.draft || fm.sidebar?.hidden) return false;
+    const frontmatter = parseFrontmatter(indexFile);
+    if (frontmatter.draft || frontmatter.sidebar?.hidden) return false;
     return true;
   }
 
@@ -100,8 +100,8 @@ function buildSidebarItems(
   // Add index.md of current directory if it exists
   const indexFile = findIndexMd(dirPath);
   if (indexFile) {
-    const fm = parseFrontmatter(indexFile);
-    if (!fm.draft && !fm.sidebar?.hidden) {
+    const frontmatter = parseFrontmatter(indexFile);
+    if (!frontmatter.draft && !frontmatter.sidebar?.hidden) {
       let label: string;
       if (currentDepth >= maxDepth && parentDirName) {
         // At max depth: flattened items use immediate parent directory name
@@ -109,7 +109,7 @@ function buildSidebarItems(
       } else if (dirnameDeterminesLabels) {
         label = "Overview";
       } else {
-        label = fm.title || "Overview";
+        label = frontmatter.title || "Overview";
       }
 
       items.push({
@@ -197,8 +197,8 @@ function flattenIndexFilesAtDepth(
 
       const indexFile = findIndexMd(fullPath);
       if (indexFile) {
-        const fm = parseFrontmatter(indexFile);
-        if (!fm.draft && !fm.sidebar?.hidden) {
+        const frontmatter = parseFrontmatter(indexFile);
+        if (!frontmatter.draft && !frontmatter.sidebar?.hidden) {
           items.push({
             label: pathSegmentToLabel(entry),
             slug: getSlug(fullPath, rootDir),
@@ -224,7 +224,7 @@ export function getIndexMdSidebarItems(
 ): TSidebarItem[] {
   const maxDepth = options.maxDepthNesting ?? 100;
   const dirnameDeterminesLabels = options.dirnameDeterminesLabels ?? true;
-  const rootDirName = pathSegmentToLabel(path.basename(directory));
+  const rootGroupLabel = pathSegmentToLabel(path.basename(directory));
 
   const items = buildSidebarItems(
     directory,
@@ -236,7 +236,7 @@ export function getIndexMdSidebarItems(
 
   return [
     {
-      label: rootDirName,
+      label: rootGroupLabel,
       items,
     },
   ];
