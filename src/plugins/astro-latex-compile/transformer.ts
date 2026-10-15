@@ -17,10 +17,10 @@ import {
 import {
   compileLatexToSvg,
   type CompileOutcome,
-  computeTexInputDirsSalt,
   diagramFileName,
   writeJpgFromSvg,
 } from "./utils.js";
+import { hashTexInputs, type TexInputDir } from "./tex-inputs.js";
 
 const DEBUG_LOG_MAX_SIZE_BYTES = 5 * 1024 * 1024;
 const DEBUG_LOG_BACKUP_COUNT = 3;
@@ -43,6 +43,10 @@ export interface LatexCompileState {
   ledger: TexDiagramLedger;
   /** Absolute path of the debug log file, when debug is on. */
   debugLogFile?: string;
+  /** Absolute path of the Astro project root. */
+  rootDirPath: string;
+  /** `texInputDirs`, resolved against the project root. */
+  texInputDirs: TexInputDir[];
 }
 
 /**
@@ -147,7 +151,9 @@ export function latexCompileTransformer(
       filePath !== "unknown" ? relative(process.cwd(), filePath) : "unknown";
     const frontmatterOffset =
       filePath !== "unknown" ? getFrontmatterOffset(filePath) : 0;
-    const inputsSalt = computeTexInputDirsSalt(options.texInputDirs ?? []);
+    // Recomputed per doc: a tex input file added during dev isn't watched, but
+    // a doc that re-renders after it was added still hashes it.
+    const texInputsHash = hashTexInputs(state.rootDirPath, state.texInputDirs);
 
     // Compile all blocks in parallel, collecting results before mutating the tree
     const results = await Promise.all(
@@ -170,8 +176,8 @@ export function latexCompileTransformer(
           outcome = await compileLatexToSvg(
             node.value,
             ledger.svgDir,
-            options.texInputDirs ?? [],
-            inputsSalt,
+            state.texInputDirs,
+            texInputsHash,
           );
         } catch (err) {
           outcome = {

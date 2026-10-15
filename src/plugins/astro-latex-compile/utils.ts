@@ -12,8 +12,6 @@ import { createHash } from "node:crypto";
 import {
   existsSync,
   mkdirSync,
-  readdirSync,
-  readFileSync,
   writeFileSync,
   rmSync,
   mkdtempSync,
@@ -23,6 +21,7 @@ import { tmpdir } from "node:os";
 import sharp from "sharp";
 import { parseLatexErrors } from "./error-parser.js";
 import type { TexCompileFailure } from "./tex-compile-error.js";
+import { texInputsSearchPath, type TexInputDir } from "./tex-inputs.js";
 import { execProcess } from "../utils/process-utils.js";
 
 const CONTENT_ROOT = "src/content/docs/";
@@ -74,43 +73,6 @@ export async function writeJpgFromSvg(
     .toFile(jpgPath);
 }
 
-function collectTexInputFiles(dir: string, recursive: boolean): string[] {
-  const files: string[] = [];
-  try {
-    for (const entry of readdirSync(dir, { withFileTypes: true })) {
-      const fullPath = join(dir, entry.name);
-      if (entry.isDirectory() && recursive) {
-        files.push(...collectTexInputFiles(fullPath, recursive));
-      } else if (entry.isFile()) {
-        files.push(fullPath);
-      }
-    }
-  } catch {
-    // directory missing or unreadable — skip silently
-  }
-  return files.sort();
-}
-
-export function computeTexInputDirsSalt(texInputDirs: string[]): string {
-  if (texInputDirs.length === 0) return "";
-  const hash = createHash("md5");
-  let hasAnyFile = false;
-  for (const dir of texInputDirs) {
-    const recursive = dir.endsWith("//");
-    const resolved = resolve(dir.endsWith("/") ? dir.slice(0, -1) : dir);
-    for (const filePath of collectTexInputFiles(resolved, recursive)) {
-      try {
-        hash.update(relative(process.cwd(), filePath));
-        hash.update(readFileSync(filePath));
-        hasAnyFile = true;
-      } catch {
-        // skip unreadable files
-      }
-    }
-  }
-  return hasAnyFile ? hash.digest("hex").slice(0, 16) : "";
-}
-
 export function hashLatexCode(code: string, salt = ""): string {
   const normalized = code
     .split("\n")
@@ -142,7 +104,7 @@ function isLatexDocument(latexCode: string): boolean {
 async function execTool(
   command: "pdflatex" | "dvisvgm",
   args: string[],
-  options?: { env?: NodeJS.ProcessEnv },
+  options?: { env?: NodeJS.ProcessEnv; cwd?: string },
 ): Promise<{ status: number; stdout: string; stderr: string } | null> {
   try {
     return await execProcess(command, args, options);
@@ -156,15 +118,20 @@ async function execTool(
  * Compile a `tex compile` block's LaTeX to a compiled tex diagram, reusing
  * the SVG when one with the same hash already exists.
  *
+ * pdflatex runs from a temp dir, so the block can only read tex input files
+ * from `texInputDirs` (plus TeX's own installed packages). See
+ * docs/adr/0004-tex-input-dirs-are-a-blocks-only-dependencies.md.
+ *
  * @param latexCode - The LaTeX document to compile (e.g., TikZ, pgfplots, etc.)
  * @param svgOutputDir - The directory where SVG files should be written
+ * @param texInputsHash - `hashTexInputs` of `texInputDirs`, folded into the SVG's hash
  * @returns The SVG's hash and path, or why the block produced no diagram
  */
 export async function compileLatexToSvg(
   latexCode: string,
   svgOutputDir: string,
-  texInputDirs: string[] = [],
-  inputsSalt = "",
+  texInputDirs: TexInputDir[] = [],
+  texInputsHash = "",
 ): Promise<CompileOutcome> {
   if (!isLatexDocument(latexCode)) {
     return {
@@ -178,7 +145,7 @@ export async function compileLatexToSvg(
     };
   }
 
-  const hash = hashLatexCode(latexCode, inputsSalt);
+  const hash = hashLatexCode(latexCode, texInputsHash);
   const svgPath = join(svgOutputDir, diagramFileName(hash));
 
   // If already compiled, return early
@@ -196,19 +163,29 @@ export async function compileLatexToSvg(
   try {
     writeFileSync(texFile, latexSource, "utf-8");
 
-    const pdflatexEnv =
-      texInputDirs.length > 0
-        ? {
-            ...process.env,
-            TEXINPUTS: `${texInputDirs.join(":")}:${process.env.TEXINPUTS ?? ""}`,
-          }
-        : undefined;
+    const pdflatexEnv: NodeJS.ProcessEnv = {
+      ...process.env,
+      // Keeps long file paths in errors from being wrapped mid-line.
+      max_print_line: "10000",
+    };
+    if (texInputDirs.length > 0) {
+      pdflatexEnv.TEXINPUTS = texInputsSearchPath(
+        texInputDirs,
+        process.env.TEXINPUTS,
+      );
+    }
 
     // Compile LaTeX to PDF
     const pdflatexResult = await execTool(
       "pdflatex",
-      ["-interaction=nonstopmode", "-output-directory", workDir, texFile],
-      { env: pdflatexEnv },
+      [
+        "-interaction=nonstopmode",
+        "-file-line-error",
+        "-output-directory",
+        workDir,
+        texFile,
+      ],
+      { env: pdflatexEnv, cwd: workDir },
     );
     if (!pdflatexResult) {
       return {
@@ -223,6 +200,11 @@ export async function compileLatexToSvg(
           kind: "latex",
           errors: parseLatexErrors(
             pdflatexResult.stderr || pdflatexResult.stdout || "",
+            { blockFilePath: texFile },
+          ).map((err) =>
+            err.filePath !== undefined
+              ? { ...err, filePath: relative(process.cwd(), err.filePath) }
+              : err,
           ),
           source: latexSource,
         },

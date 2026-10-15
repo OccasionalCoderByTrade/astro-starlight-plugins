@@ -5,6 +5,13 @@ import type { AstroConfig, AstroIntegration } from "astro";
 import { resolveDebugOutput, type DebugOptions } from "./debug-output.js";
 import { createLedger, type TexDiagramLedger } from "./ledger.js";
 import {
+  findMissingTexInputDirs,
+  hashTexInputs,
+  listTexInputFiles,
+  resolveTexInputDirs,
+  type TexInputDir,
+} from "./tex-inputs.js";
+import {
   latexCompileTransformer,
   type LatexCompileState,
 } from "./transformer.js";
@@ -48,10 +55,14 @@ export interface LatexCompileOptions {
    */
   svgClassname?: string;
   /**
-   * Directories added to the TeX input search path via TEXINPUTS, allowing
-   * \input{} and \include{} to resolve files from your project. Use a trailing
+   * Tex input dirs: directories, resolved against the project root, that
+   * `tex compile` blocks can pull tex input files from via `\input`,
+   * `\include`, `\usepackage`, `\includegraphics` and similar. Use a trailing
    * slash for the directory itself, or double trailing slash for recursive
-   * search (e.g. "src/latex/" or "src/latex//").
+   * search (e.g. "src/latex/" or "src/latex//"). These are the only files
+   * outside a block that it can read. Changing any tex input file recompiles
+   * every compiled tex diagram; dotfiles and LaTeX build artifacts don't count.
+   * A missing dir fails `astro dev` and only warns on `astro build`.
    */
   texInputDirs?: string[];
   /**
@@ -122,10 +133,17 @@ async function clearContentLayerCache(config: AstroConfig): Promise<void> {
   }
 }
 
+function describeTexInputDirs(texInputDirs: TexInputDir[]): string {
+  return texInputDirs
+    .map((texInputDir) => `"${texInputDir.configuredPath}"`)
+    .join(", ");
+}
+
 export function astroLatexCompile(
   options: LatexCompileOptions,
 ): AstroIntegration {
   const missingTools = new Set<string>();
+  let missingTexInputDirs: TexInputDir[] = [];
   let ledger: TexDiagramLedger | undefined;
 
   return {
@@ -137,6 +155,7 @@ export function astroLatexCompile(
         updateConfig,
         injectScript,
         createCodegenDir,
+        addWatchFile,
       }) => {
         const svgOutput = resolveSvgOutput(config, options.svgOutputDir);
         const debugOutput = options.debug
@@ -153,10 +172,32 @@ export function astroLatexCompile(
           await clearContentLayerCache(config);
         }
 
+        const rootDirPath = fileURLToPath(config.root);
+        const texInputDirs = resolveTexInputDirs(
+          rootDirPath,
+          options.texInputDirs ?? [],
+        );
+        missingTexInputDirs = findMissingTexInputDirs(texInputDirs);
+        if (missingTexInputDirs.length > 0) {
+          const message = `[astro-latex-compile] texInputDirs ${describeTexInputDirs(missingTexInputDirs)} not found in "${rootDirPath}".`;
+          // A prod build may be missing a dir that is empty on the dev
+          // machine (git drops empty dirs) and still find every compiled tex
+          // diagram, so only dev fails here.
+          if (command === "dev") throw new Error(message);
+          console.warn(message);
+        }
+
+        if (command === "dev") {
+          // Restarts dev when a tex input file changes, which re-runs this hook
+          // with a new texInputsHash below.
+          for (const filePath of listTexInputFiles(texInputDirs)) {
+            addWatchFile(filePath);
+          }
+        }
+
         if (debugOutput) {
-          const root = fileURLToPath(config.root);
           console.log(
-            `[astro-latex-compile] debug tex diagram images: ${relative(root, debugOutput.outputDir)}`,
+            `[astro-latex-compile] debug tex diagram images: ${relative(rootDirPath, debugOutput.outputDir)}`,
           );
         }
 
@@ -178,13 +219,22 @@ export function astroLatexCompile(
           exitOnMissingToolchain: command === "dev",
           ledger,
           debugLogFile: debugOutput?.logFile,
+          rootDirPath,
+          texInputDirs,
         };
 
+        // Astro clears its content store when its config's JSON changes. The
+        // plugin's options are part of that JSON, so carrying the hash here
+        // makes docs cached before a tex input file changed render again.
+        const texInputsHash = hashTexInputs(rootDirPath, texInputDirs);
         updateConfig({
           markdown: {
             remarkPlugins: [
               ...existingPlugins,
-              () => latexCompileTransformer(options, state),
+              [
+                () => latexCompileTransformer(options, state),
+                { texInputsHash },
+              ],
             ],
           },
         });
@@ -194,8 +244,12 @@ export function astroLatexCompile(
         // Starlight's content loader only logs errors thrown while rendering
         // markdown, so a missing toolchain has to fail the build from here.
         if (missingTools.size > 0) {
+          const missingDirsHint =
+            missingTexInputDirs.length > 0
+              ? ` texInputDirs ${describeTexInputDirs(missingTexInputDirs)} were missing. If they hold files where the compiled tex diagrams were built, every diagram's hash differs here, so none were found.`
+              : "";
           throw new Error(
-            `[astro-latex-compile] ${[...missingTools].join(" and ")} not found on PATH; tex compile blocks could not be compiled.`,
+            `[astro-latex-compile] ${[...missingTools].join(" and ")} not found on PATH; tex compile blocks could not be compiled.${missingDirsHint}`,
           );
         }
 

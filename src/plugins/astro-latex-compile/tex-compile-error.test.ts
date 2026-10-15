@@ -62,6 +62,33 @@ describe("renderHtml", () => {
     ]);
   });
 
+  it("names the tex input file of an error in it, and highlights no block line", () => {
+    const failure: TexCompileFailure = {
+      kind: "latex",
+      errors: [
+        {
+          message: "Undefined control sequence.",
+          line: 2,
+          filePath: "src/latex/macros.tex",
+          context: [],
+          severity: "error",
+        },
+      ],
+      source: "\\documentclass{standalone}\n\\input{macros}\n\\begin{document}",
+    };
+
+    const el = parse(renderHtml(failure, "docs/a.md:12", failure.source));
+
+    expect(el.textContent).toContain(
+      "Error (src/latex/macros.tex:2): Undefined control sequence.",
+    );
+    const highlightedLines = [...el.querySelectorAll("code > span")].filter(
+      (lineElement) =>
+        lineElement.getAttribute("style")?.includes("--cannoli-error-low"),
+    );
+    expect(highlightedLines).toEqual([]);
+  });
+
   it("shows the block source for failures without LaTeX errors", () => {
     const el = parse(
       renderHtml(

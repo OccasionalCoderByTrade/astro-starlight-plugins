@@ -18,6 +18,60 @@ describe("parseLatexErrors", () => {
     ]);
   });
 
+  it("attributes a -file-line-error error to the tex input file it occurred in", () => {
+    const output = [
+      "(/project/src/latex/macros.tex",
+      "/project/src/latex/macros.tex:2: Undefined control sequence.",
+      "\\broken ->\\undefinedmacro",
+      "",
+      "l.2 \\broken",
+    ].join("\n");
+
+    const errors = parseLatexErrors(output, {
+      blockFilePath: "/tmp/latex-compile-1/diagram.tex",
+    });
+
+    expect(errors).toEqual([
+      expect.objectContaining({
+        message: "Undefined control sequence.",
+        line: 2,
+        filePath: "/project/src/latex/macros.tex",
+      }),
+    ]);
+  });
+
+  it("gives a -file-line-error error in the block a line and no file", () => {
+    const output = [
+      "! LaTeX Error: File `missing.tex' not found.",
+      "",
+      "Type X to quit or <RETURN> to proceed,",
+      "or enter new name. (Default extension: tex)",
+      "",
+      "Enter file name: ",
+      "/tmp/latex-compile-1/diagram.tex:3: Emergency stop.",
+      "<read *> ",
+      "",
+      "l.3 \\input{missing}",
+    ].join("\n");
+
+    const errors = parseLatexErrors(output, {
+      blockFilePath: "/tmp/latex-compile-1/diagram.tex",
+    });
+
+    expect(errors).toEqual([
+      expect.objectContaining({
+        message: "LaTeX Error: File `missing.tex' not found.",
+        line: undefined,
+        filePath: undefined,
+      }),
+      expect.objectContaining({
+        message: "Emergency stop.",
+        line: 3,
+        filePath: undefined,
+      }),
+    ]);
+  });
+
   it("falls back to a generic error when the log has none", () => {
     expect(parseLatexErrors("")).toEqual([
       expect.objectContaining({

@@ -18,6 +18,14 @@ _Avoid_: tex SVG, compiled SVG, diagram
 A compiled tex diagram that no `tex compile` block references anymore.
 _Avoid_: orphaned SVG, stale SVG (the `removeOrphanedSvgs` option keeps its name for compatibility)
 
+**Tex input dir**:
+A directory, listed in the `texInputDirs` option, that `tex compile` blocks can pull files from. It is the only place outside the block itself that a block can read from.
+_Avoid_: include dir, shared dir, external dependency dir
+
+**Tex input file**:
+A file in a tex input dir that a `tex compile` block pulls in, through `\input`, `\include`, `\usepackage`, `\includegraphics` or similar. Changing any tex input file changes every compiled tex diagram.
+_Avoid_: external file dependency, shared file, include
+
 **Debug tex diagram image**:
 A JPEG copy of a compiled tex diagram, produced only for `tex compile` blocks that carry a `blockid`, meant for local inspection and never published.
 _Avoid_: debug JPG, temp output, snapshot

@@ -52,6 +52,8 @@ describe("latexCompileTransformer", () => {
         missingTools: new Set(),
         exitOnMissingToolchain: false,
         ledger,
+        rootDirPath: root,
+        texInputDirs: [],
       },
     );
     const docPath = join(root, "doc.md");

@@ -29,6 +29,14 @@ type Paint = (text: string, color: string) => string;
 const plain: Paint = (text) => text;
 const ansi: Paint = (text, color) => `${color}${text}${RESET}`;
 
+/** Where an error occurred: `line 6` in the block, or `macros.tex:2` in a tex input file. */
+function errorWhere(err: LatexErrorMessage): string | undefined {
+  if (err.filePath !== undefined) {
+    return err.line ? `${err.filePath}:${err.line}` : err.filePath;
+  }
+  return err.line ? `line ${err.line}` : undefined;
+}
+
 /** One line per error and warning, e.g. `Error (line 6): Undefined control sequence.` */
 function describeLatexErrors(
   errors: LatexErrorMessage[],
@@ -36,8 +44,9 @@ function describeLatexErrors(
 ): string[] {
   const lines: string[] = [];
   for (const err of errors.filter((e) => e.severity === "error")) {
-    const lineSuffix = err.line ? ` (line ${err.line})` : "";
-    lines.push(`${paint("Error", RED)}${lineSuffix}: ${err.message}`);
+    const where = errorWhere(err);
+    const whereSuffix = where ? ` (${where})` : "";
+    lines.push(`${paint("Error", RED)}${whereSuffix}: ${err.message}`);
     if (err.context.length > 0) lines.push(`  Context: ${err.context[0]}`);
   }
   for (const warn of errors.filter((e) => e.severity === "warning")) {
@@ -49,7 +58,10 @@ function describeLatexErrors(
 function errorLineNumbers(failure: TexCompileFailure): Set<number> {
   if (failure.kind !== "latex") return new Set();
   return new Set(
-    failure.errors.map((e) => e.line).filter((n): n is number => !!n),
+    failure.errors
+      .filter((error) => error.filePath === undefined)
+      .map((error) => error.line)
+      .filter((lineNumber): lineNumber is number => !!lineNumber),
   );
 }
 
