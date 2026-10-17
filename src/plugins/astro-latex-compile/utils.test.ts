@@ -54,6 +54,22 @@ describe.skipIf(!hasToolchain)("compileLatexToSvg", () => {
     }
   });
 
+  it("can't \\input a file by an absolute path, which the hash wouldn't track", async () => {
+    const rootDirPath = makeProject({
+      "src/latex/macros.tex": "\\newcommand{\\greeting}{hello}\n",
+    });
+
+    const outcome = await compileLatexToSvg(
+      documentWith(
+        `\\input{${join(rootDirPath, "src/latex/macros")}}`,
+        "\\greeting",
+      ),
+      join(rootDirPath, "public/svgs"),
+    );
+
+    expect(outcome.ok).toBe(false);
+  });
+
   it("names the tex input file an error occurred in", async () => {
     const rootDirPath = makeProject({
       "src/latex/macros.tex":

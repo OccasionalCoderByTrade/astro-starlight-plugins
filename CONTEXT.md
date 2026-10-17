@@ -19,7 +19,7 @@ A compiled tex diagram that no `tex compile` block references anymore.
 _Avoid_: orphaned SVG, stale SVG (the `removeOrphanedSvgs` option keeps its name for compatibility)
 
 **Tex input dir**:
-A directory, listed in the `texInputDirs` option, that `tex compile` blocks can pull files from. It is the only place outside the block itself that a block can read from.
+A directory, listed in the `texInputDirs` option, that `tex compile` blocks can pull files from. Apart from TeX's installed packages, it is the only place outside the block itself that a block can read from.
 _Avoid_: include dir, shared dir, external dependency dir
 
 **Tex input file**:

@@ -118,8 +118,9 @@ async function execTool(
  * Compile a `tex compile` block's LaTeX to a compiled tex diagram, reusing
  * the SVG when one with the same hash already exists.
  *
- * pdflatex runs from a temp dir, so the block can only read tex input files
- * from `texInputDirs` (plus TeX's own installed packages). See
+ * pdflatex runs from a temp dir in paranoid mode, so the block can only read
+ * tex input files by name from `texInputDirs` (plus TeX's own installed
+ * packages). See
  * docs/adr/0004-tex-input-dirs-are-a-blocks-only-dependencies.md.
  *
  * @param latexCode - The LaTeX document to compile (e.g., TikZ, pgfplots, etc.)
@@ -167,6 +168,11 @@ export async function compileLatexToSvg(
       ...process.env,
       // Keeps long file paths in errors from being wrapped mid-line.
       max_print_line: "10000",
+      // Paranoid mode refuses absolute paths, `..` and dotfiles, so the block
+      // can only reach files by name through TEXINPUTS. TEXMFOUTPUT lets it
+      // still read its own files in workDir.
+      openin_any: "p",
+      TEXMFOUTPUT: workDir,
     };
     if (texInputDirs.length > 0) {
       pdflatexEnv.TEXINPUTS = texInputsSearchPath(
@@ -199,7 +205,9 @@ export async function compileLatexToSvg(
         failure: {
           kind: "latex",
           errors: parseLatexErrors(
-            pdflatexResult.stderr || pdflatexResult.stdout || "",
+            // Errors go to stdout; stderr carries kpathsea notices such as
+            // "Not reading from /dev/null (openin_any = p)".
+            `${pdflatexResult.stdout}\n${pdflatexResult.stderr}`,
             { blockFilePath: texFile },
           ).map((err) =>
             err.filePath !== undefined

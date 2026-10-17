@@ -60,7 +60,8 @@ export interface LatexCompileOptions {
    * `\include`, `\usepackage`, `\includegraphics` and similar. Use a trailing
    * slash for the directory itself, or double trailing slash for recursive
    * search (e.g. "src/latex/" or "src/latex//"). These are the only files
-   * outside a block that it can read. Changing any tex input file recompiles
+   * outside a block that it can read, and only by name: paths, absolute or
+   * relative, don't resolve. Changing any tex input file recompiles
    * every compiled tex diagram; dotfiles and LaTeX build artifacts don't count.
    * A missing dir fails `astro dev` and only warns on `astro build`.
    */
