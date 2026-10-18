@@ -14,6 +14,10 @@ _Avoid_: LaTeX block, compile block, code block, `latex compile` block (in prose
 The SVG produced from one `tex compile` block, named by the hash of its content.
 _Avoid_: tex SVG, compiled SVG, diagram
 
+**Compile mode**:
+The route a `tex compile` block takes to become a compiled tex diagram, set per block with `mode=`. `dvi` (the default) keeps the compiled tex diagram's text as real, selectable text. `pdf` turns all text into shapes, but accepts graphics that `dvi` can't, such as PNG or PDF images.
+_Avoid_: engine, output format, render mode
+
 **Orphaned tex diagram**:
 A compiled tex diagram that no `tex compile` block references anymore.
 _Avoid_: orphaned SVG, stale SVG (the `removeOrphanedSvgs` option keeps its name for compatibility)

@@ -12,6 +12,7 @@ import { createHash } from "node:crypto";
 import {
   existsSync,
   mkdirSync,
+  readFileSync,
   writeFileSync,
   rmSync,
   mkdtempSync,
@@ -20,14 +21,49 @@ import { basename, dirname, extname, join, relative, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import sharp from "sharp";
 import { parseLatexErrors } from "./error-parser.js";
+import { scopeSvg } from "./svg-scope.js";
 import type { TexCompileFailure } from "./tex-compile-error.js";
 import { texInputsSearchPath, type TexInputDir } from "./tex-inputs.js";
 import { execProcess } from "../utils/process-utils.js";
 
 const CONTENT_ROOT = "src/content/docs/";
 
+/**
+ * How a `tex compile` block becomes a compiled tex diagram. See
+ * docs/adr/0005-dvi-is-the-default-compile-mode.md.
+ */
+export const COMPILE_MODES = ["dvi", "pdf"] as const;
+export type CompileMode = (typeof COMPILE_MODES)[number];
+export const DEFAULT_COMPILE_MODE: CompileMode = "dvi";
+
+/**
+ * Folded into every compiled tex diagram's hash. Bump it when the SVGs the
+ * pipeline writes change shape, so ones cached by an older version recompile.
+ */
+const SVG_PIPELINE_VERSION = "scoped-inline-svg-1";
+
+/**
+ * Everything besides the block's own source that its compiled tex diagram
+ * depends on, folded into its hash.
+ */
+function diagramHashSalt(compileMode: CompileMode, texInputsHash: string) {
+  return [SVG_PIPELINE_VERSION, compileMode, texInputsHash].join("\n");
+}
+
+/** Prefix `scopeSvg` gives every id, class and font of a compiled tex diagram. */
+function diagramScopePrefix(hash: string): string {
+  return `tex-${hash}-`;
+}
+
 export type CompileOutcome =
-  | { ok: true; hash: string; svgPath: string; wasCompiled: boolean }
+  | {
+      ok: true;
+      hash: string;
+      svgPath: string;
+      /** The compiled tex diagram's SVG, scoped and ready to inline. */
+      svgMarkup: string;
+      wasCompiled: boolean;
+    }
   | { ok: false; failure: TexCompileFailure };
 
 /** File name of the compiled tex diagram with this content hash. */
@@ -114,26 +150,193 @@ async function execTool(
   }
 }
 
+type LatexRun =
+  | { ok: true; outputFilePath: string }
+  | { ok: false; failure: TexCompileFailure };
+
+/**
+ * Runs pdflatex on `latexSource` in `workDir`, producing a DVI in dvi compile
+ * mode and a PDF in pdf compile mode.
+ *
+ * pdflatex runs in paranoid mode, so the block can only read tex input files
+ * by name from `texInputDirs` (plus TeX's own installed packages). See
+ * docs/adr/0004-tex-input-dirs-are-a-blocks-only-dependencies.md.
+ */
+async function runLatex(
+  latexSource: string,
+  workDir: string,
+  texInputDirs: TexInputDir[],
+  compileMode: CompileMode,
+): Promise<LatexRun> {
+  const texFilePath = join(workDir, "diagram.tex");
+  writeFileSync(texFilePath, latexSource, "utf-8");
+
+  const pdflatexEnv: NodeJS.ProcessEnv = {
+    ...process.env,
+    // Keeps long file paths in errors from being wrapped mid-line.
+    max_print_line: "10000",
+    // Paranoid mode refuses absolute paths, `..` and dotfiles, so the block
+    // can only reach files by name through TEXINPUTS. TEXMFOUTPUT lets it
+    // still read its own files in workDir.
+    openin_any: "p",
+    TEXMFOUTPUT: workDir,
+  };
+  if (texInputDirs.length > 0) {
+    pdflatexEnv.TEXINPUTS = texInputsSearchPath(
+      texInputDirs,
+      process.env.TEXINPUTS,
+    );
+  }
+
+  const pdflatexResult = await execTool(
+    "pdflatex",
+    [
+      "-interaction=nonstopmode",
+      "-file-line-error",
+      `-output-format=${compileMode}`,
+      "-output-directory",
+      workDir,
+      texFilePath,
+    ],
+    { env: pdflatexEnv, cwd: workDir },
+  );
+  if (!pdflatexResult) {
+    return {
+      ok: false,
+      failure: { kind: "toolchain-missing", tool: "pdflatex" },
+    };
+  }
+  if (pdflatexResult.status !== 0) {
+    return {
+      ok: false,
+      failure: {
+        kind: "latex",
+        errors: parseLatexErrors(
+          // Errors go to stdout; stderr carries kpathsea notices such as
+          // "Not reading from /dev/null (openin_any = p)".
+          `${pdflatexResult.stdout}\n${pdflatexResult.stderr}`,
+          { blockFilePath: texFilePath },
+        ).map((err) =>
+          err.filePath !== undefined
+            ? { ...err, filePath: relative(process.cwd(), err.filePath) }
+            : err,
+        ),
+        source: latexSource,
+      },
+    };
+  }
+  return { ok: true, outputFilePath: join(workDir, `diagram.${compileMode}`) };
+}
+
+/**
+ * Converts pdflatex's output to an SVG. From a DVI, text stays `<text>` with
+ * its fonts embedded, unless `glyphsAsPaths` is set. From a PDF, dvisvgm can
+ * only draw glyphs as paths, so `glyphsAsPaths` makes no difference.
+ */
+async function runDvisvgm(
+  inputFilePath: string,
+  svgPath: string,
+  options: { compileMode: CompileMode; glyphsAsPaths?: boolean },
+): Promise<TexCompileFailure | null> {
+  // A DVI's own page box is the whole paper; `papersize` reads the size that
+  // classes like standalone set, matching the PDF's page.
+  const modeArgs =
+    options.compileMode === "pdf"
+      ? ["--pdf", "--bbox=dvi"]
+      : [
+          options.glyphsAsPaths ? "--no-fonts" : "--font-format=woff2",
+          "--bbox=papersize",
+        ];
+  const svgResult = await execTool("dvisvgm", [
+    ...modeArgs,
+    inputFilePath,
+    "-o",
+    svgPath,
+  ]);
+  if (!svgResult) return { kind: "toolchain-missing", tool: "dvisvgm" };
+  if (svgResult.status !== 0) {
+    return {
+      kind: "conversion",
+      output: svgResult.stderr || svgResult.stdout || "",
+    };
+  }
+  return null;
+}
+
+/** Runs `work` in a fresh temp dir, removing it afterwards. */
+async function inTempDir<T>(work: (workDir: string) => Promise<T>): Promise<T> {
+  const workDir = mkdtempSync(join(tmpdir(), "latex-compile-"));
+  try {
+    return await work(workDir);
+  } finally {
+    try {
+      rmSync(workDir, { recursive: true, force: true });
+    } catch {
+      // ignore cleanup errors, temp files will be GC'd by the OS
+    }
+  }
+}
+
+/**
+ * Compiles `latexCode` in `workDir` through pdflatex and dvisvgm, returning
+ * the unscoped SVG file's path.
+ */
+async function compileToSvgFile(
+  latexCode: string,
+  workDir: string,
+  options: {
+    texInputDirs: TexInputDir[];
+    compileMode: CompileMode;
+    glyphsAsPaths?: boolean;
+  },
+): Promise<
+  { ok: true; svgFilePath: string } | { ok: false; failure: TexCompileFailure }
+> {
+  const latexRun = await runLatex(
+    latexCode.trim(),
+    workDir,
+    options.texInputDirs,
+    options.compileMode,
+  );
+  if (!latexRun.ok) return latexRun;
+
+  const svgFilePath = join(workDir, "diagram.svg");
+  const conversionFailure = await runDvisvgm(
+    latexRun.outputFilePath,
+    svgFilePath,
+    options,
+  );
+  if (conversionFailure) return { ok: false, failure: conversionFailure };
+  return { ok: true, svgFilePath };
+}
+
 /**
  * Compile a `tex compile` block's LaTeX to a compiled tex diagram, reusing
- * the SVG when one with the same hash already exists.
- *
- * pdflatex runs from a temp dir in paranoid mode, so the block can only read
- * tex input files by name from `texInputDirs` (plus TeX's own installed
- * packages). See
- * docs/adr/0004-tex-input-dirs-are-a-blocks-only-dependencies.md.
+ * the SVG when one with the same hash already exists. The written SVG is
+ * scoped with `scopeSvg`, ready to inline into a page.
  *
  * @param latexCode - The LaTeX document to compile (e.g., TikZ, pgfplots, etc.)
  * @param svgOutputDir - The directory where SVG files should be written
- * @param texInputsHash - `hashTexInputs` of `texInputDirs`, folded into the SVG's hash
- * @returns The SVG's hash and path, or why the block produced no diagram
+ * @param options.texInputDirs - Tex input dirs the block may read from
+ * @param options.texInputsHash - `hashTexInputs` of `texInputDirs`, folded into the SVG's hash
+ * @param options.compileMode - The block's compile mode; see docs/adr/0005-dvi-is-the-default-compile-mode.md
+ * @returns The SVG's hash, path and markup, or why the block produced no diagram
  */
 export async function compileLatexToSvg(
   latexCode: string,
   svgOutputDir: string,
-  texInputDirs: TexInputDir[] = [],
-  texInputsHash = "",
+  options: {
+    texInputDirs?: TexInputDir[];
+    texInputsHash?: string;
+    compileMode?: CompileMode;
+  } = {},
 ): Promise<CompileOutcome> {
+  const {
+    texInputDirs = [],
+    texInputsHash = "",
+    compileMode = DEFAULT_COMPILE_MODE,
+  } = options;
+
   if (!isLatexDocument(latexCode)) {
     return {
       ok: false,
@@ -146,109 +349,61 @@ export async function compileLatexToSvg(
     };
   }
 
-  const hash = hashLatexCode(latexCode, texInputsHash);
+  const hash = hashLatexCode(
+    latexCode,
+    diagramHashSalt(compileMode, texInputsHash),
+  );
   const svgPath = join(svgOutputDir, diagramFileName(hash));
 
   // If already compiled, return early
   if (existsSync(svgPath)) {
-    return { ok: true, hash, svgPath, wasCompiled: false };
+    const svgMarkup = readFileSync(svgPath, "utf-8");
+    return { ok: true, hash, svgPath, svgMarkup, wasCompiled: false };
   }
 
   mkdirSync(svgOutputDir, { recursive: true });
 
-  const workDir = mkdtempSync(join(tmpdir(), "latex-compile-"));
-  const texFile = join(workDir, "diagram.tex");
-  const pdfFile = join(workDir, "diagram.pdf");
-  const latexSource = latexCode.trim();
+  return inTempDir(async (workDir) => {
+    const compiled = await compileToSvgFile(latexCode, workDir, {
+      texInputDirs,
+      compileMode,
+    });
+    if (!compiled.ok) return compiled;
 
-  try {
-    writeFileSync(texFile, latexSource, "utf-8");
-
-    const pdflatexEnv: NodeJS.ProcessEnv = {
-      ...process.env,
-      // Keeps long file paths in errors from being wrapped mid-line.
-      max_print_line: "10000",
-      // Paranoid mode refuses absolute paths, `..` and dotfiles, so the block
-      // can only reach files by name through TEXINPUTS. TEXMFOUTPUT lets it
-      // still read its own files in workDir.
-      openin_any: "p",
-      TEXMFOUTPUT: workDir,
-    };
-    if (texInputDirs.length > 0) {
-      pdflatexEnv.TEXINPUTS = texInputsSearchPath(
-        texInputDirs,
-        process.env.TEXINPUTS,
-      );
-    }
-
-    // Compile LaTeX to PDF
-    const pdflatexResult = await execTool(
-      "pdflatex",
-      [
-        "-interaction=nonstopmode",
-        "-file-line-error",
-        "-output-directory",
-        workDir,
-        texFile,
-      ],
-      { env: pdflatexEnv, cwd: workDir },
+    const svgMarkup = scopeSvg(
+      readFileSync(compiled.svgFilePath, "utf-8"),
+      diagramScopePrefix(hash),
     );
-    if (!pdflatexResult) {
-      return {
-        ok: false,
-        failure: { kind: "toolchain-missing", tool: "pdflatex" },
-      };
-    }
-    if (pdflatexResult.status !== 0) {
-      return {
-        ok: false,
-        failure: {
-          kind: "latex",
-          errors: parseLatexErrors(
-            // Errors go to stdout; stderr carries kpathsea notices such as
-            // "Not reading from /dev/null (openin_any = p)".
-            `${pdflatexResult.stdout}\n${pdflatexResult.stderr}`,
-            { blockFilePath: texFile },
-          ).map((err) =>
-            err.filePath !== undefined
-              ? { ...err, filePath: relative(process.cwd(), err.filePath) }
-              : err,
-          ),
-          source: latexSource,
-        },
-      };
-    }
+    writeFileSync(svgPath, svgMarkup, "utf-8");
+    return { ok: true, hash, svgPath, svgMarkup, wasCompiled: true };
+  });
+}
 
-    // Convert PDF to SVG
-    const svgResult = await execTool("dvisvgm", [
-      "--pdf",
-      "--bbox=dvi",
-      pdfFile,
-      "-o",
-      svgPath,
-    ]);
-    if (!svgResult) {
-      return {
-        ok: false,
-        failure: { kind: "toolchain-missing", tool: "dvisvgm" },
-      };
-    }
-    if (svgResult.status !== 0) {
-      return {
-        ok: false,
-        failure: {
-          kind: "conversion",
-          output: svgResult.stderr || svgResult.stdout || "",
-        },
-      };
-    }
-  } finally {
-    try {
-      rmSync(workDir, { recursive: true, force: true });
-    } catch {
-      // ignore cleanup errors — temp files will be GC'd by the OS
-    }
+/**
+ * Writes the debug tex diagram image of a compiled tex diagram. sharp ignores
+ * the fonts a compiled tex diagram embeds in dvi compile mode, so there the
+ * block is compiled again with glyphs drawn as paths, which sharp renders
+ * faithfully.
+ */
+export async function writeDebugImageFromDiagram(
+  latexCode: string,
+  svgPath: string,
+  jpgPath: string,
+  options: { texInputDirs: TexInputDir[]; compileMode: CompileMode },
+): Promise<void> {
+  if (options.compileMode === "pdf") {
+    await writeJpgFromSvg(svgPath, jpgPath);
+    return;
   }
 
-  return { ok: true, hash, svgPath, wasCompiled: true };
+  await inTempDir(async (workDir) => {
+    const compiled = await compileToSvgFile(latexCode, workDir, {
+      ...options,
+      glyphsAsPaths: true,
+    });
+    if (!compiled.ok) {
+      throw new Error(`recompile failed (${compiled.failure.kind})`);
+    }
+    await writeJpgFromSvg(compiled.svgFilePath, jpgPath);
+  });
 }
