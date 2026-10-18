@@ -114,11 +114,12 @@ title: Guides
 
 ### LaTeX Compile
 
-Automatically compiles fenced `tex compile` and `latex compile` code blocks to SVG diagrams during the build process. Uses `pdflatex` and `dvisvgm` for high-quality, cached SVG output.
+Automatically compiles fenced `tex compile` and `latex compile` code blocks to SVG diagrams during the build process. Uses `pdflatex` and `dvisvgm` for high-quality, cached SVG output, inlined into the page as `<svg>` elements.
 
 **Features:**
 
 - Compiles LaTeX/TikZ code blocks to SVG automatically
+- Inlines each compiled tex diagram into the page, with its text selectable and searchable (see [Compile mode](#compile-mode))
 - Caches compiled SVGs by content hash (no recompilation if unchanged)
 - Comprehensive error reporting with line numbers and formatted LaTeX source
 - Works with Starlight and plain Astro projects
@@ -128,8 +129,8 @@ Automatically compiles fenced `tex compile` and `latex compile` code blocks to S
 
 This plugin requires the following CLI tools to be installed and available on your system:
 
-- **`pdflatex`** — LaTeX compiler that produces PDF output
-- **`dvisvgm`** — Converts PDF to SVG format
+- **`pdflatex`**: LaTeX compiler that produces DVI or PDF output
+- **`dvisvgm`**: Converts DVI or PDF to SVG format (2.2 or later, for WOFF2 font embedding)
 
 Verify installation by running:
 
@@ -142,9 +143,9 @@ If either tool is missing from `PATH` when a `tex compile` block needs compiling
 
 **Options:**
 
-- `svgOutputDir` (required): Directory where compiled SVG files are written. Resolved against the project root, and must be a subdirectory of Astro's `publicDir` (usually `public/`), or Astro fails to start. Image URLs are derived from it, so `public/diagrams` with `base: "/docs"` produces `/docs/diagrams/<hash>.svg`.
+- `svgOutputDir` (required): Directory where compiled SVG files are written. Resolved against the project root, and must be a subdirectory of Astro's `publicDir` (usually `public/`), or Astro fails to start. Each block's SVG is written here as `<hash>.svg` and reused while the block is unchanged. Pages inline the SVG rather than linking to these files.
 - `removeOrphanedSvgs` (optional, default: `false`): When `true`, SVG files that are no longer referenced by any `tex compile` block are deleted automatically. On build, every orphaned tex diagram is swept at the end. In dev, docs that weren't edited aren't re-rendered (Astro's content cache stays on to keep dev fast), so the plugin can't see what they reference: only compiled tex diagrams first written during the current dev session are deleted when a block is edited, and older orphaned tex diagrams stay until the next build.
-- `svgClassname` (optional): Default CSS class(es) applied to every compiled SVG `<img>` element. Individual blocks can override this with a `class` meta tag value. The `tex-compiled` class is always present and cannot be overridden.
+- `svgClassname` (optional): Default CSS class(es) applied to every compiled tex diagram's inline `<svg>` element. Individual blocks can override this with a `class` meta tag value. The `tex-compiled` class is always present and cannot be overridden.
 - `texInputDirs` (optional): Directories, resolved against the project root, that `tex compile` blocks can pull tex input files from with `\input{}`, `\include{}`, `\usepackage{}`, `\includegraphics{}` and similar. Use a trailing `/` to search only that directory, or `//` to search it recursively. Multiple directories are supported, including ones outside the project. Apart from TeX's installed packages, these are the only files a block can read, and only by name (`\input{macros}`): a path relative to the project like `\input{src/latex/macros}`, an absolute path, a path using `..`, or a dotfile doesn't resolve.
   - When any file in these directories changes, every compiled tex diagram is recompiled, including blocks that don't use that file. In `astro dev` this happens on its own: the dev server restarts and re-renders every doc. A file added while dev is running is only watched after the next restart. Dotfiles, dot-dirs and LaTeX build artifacts (`.aux`, `.log`, `.synctex.gz`, ...) don't count.
   - An error inside one of these files is reported with that file's path and line, e.g. `Error (src/latex/macros.tex:2): Undefined control sequence.`
@@ -231,8 +232,9 @@ Each code block must be a complete, self-contained LaTeX document:
 
 The following attributes can be added to the opening fence:
 
-- `class="..."`: CSS classes applied to the resulting `<img>` element (space-separated). The `tex-compiled` class is always included.
-- `alt="..."`: Alt text for the resulting `<img>` element. Defaults to `"LaTeX diagram"` if omitted.
+- `class="..."`: CSS classes applied to the resulting `<svg>` element (space-separated). The `tex-compiled` class is always included.
+- `alt="..."`: Accessible label for the resulting `<svg>` element, set as `role="img"` and `aria-label`. Defaults to `"LaTeX diagram"` if omitted.
+- `mode=dvi` or `mode=pdf`: The block's [compile mode](#compile-mode). Defaults to `dvi`.
 
 ````markdown
 ```tex compile class="bg-white rounded-1" alt="A commutative diagram"
@@ -246,6 +248,26 @@ The following attributes can be added to the opening fence:
 \end{document}
 ```
 ````
+
+#### Compile mode
+
+By default (`mode=dvi`), a block is compiled to DVI and converted with its fonts embedded, so the compiled tex diagram's text stays real text: you can select it, copy it and find it with the browser's search. Copied text comes out the way TeX placed the glyphs, so `$x^2+\alpha$` copies as something like `x2+α`.
+
+DVI can't hold every kind of graphic. `\includegraphics` of a PNG, JPEG or PDF fails in `dvi` mode with an error like `Unknown graphics extension: .png`. For those blocks, add `mode=pdf`, which compiles through PDF and draws all text as shapes:
+
+````markdown
+```tex compile mode=pdf
+\documentclass{standalone}
+\usepackage{graphicx}
+\begin{document}
+\includegraphics{photo.png}
+\end{document}
+```
+````
+
+Each compiled tex diagram's ids, classes and fonts are prefixed with its hash, so several can share a page. Wide ones shrink to fit the content column (`max-width: 100%`).
+
+**Migrating to inline SVGs:** every compiled tex diagram's hash changes once, so every block recompiles on the first build. With `removeOrphanedSvgs`, the build removes the old SVGs; otherwise delete them from `svgOutputDir` by hand. If your deploy builds without TeX, run `astro build` locally and commit the new SVGs before deploying.
 
 ### Remark GFM Slug
 

@@ -2,23 +2,27 @@ import { readFileSync, writeSync } from "node:fs";
 import { parseFrontmatter } from "@astrojs/markdown-remark";
 import { relative } from "node:path";
 import { visit, SKIP } from "unist-util-visit";
-import type { Code, Html, Image, Paragraph, Parent, Root } from "mdast";
+import type { Code, Html, Parent, Root } from "mdast";
 import type { VFile } from "vfile";
 import { MetaOptions } from "@expressive-code/core";
 import type { LatexCompileOptions } from "./index.js";
 import { RotatingFileLogger } from "../utils/rotating-file-logger.js";
 import type { DocRender, TexDiagramLedger } from "./ledger.js";
 import {
+  escapeXml,
   renderConsole,
   renderHtml,
   writeDebugImage,
   type TexCompileFailure,
 } from "./tex-compile-error.js";
 import {
+  COMPILE_MODES,
   compileLatexToSvg,
+  type CompileMode,
   type CompileOutcome,
+  DEFAULT_COMPILE_MODE,
   diagramFileName,
-  writeJpgFromSvg,
+  writeDebugImageFromDiagram,
 } from "./utils.js";
 import { hashTexInputs, type TexInputDir } from "./tex-inputs.js";
 
@@ -30,8 +34,6 @@ const DEBUG_LOG_BACKUP_COUNT = 3;
  * the ledger survives across processor invocations.
  */
 export interface LatexCompileState {
-  /** URL path that `svgOutputDir` is served from, without trailing slash. */
-  svgUrlPrefix: string;
   /**
    * Tools found missing from PATH. Each is logged once; on build, the
    * integration fails the build at `astro:build:done`.
@@ -63,6 +65,47 @@ function getFrontmatterOffset(absoluteFilePath: string): number {
   } catch {
     return 0;
   }
+}
+
+/**
+ * The block's compile mode from its `mode` meta, or the tex compile error for
+ * an unknown value or a bare `mode` with no value.
+ */
+function parseCompileMode(
+  metaOptions: MetaOptions,
+):
+  | { ok: true; compileMode: CompileMode }
+  | { ok: false; failure: TexCompileFailure } {
+  const modeValue = metaOptions.getString("mode");
+  const hasBareModeFlag =
+    modeValue === undefined && metaOptions.getBoolean("mode") !== undefined;
+  if (modeValue === undefined && !hasBareModeFlag) {
+    return { ok: true, compileMode: DEFAULT_COMPILE_MODE };
+  }
+  if ((COMPILE_MODES as readonly string[]).includes(modeValue ?? "")) {
+    return { ok: true, compileMode: modeValue as CompileMode };
+  }
+  const allowedModes = COMPILE_MODES.map((mode) => `mode=${mode}`).join(", ");
+  return {
+    ok: false,
+    failure: {
+      kind: "invalid-block",
+      reason: `Unknown compile mode "mode${modeValue === undefined ? "" : `=${modeValue}`}". Use one of: ${allowedModes}.`,
+    },
+  };
+}
+
+/** Adds the block's attributes to the root `<svg>` of a compiled tex diagram. */
+function inlineSvgHtml(
+  svgMarkup: string,
+  attributes: { classNames: string[]; altText: string },
+): string {
+  const rootAttributes = [
+    `class="${escapeXml(attributes.classNames.join(" "))}"`,
+    `role="img"`,
+    `aria-label="${escapeXml(attributes.altText)}"`,
+  ].join(" ");
+  return svgMarkup.replace(/^<svg\b/, `<svg ${rootAttributes}`);
 }
 
 function errorMessage(err: unknown): string {
@@ -169,16 +212,22 @@ export function latexCompileTransformer(
             : undefined;
         const location = `${relFilePath}:${lineNumberStr}`;
 
+        const parsedMode = parseCompileMode(new MetaOptions(node.meta ?? ""));
+        const compileMode = parsedMode.ok
+          ? parsedMode.compileMode
+          : DEFAULT_COMPILE_MODE;
+
         // Anything thrown here must stay confined to this block: rejecting
         // would lose every block on the page, and Starlight only logs it.
         let outcome: CompileOutcome;
         try {
-          outcome = await compileLatexToSvg(
-            node.value,
-            ledger.svgDir,
-            state.texInputDirs,
-            texInputsHash,
-          );
+          outcome = parsedMode.ok
+            ? await compileLatexToSvg(node.value, ledger.svgDir, {
+                texInputDirs: state.texInputDirs,
+                texInputsHash,
+                compileMode,
+              })
+            : parsedMode;
         } catch (err) {
           outcome = {
             ok: false,
@@ -205,7 +254,12 @@ export function latexCompileTransformer(
         if (debugImagePath) {
           const { svgPath } = outcome;
           await writeDebugOutput(location, async () => {
-            await writeJpgFromSvg(svgPath, debugImagePath);
+            await writeDebugImageFromDiagram(
+              node.value,
+              svgPath,
+              debugImagePath,
+              { texInputDirs: state.texInputDirs, compileMode },
+            );
             await debugLogger?.write(`${location}: wrote ${debugImagePath}`);
           });
         }
@@ -242,21 +296,14 @@ export function latexCompileTransformer(
         .filter(Boolean);
       const altText = metaOptions.getString("alt") ?? "LaTeX diagram";
 
-      const imageNode: Image = {
-        type: "image",
-        url: `${state.svgUrlPrefix}/${diagramFileName(outcome.hash)}`,
-        alt: altText,
-        data: {
-          hProperties: { className: ["tex-compiled", ...extraClasses] },
-        },
+      const svgNode: Html = {
+        type: "html",
+        value: inlineSvgHtml(outcome.svgMarkup, {
+          classNames: ["tex-compiled", ...extraClasses],
+          altText,
+        }),
       };
-
-      const paragraph: Paragraph = {
-        type: "paragraph",
-        children: [imageNode],
-      };
-
-      parent.children.splice(index, 1, paragraph);
+      parent.children.splice(index, 1, svgNode);
     }
   }
 

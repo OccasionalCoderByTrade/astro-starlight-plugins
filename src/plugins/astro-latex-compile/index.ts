@@ -34,6 +34,8 @@ const INJECTED_CSS = `
 }
 .tex-compiled {
   background-color: transparent;
+  max-width: 100%;
+  height: auto;
 }
 html[data-theme="dark"] .tex-compiled {
   filter: invert(1) hue-rotate(${DARK_MODE_ROTATE});
@@ -44,12 +46,13 @@ export interface LatexCompileOptions {
   /**
    * Directory where SVG files should be written.
    * Resolved against the project root. Must be a subdirectory of Astro's
-   * `publicDir`; image URLs are derived from its path relative to `publicDir`,
-   * prefixed with `base`.
+   * `publicDir`. Pages inline each compiled tex diagram, so these files act as
+   * a cache keyed by hash.
    */
   svgOutputDir: string;
   /**
-   * Default CSS class(es) applied to every compiled SVG `<img>` element.
+   * Default CSS class(es) applied to every compiled tex diagram's inline
+   * `<svg>` element.
    * Individual blocks can override this with a `class` meta tag value.
    * The `tex-compiled` class is always present and cannot be overridden.
    */
@@ -98,18 +101,16 @@ function getDataStoreFile(config: AstroConfig): URL {
 }
 
 /**
- * Resolves `svgOutputDir` against the project root and returns it along with
- * the URL path it is served from, e.g. `/docs/static/tex-svgs` for
- * `public/static/tex-svgs` with `base: "/docs"`. Throws unless it is a
+ * Resolves `svgOutputDir` against the project root. Throws unless it is a
  * subdirectory of `publicDir`.
  */
-function resolveSvgOutput(
+function resolveSvgOutputDir(
   config: AstroConfig,
   svgOutputDir: string,
-): { dir: string; urlPrefix: string } {
+): string {
   const publicDir = fileURLToPath(config.publicDir);
-  const dir = resolve(fileURLToPath(config.root), svgOutputDir);
-  const publicRelativeSvgDir = relative(publicDir, dir);
+  const svgOutputDirPath = resolve(fileURLToPath(config.root), svgOutputDir);
+  const publicRelativeSvgDir = relative(publicDir, svgOutputDirPath);
   if (
     publicRelativeSvgDir === "" ||
     publicRelativeSvgDir === ".." ||
@@ -120,11 +121,7 @@ function resolveSvgOutput(
       `[astro-latex-compile] svgOutputDir "${svgOutputDir}" must be a subdirectory of publicDir "${publicDir}".`,
     );
   }
-  const siteBase = config.base.replace(/\/+$/, "");
-  return {
-    dir,
-    urlPrefix: `${siteBase}/${publicRelativeSvgDir.split(sep).join("/")}`,
-  };
+  return svgOutputDirPath;
 }
 
 async function clearContentLayerCache(config: AstroConfig): Promise<void> {
@@ -158,7 +155,10 @@ export function astroLatexCompile(
         createCodegenDir,
         addWatchFile,
       }) => {
-        const svgOutput = resolveSvgOutput(config, options.svgOutputDir);
+        const svgOutputDirPath = resolveSvgOutputDir(
+          config,
+          options.svgOutputDir,
+        );
         const debugOutput = options.debug
           ? resolveDebugOutput(fileURLToPath(createCodegenDir()), options.debug)
           : undefined;
@@ -203,7 +203,7 @@ export function astroLatexCompile(
         }
 
         ledger = createLedger({
-          svgDir: svgOutput.dir,
+          svgDir: svgOutputDirPath,
           debugImageDir: debugOutput?.outputDir,
           removeOrphanedSvgs: options.removeOrphanedSvgs ?? false,
           command,
@@ -215,7 +215,6 @@ export function astroLatexCompile(
           : [];
 
         const state: LatexCompileState = {
-          svgUrlPrefix: svgOutput.urlPrefix,
           missingTools,
           exitOnMissingToolchain: command === "dev",
           ledger,
