@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -60,7 +60,143 @@ async function runSetup(
   return { integration, watchedFilePaths, remarkPlugins };
 }
 
+type Transform = (tree: Root, file: VFile) => Promise<void>;
+
+/** The remark transformer the integration registered during setup. */
+function registeredTransform(remarkPlugins: unknown[]): Transform {
+  const [remarkPlugin] = remarkPlugins.at(-1) as [() => Transform];
+  return remarkPlugin();
+}
+
+function runBuildDone(integration: ReturnType<typeof astroLatexCompile>) {
+  const buildDone = integration.hooks["astro:build:done"]!;
+  return buildDone({} as Parameters<typeof buildDone>[0]);
+}
+
+/** A doc holding one `tex compile` block per entry of `blockValues`, starting at `firstLine`. */
+function docWithBlocks(blockValues: string[], firstLine = 1): Root {
+  return {
+    type: "root",
+    children: blockValues.map((value, i) => ({
+      type: "code",
+      lang: "tex",
+      meta: "compile",
+      value,
+      position: {
+        start: { line: firstLine + i * 10, column: 1 },
+        end: { line: firstLine + i * 10 + 2, column: 4 },
+      },
+    })),
+  };
+}
+
+const NOT_A_LATEX_DOCUMENT = "\\tikz \\draw (0,0) -- (1,1);";
+const LATEX_DOCUMENT =
+  "\\documentclass{standalone}\n\\begin{document}\nx\n\\end{document}";
+
 describe("astroLatexCompile", () => {
+  describe("tex compile errors on build", () => {
+    it("fails the build, listing every tex compile error by location", async () => {
+      const rootDirPath = makeProject();
+      const { integration, remarkPlugins } = await runSetup(
+        rootDirPath,
+        "build",
+      );
+      const transform = registeredTransform(remarkPlugins);
+
+      await transform(docWithBlocks([NOT_A_LATEX_DOCUMENT], 12), {
+        path: join(rootDirPath, "a.md"),
+      } as VFile);
+      await transform(docWithBlocks([NOT_A_LATEX_DOCUMENT], 40), {
+        path: join(rootDirPath, "b.md"),
+      } as VFile);
+
+      const rejection = runBuildDone(integration);
+      await expect(rejection).rejects.toThrow(/2 tex compile errors/);
+      await expect(rejection).rejects.toThrow(/a\.md:12: .*not a LaTeX document/);
+      await expect(rejection).rejects.toThrow(/b\.md:40: .*not a LaTeX document/);
+    });
+
+    it("reports a missing toolchain and the other tex compile errors together", async () => {
+      const rootDirPath = makeProject();
+      const { integration, remarkPlugins } = await runSetup(
+        rootDirPath,
+        "build",
+      );
+      const transform = registeredTransform(remarkPlugins);
+      vi.stubEnv("PATH", "");
+
+      await transform(docWithBlocks([LATEX_DOCUMENT, NOT_A_LATEX_DOCUMENT]), {
+        path: join(rootDirPath, "doc.md"),
+      } as VFile);
+
+      const rejection = runBuildDone(integration);
+      await expect(rejection).rejects.toThrow(/pdflatex not found on PATH/);
+      await expect(rejection).rejects.toThrow(/1 tex compile error:/);
+      await expect(rejection).rejects.toThrow(/doc\.md:11: .*not a LaTeX document/);
+    });
+
+    it("fails the build when rendering a doc throws outside any one block", async () => {
+      const rootDirPath = makeProject();
+      const { integration, remarkPlugins } = await runSetup(
+        rootDirPath,
+        "build",
+      );
+      const transform = registeredTransform(remarkPlugins);
+      // A code node with no value: its tex compile error can't list the source.
+      const malformedDoc = {
+        type: "root",
+        children: [{ type: "code", lang: "tex", meta: "compile" }],
+      } as Root;
+
+      await expect(
+        transform(malformedDoc, {
+          path: join(rootDirPath, "broken.md"),
+        } as VFile),
+      ).rejects.toThrow();
+
+      await expect(runBuildDone(integration)).rejects.toThrow(
+        /broken\.md: Unexpected error: /,
+      );
+    });
+
+    it("keeps orphaned tex diagrams when the build fails", async () => {
+      const rootDirPath = makeProject({
+        "public/tex-svgs/0123456789abcdef.svg": "<svg></svg>",
+      });
+      const { integration, remarkPlugins } = await runSetup(
+        rootDirPath,
+        "build",
+        { removeOrphanedSvgs: true },
+      );
+      const transform = registeredTransform(remarkPlugins);
+
+      await transform(docWithBlocks([NOT_A_LATEX_DOCUMENT]), {
+        path: join(rootDirPath, "doc.md"),
+      } as VFile);
+
+      await expect(runBuildDone(integration)).rejects.toThrow();
+      expect(
+        existsSync(join(rootDirPath, "public/tex-svgs/0123456789abcdef.svg")),
+      ).toBe(true);
+    });
+
+    it("passes a build where every tex compile block compiled", async () => {
+      const rootDirPath = makeProject();
+      const { integration, remarkPlugins } = await runSetup(
+        rootDirPath,
+        "build",
+      );
+      const transform = registeredTransform(remarkPlugins);
+
+      await transform(docWithBlocks([]), {
+        path: join(rootDirPath, "doc.md"),
+      } as VFile);
+
+      await expect(runBuildDone(integration)).resolves.toBeUndefined();
+    });
+  });
+
   it("rejects an invalid debug path for every command, not just dev and build", async () => {
     await expect(
       runSetup(makeProject(), "sync", { debug: { outputDir: "" } }),

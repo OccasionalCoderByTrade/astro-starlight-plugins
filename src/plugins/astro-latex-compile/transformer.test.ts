@@ -66,6 +66,7 @@ async function renderBlocks(
     { svgOutputDir: "unused", ...options },
     {
       missingTools: new Set(),
+      texCompileErrors: [],
       exitOnMissingToolchain: false,
       ledger,
       rootDirPath,
@@ -96,6 +97,7 @@ describe("latexCompileTransformer", () => {
       { svgOutputDir: "unused" },
       {
         missingTools: new Set(),
+        texCompileErrors: [],
         exitOnMissingToolchain: false,
         ledger,
         rootDirPath: root,

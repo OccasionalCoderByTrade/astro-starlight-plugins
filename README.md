@@ -122,6 +122,7 @@ Automatically compiles fenced `tex compile` and `latex compile` code blocks to S
 - Inlines each compiled tex diagram into the page, with its text selectable and searchable (see [Compile mode](#compile-mode))
 - Caches compiled SVGs by content hash (no recompilation if unchanged)
 - Comprehensive error reporting with line numbers and formatted LaTeX source
+- Fails `astro build` on any tex compile error, listing where each one happened; `astro dev` only shows the error in the page
 - Works with Starlight and plain Astro projects
 - Requires `svgOutputDir` configuration (no defaults)
 
@@ -140,6 +141,8 @@ dvisvgm --version
 ```
 
 If either tool is missing from `PATH` when a `tex compile` block needs compiling, `astro build` fails and `astro dev` stops.
+
+Any other tex compile error (a LaTeX error, a block that isn't a LaTeX document, an unknown `mode`, a failed SVG conversion) is logged in full and shown in the page in place of the diagram. `astro build` still renders every page, then fails at the end with a list of every failing block's `file:line` (or just the doc's path, for an error outside any one block), and leaves orphaned tex diagrams in place.
 
 **Options:**
 

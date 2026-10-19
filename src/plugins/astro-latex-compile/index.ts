@@ -14,6 +14,7 @@ import {
 import {
   latexCompileTransformer,
   type LatexCompileState,
+  type TexCompileErrorEntry,
 } from "./transformer.js";
 
 export type { DebugOptions as LatexCompileDebugOptions };
@@ -131,6 +132,38 @@ async function clearContentLayerCache(config: AstroConfig): Promise<void> {
   }
 }
 
+/**
+ * The message `astro:build:done` fails the build with, or `undefined` when
+ * every `tex compile` block produced a compiled tex diagram. Each error's
+ * full report was already logged when it happened, so this only indexes them.
+ */
+function buildFailureMessage(
+  missingTools: Set<string>,
+  missingTexInputDirs: TexInputDir[],
+  texCompileErrors: TexCompileErrorEntry[],
+): string | undefined {
+  const lines: string[] = [];
+  if (missingTools.size > 0) {
+    const missingDirsHint =
+      missingTexInputDirs.length > 0
+        ? ` texInputDirs ${describeTexInputDirs(missingTexInputDirs)} were missing. If they hold files where the compiled tex diagrams were built, every diagram's hash differs here, so none were found.`
+        : "";
+    lines.push(
+      `${[...missingTools].join(" and ")} not found on PATH; tex compile blocks could not be compiled.${missingDirsHint}`,
+    );
+  }
+  if (texCompileErrors.length > 0) {
+    lines.push(
+      `${texCompileErrors.length} tex compile error${texCompileErrors.length === 1 ? "" : "s"}:`,
+      ...texCompileErrors.map(
+        ({ location, summary }) => `  - ${location}: ${summary}`,
+      ),
+    );
+  }
+  if (lines.length === 0) return undefined;
+  return `[astro-latex-compile] ${lines.join("\n")}`;
+}
+
 function describeTexInputDirs(texInputDirs: TexInputDir[]): string {
   return texInputDirs
     .map((texInputDir) => `"${texInputDir.configuredPath}"`)
@@ -141,6 +174,7 @@ export function astroLatexCompile(
   options: LatexCompileOptions,
 ): AstroIntegration {
   const missingTools = new Set<string>();
+  const texCompileErrors: TexCompileErrorEntry[] = [];
   let missingTexInputDirs: TexInputDir[] = [];
   let ledger: TexDiagramLedger | undefined;
 
@@ -216,6 +250,7 @@ export function astroLatexCompile(
 
         const state: LatexCompileState = {
           missingTools,
+          texCompileErrors,
           exitOnMissingToolchain: command === "dev",
           ledger,
           debugLogFile: debugOutput?.logFile,
@@ -241,17 +276,17 @@ export function astroLatexCompile(
       },
 
       "astro:build:done": async () => {
-        // Starlight's content loader only logs errors thrown while rendering
-        // markdown, so a missing toolchain has to fail the build from here.
-        if (missingTools.size > 0) {
-          const missingDirsHint =
-            missingTexInputDirs.length > 0
-              ? ` texInputDirs ${describeTexInputDirs(missingTexInputDirs)} were missing. If they hold files where the compiled tex diagrams were built, every diagram's hash differs here, so none were found.`
-              : "";
-          throw new Error(
-            `[astro-latex-compile] ${[...missingTools].join(" and ")} not found on PATH; tex compile blocks could not be compiled.${missingDirsHint}`,
-          );
-        }
+        // Astro's glob loader only logs errors thrown while rendering
+        // markdown, so tex compile errors have to fail the build from here.
+        // See docs/adr/0006-tex-compile-errors-fail-build-at-build-done.md.
+        const failureMessage = buildFailureMessage(
+          missingTools,
+          missingTexInputDirs,
+          texCompileErrors,
+        );
+        // Skips the sweep too: a failed block references no compiled tex
+        // diagram, so sweeping would delete its last good one.
+        if (failureMessage) throw new Error(failureMessage);
 
         await ledger?.sweep();
       },

@@ -35,5 +35,5 @@ A JPEG copy of a compiled tex diagram, produced only for `tex compile` blocks th
 _Avoid_: debug JPG, temp output, snapshot
 
 **Tex compile error**:
-The failure of a `tex compile` block to produce a compiled tex diagram, shown in the page in place of the diagram.
+The failure of a `tex compile` block to produce a compiled tex diagram. In dev it is shown in the page in place of the diagram; it fails `astro build`.
 _Avoid_: LaTeX compilation error, compile failure, error block

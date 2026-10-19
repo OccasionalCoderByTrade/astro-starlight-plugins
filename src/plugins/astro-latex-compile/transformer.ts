@@ -12,6 +12,7 @@ import {
   escapeXml,
   renderConsole,
   renderHtml,
+  summarizeFailure,
   writeDebugImage,
   type TexCompileFailure,
 } from "./tex-compile-error.js";
@@ -29,6 +30,14 @@ import { hashTexInputs, type TexInputDir } from "./tex-inputs.js";
 const DEBUG_LOG_MAX_SIZE_BYTES = 5 * 1024 * 1024;
 const DEBUG_LOG_BACKUP_COUNT = 3;
 
+/** One tex compile error, as listed when the build fails. */
+export interface TexCompileErrorEntry {
+  /** `file:line` of the `tex compile` block, or the doc's path alone. */
+  location: string;
+  /** The first line of the error's summary. */
+  summary: string;
+}
+
 /**
  * Per-integration state shared by every markdown processor Astro creates, so
  * the ledger survives across processor invocations.
@@ -39,6 +48,11 @@ export interface LatexCompileState {
    * integration fails the build at `astro:build:done`.
    */
   missingTools: Set<string>;
+  /**
+   * Every tex compile error other than a missing tool, in the order reported.
+   * On build, the integration fails the build at `astro:build:done` with them.
+   */
+  texCompileErrors: TexCompileErrorEntry[];
   /** When `true` (dev), a missing tool stops the dev server. */
   exitOnMissingToolchain: boolean;
   /** Owns the output dirs, tracks which doc references which output, and deletes orphans. */
@@ -108,6 +122,11 @@ function inlineSvgHtml(
   return svgMarkup.replace(/^<svg\b/, `<svg ${rootAttributes}`);
 }
 
+/** The doc's path relative to the working directory, for messages. */
+function displayFilePath(filePath: string): string {
+  return filePath !== "unknown" ? relative(process.cwd(), filePath) : filePath;
+}
+
 function errorMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
 }
@@ -143,13 +162,23 @@ export function latexCompileTransformer(
       })
     : null;
 
+  /** Records a tex compile error for `astro:build:done` to fail the build with. */
+  function recordTexCompileError(failure: TexCompileFailure, location: string) {
+    state.texCompileErrors.push({
+      location,
+      summary: summarizeFailure(failure),
+    });
+  }
+
   function reportFailure(failure: TexCompileFailure, location: string) {
     if (failure.kind === "toolchain-missing") {
       if (state.missingTools.has(failure.tool)) return;
       state.missingTools.add(failure.tool);
+    } else {
+      recordTexCompileError(failure, location);
     }
     const report = renderConsole(failure, location);
-    // Starlight's content loader swallows errors thrown here, so exit directly.
+    // Astro's glob loader swallows errors thrown here, so exit directly.
     // Write synchronously first: a piped stderr is async on macOS/Windows, and
     // process.exit would drop the message.
     if (failure.kind === "toolchain-missing" && state.exitOnMissingToolchain) {
@@ -190,8 +219,7 @@ export function latexCompileTransformer(
       if (id !== undefined) lastIndexByBlockId.set(id, i);
     });
 
-    const relFilePath =
-      filePath !== "unknown" ? relative(process.cwd(), filePath) : "unknown";
+    const relFilePath = displayFilePath(filePath);
     const frontmatterOffset =
       filePath !== "unknown" ? getFrontmatterOffset(filePath) : 0;
     // Recomputed per doc: a tex input file added during dev isn't watched, but
@@ -312,6 +340,13 @@ export function latexCompileTransformer(
     const render = ledger.beginDoc(filePath);
     try {
       await renderDoc(tree, filePath, render);
+    } catch (err) {
+      // Astro only logs the rethrown error, so record it to fail the build.
+      recordTexCompileError(
+        { kind: "unexpected", message: errorMessage(err) },
+        displayFilePath(filePath),
+      );
+      throw err;
     } finally {
       // A render that throws before recording must still end, or the ledger
       // holds back orphan deletion for good. A no-op once recorded.

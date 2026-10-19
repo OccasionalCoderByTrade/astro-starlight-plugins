@@ -91,6 +91,11 @@ function describeFailure(failure: TexCompileFailure, paint: Paint): string[] {
   return summarize(failure, paint).flatMap((line) => line.split("\n"));
 }
 
+/** The first line of the failure's summary, for a one-line index of tex compile errors. */
+export function summarizeFailure(failure: TexCompileFailure): string {
+  return describeFailure(failure, plain)[0] ?? failure.kind;
+}
+
 function numberedSource(source: string, errorLines: Set<number>): string {
   const width = "[999]".length;
   return source
