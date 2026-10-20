@@ -26,6 +26,15 @@ dist/                 # lib build output; app:build also writes here
 - New or renamed plugin: update the `tsup.config.ts` `entry`, `package.json` `exports`, `src/index.ts` and `README.md` together.
 - Only move code into `utils/` once 2+ plugins need it. Plugin-specific helpers stay in that plugin's `utils.ts`.
 
+## Publishing
+
+1. Bump `version` in `package.json` (or `npm version <patch|minor|major>`). // LLMs shouldn't bump or publish
+2. `npm run lib:build`: compiles SCSS, runs tsup into `dist/`, copies `src/styles` to `dist/styles`.
+3. `npm pack --dry-run`: check that only `dist/` (plus README, LICENSE, package.json) is included.
+4. `npm publish`: `prepublishOnly` rebuilds the library first.
+
+The demo site (`npm run app:build`) is not published -- it has no `outDir` set, so Astro also builds into `dist/`. `lib:build` wipes `dist/` first (tsup `clean: true`), so just rerun it after any site build before step 3.
+
 ## Agent skills
 
 ### Issue tracker
