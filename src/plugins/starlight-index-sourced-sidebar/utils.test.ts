@@ -1,8 +1,14 @@
-import { chmodSync } from "node:fs";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
-import { makeFileTree } from "../tests/file-tree.js";
+import { afterEach, describe, expect, it } from "vitest";
+import {
+  isRunningAsRoot,
+  lockPath,
+  makeFileTree,
+  unlockAll,
+} from "../tests/file-tree.js";
 import { getIndexSourcedSidebarItems } from "./utils.js";
+
+afterEach(unlockAll);
 
 describe("getIndexSourcedSidebarItems", () => {
   it("skips links in an index that don't resolve to a doc", () => {
@@ -25,38 +31,44 @@ describe("getIndexSourcedSidebarItems", () => {
     ]);
   });
 
-  it("throws when an index can't be read", () => {
+  it.skipIf(isRunningAsRoot)("throws when an index can't be read", () => {
     const rootDirPath = makeFileTree({
       "guides/index.md": "---\ntitle: Guides\n---\n",
     });
     const indexFilePath = join(rootDirPath, "guides/index.md");
-    chmodSync(indexFilePath, 0o000);
+    lockPath(indexFilePath);
 
     expect(() =>
       getIndexSourcedSidebarItems(join(rootDirPath, "guides")),
     ).toThrow(/EACCES/);
   });
 
-  it("throws the real error when an index can't be checked", () => {
-    const rootDirPath = makeFileTree({
-      "guides/index.md": "---\ntitle: Guides\n---\n",
-    });
-    chmodSync(join(rootDirPath, "guides"), 0o000);
+  it.skipIf(isRunningAsRoot)(
+    "throws the real error when an index can't be checked",
+    () => {
+      const rootDirPath = makeFileTree({
+        "guides/index.md": "---\ntitle: Guides\n---\n",
+      });
+      lockPath(join(rootDirPath, "guides"));
 
-    expect(() =>
-      getIndexSourcedSidebarItems(join(rootDirPath, "guides")),
-    ).toThrow(/EACCES/);
-  });
+      expect(() =>
+        getIndexSourcedSidebarItems(join(rootDirPath, "guides")),
+      ).toThrow(/EACCES/);
+    },
+  );
 
-  it("throws when a linked doc can't be checked", () => {
-    const rootDirPath = makeFileTree({
-      "guides/index.md": "---\ntitle: Guides\n---\n\n[Page](./locked/page)\n",
-      "guides/locked/page.md": "---\ntitle: Page\n---\n",
-    });
-    chmodSync(join(rootDirPath, "guides/locked"), 0o000);
+  it.skipIf(isRunningAsRoot)(
+    "throws when a linked doc can't be checked",
+    () => {
+      const rootDirPath = makeFileTree({
+        "guides/index.md": "---\ntitle: Guides\n---\n\n[Page](./locked/page)\n",
+        "guides/locked/page.md": "---\ntitle: Page\n---\n",
+      });
+      lockPath(join(rootDirPath, "guides/locked"));
 
-    expect(() =>
-      getIndexSourcedSidebarItems(join(rootDirPath, "guides")),
-    ).toThrow(/EACCES/);
-  });
+      expect(() =>
+        getIndexSourcedSidebarItems(join(rootDirPath, "guides")),
+      ).toThrow(/EACCES/);
+    },
+  );
 });

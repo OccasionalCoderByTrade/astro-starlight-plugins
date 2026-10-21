@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
@@ -18,4 +18,22 @@ export function makeFileTree(files: Record<string, string>): string {
     writeFileSync(filePath, contents);
   }
   return rootDirPath;
+}
+
+/** Root ignores file permissions, so tests that rely on a locked path skip under it. */
+export const isRunningAsRoot = process.getuid?.() === 0;
+
+const lockedPaths: string[] = [];
+
+/** Test helper: removes every permission from a file or dir until `unlockAll` runs. */
+export function lockPath(lockedPath: string): void {
+  chmodSync(lockedPath, 0o000);
+  lockedPaths.push(lockedPath);
+}
+
+/** Test helper: restores every path `lockPath` locked, so its temp dir can be deleted. */
+export function unlockAll(): void {
+  for (const lockedPath of lockedPaths.splice(0)) {
+    chmodSync(lockedPath, 0o755);
+  }
 }
