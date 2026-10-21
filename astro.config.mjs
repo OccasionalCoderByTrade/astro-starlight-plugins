@@ -8,9 +8,8 @@ import rehypeKatex from "rehype-katex";
 import remarkMath from "remark-math";
 import {
   astroLatexCompile,
-  astroNormalizePaths,
+  astroLocalLinks,
   expressiveCodeEmphasis,
-  rehypeValidateLinks,
   remarkGfmSlug,
   starlightDomPatches,
   starlightIndexSourcedSidebar,
@@ -53,7 +52,6 @@ export default defineConfig({
         addClasses,
         { ".katex": "not-content", "mjx-container>svg": "not-content" },
       ],
-      rehypeValidateLinks, // check for broken local links
     ],
   },
   integrations: [
@@ -78,7 +76,7 @@ export default defineConfig({
         youtube: true,
       },
     }),
-    astroNormalizePaths(),
+    astroLocalLinks(), // validate local links and rewrite relative ones to root-absolute
     starlight({
       title: SITE_NAME,
       tableOfContents: {

@@ -23,6 +23,10 @@
       "import": "./dist/plugins/astro-normalize-paths.js",
       "types": "./dist/plugins/astro-normalize-paths.d.ts"
     },
+    "./astro-local-links": {
+      "import": "./dist/plugins/astro-local-links.js",
+      "types": "./dist/plugins/astro-local-links.d.ts"
+    },
     "./astro-latex-compile": {
       "import": "./dist/plugins/astro-latex-compile.js",
       "types": "./dist/plugins/astro-latex-compile.d.ts"

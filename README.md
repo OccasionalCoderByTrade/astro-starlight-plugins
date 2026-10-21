@@ -294,85 +294,98 @@ export default defineConfig({
 });
 ```
 
-### Rehype Validate Links
+### Local Links
 
-A rehype plugin that validates all internal links in your Markdown/MDX files at build time. Links without matching files will cause the build to fail.
+An Astro integration for the local links in your docs, meaning every `<a href>` and `<img src>` that points somewhere inside the site. It does two things, each of which you can turn off:
 
-**Features:**
+- **Link validation** fails on a local link in a page's content whose target doesn't exist.
+- **Link normalization** rewrites relative links (`./other`, `../ref/page`) to root-absolute ones (`/guide/other`). A relative link in the HTML is resolved against the page's URL, so it can point somewhere different depending on whether your host adds a trailing slash. After normalization, a link means the same thing everywhere, and it matches what your editor opens on ctrl+click.
 
-- Validates `<a href>` and `<img src>` attributes
-- Supports relative paths (`../other`) and absolute paths (`/some/page`)
-- Auto-expands extensionless links to match `.md` or `.mdx` files
-- Converts internal links to site-absolute paths
-- Throws build errors for broken links
-- Skip validation for forward-reference links using multiple approaches
+Both run on each page's final HTML, in dev and in build. That means they cover Markdown links, raw HTML in `.md`, JSX in `.mdx` (including `src={...}` expressions) and HTML rendered by components.
 
 **Usage:**
 
 ```ts
 // astro.config.mjs
 import { defineConfig } from "astro/config";
-import { rehypeValidateLinks } from "starlight-cannoli-plugins";
+import starlight from "@astrojs/starlight";
+import { astroLocalLinks } from "starlight-cannoli-plugins";
 
 export default defineConfig({
-  markdown: {
-    rehypePlugins: [rehypeValidateLinks],
-  },
+  integrations: [astroLocalLinks(), starlight({ title: "My Docs" })],
 });
 ```
 
 Or import directly:
 
 ```ts
-import { rehypeValidateLinks } from "starlight-cannoli-plugins/rehype-validate-links";
+import { astroLocalLinks } from "starlight-cannoli-plugins/astro-local-links";
 ```
 
-**Skipping Link Validation:**
+**Options:**
 
-There are three ways to skip validation for specific links:
+- `validate` (optional, default: `true`): `false` turns link validation off. Pass `{ skipPatterns: [...] }` to skip links that match any of the glob patterns (see below).
+- `normalize` (optional, default: `true`): `false` turns link normalization off.
 
-**1. Question Mark Prefix** (Per-link, in markdown)
+**What counts as an existing target:**
 
-Prepend a `?` to the link href to skip validation:
+- A source doc. `/reference/schemas` matches `reference/schemas.md(x)` or `reference/schemas/index.md(x)`, and `/reference/schemas/index` matches the latter. If both files exist, the link is reported as ambiguous.
+- A file in `public/`, like `/static/img/logo.png`.
 
-```mdx
-[Grade Calculator](?csci-320-331-obrenic/grade-calculator)
-[Grade Calculator](?./csci-320-331-obrenic/grade-calculator)
-[Grade Calculator](?/csci-320-331-obrenic/grade-calculator)
-```
+A file that sits next to your docs in `src/content/docs/` (a PDF, an image) only counts once it's in `public/`, because until then its URL would 404. [Sync Docs to Public](#sync-docs-to-public) does that copying for you.
 
-**2. HTML Data Attribute** (Per-link, requires HTML syntax)
+Pages that aren't rendered from a source doc, like `src/pages/*.astro` routes, can't be checked. Link to them with one of the skips below.
 
-Use the `data-no-link-check` attribute on anchor tags:
+**When it fails:**
 
-```mdx
-<a href="csci-320-331-obrenic/grade-calculator" data-no-link-check>
-  Grade Calculator
-</a>
-```
+- `astro build` checks every page, then fails once with a list of every broken local link, grouped by source doc.
+- `astro dev` shows the broken links on the page's error screen when you open it.
 
-**3. Global Skip Patterns** (Configuration-based)
+**What it leaves alone:**
 
-Use the `skipPatterns` option to exclude links matching glob patterns:
+- Anything with a URL scheme (`https:`, `mailto:`, `tel:`, `data:`...), protocol-relative `//host` links, and fragment-only links like `#section`.
+- URLs that Astro and Vite generate, like optimized images (`/_image`, `/_astro/`).
+- Link validation only looks inside Starlight's content area (`.sl-markdown-content`), so the sidebar, pagination and head aren't checked. Link normalization applies to the whole page.
 
-```ts
-// astro.config.mjs
-export default defineConfig({
-  markdown: {
-    rehypePlugins: [
-      [
-        rehypeValidateLinks,
-        {
-          skipPatterns: [
-            "/csci-320-331-obrenic/grade-calculator", // exact match
-            "**/draft-*", // glob pattern
-          ],
-        },
-      ],
-    ],
-  },
-});
-```
+**Skipping link validation:**
+
+These only skip link validation. The link still gets normalized.
+
+1. **Question mark prefix** (per link, in Markdown). The `?` is removed from the output.
+
+   ```md
+   [Grade Calculator](?./csci-320-331-obrenic/grade-calculator)
+   ```
+
+2. **`data-no-link-check` attribute** (per link, in HTML). The attribute is removed from the output.
+
+   ```mdx
+   <a href="./csci-320-331-obrenic/grade-calculator" data-no-link-check>
+     Grade Calculator
+   </a>
+   ```
+
+3. **`skipPatterns`** (in config). Glob patterns matched against the link's root-absolute path, including any `#fragment`.
+
+   ```ts
+   astroLocalLinks({
+     validate: {
+       skipPatterns: [
+         "/csci-320-331-obrenic/grade-calculator", // exact match
+         "**/draft-*", // glob pattern
+       ],
+     },
+   });
+   ```
+
+**Limitations:**
+
+- Astro's `base` option isn't supported yet. Setting it makes the integration throw at startup.
+- A page's source doc is found from its URL, so a doc whose URL differs from its file path (a frontmatter `slug`, or a file name Starlight changes when making its URL) isn't found, and the integration throws.
+
+**Migrating from `rehypeValidateLinks` and `astroNormalizePaths`:**
+
+Both are replaced by `astroLocalLinks` and now throw when called. Remove `rehypeValidateLinks` from `markdown.rehypePlugins` and `astroNormalizePaths()` from `integrations`, then add `astroLocalLinks()`. `rehypeValidateLinks`' `skipPatterns` moves to `astroLocalLinks({ validate: { skipPatterns } })`.
 
 ### Sync Docs to Public
 

@@ -1,3 +1,5 @@
+import { STARLIGHT_CONTENT_SELECTOR } from "../utils/starlight-selectors.js";
+
 // Finds or creates a div.cannoli-actionable as the first child of starlight-toc
 // and appends el to it. Returns false if starlight-toc is not present on this page.
 function appendToActionPanel(element: HTMLElement): boolean {
@@ -75,7 +77,7 @@ type TabbedSection = {
 
 export function tabbedH2Content() {
   const contentContainer = document.querySelector<HTMLElement>(
-    ".main-pane .sl-markdown-content",
+    `.main-pane ${STARLIGHT_CONTENT_SELECTOR}`,
   );
   if (!contentContainer) return;
 
@@ -416,7 +418,9 @@ export function decorateExternalLinks(options: DecorateExternalLinksOptions) {
   }
 
   document
-    .querySelectorAll<HTMLAnchorElement>(".sl-markdown-content a[href]")
+    .querySelectorAll<HTMLAnchorElement>(
+      `${STARLIGHT_CONTENT_SELECTOR} a[href]`,
+    )
     .forEach((anchor) => {
       const href = anchor.getAttribute("href") ?? "";
       const matcher = matchIcon(href);

@@ -11,6 +11,10 @@ export {
 export { rehypeValidateLinks } from "./plugins/rehype-validate-links.js";
 export { default as remarkGfmSlug } from "./plugins/remark-gfm-slug.js";
 export { astroNormalizePaths } from "./plugins/astro-normalize-paths/index.js";
+export {
+  astroLocalLinks,
+  type AstroLocalLinksOptions,
+} from "./plugins/astro-local-links/index.js";
 export { expressiveCodeEmphasis } from "./plugins/expressive-code-emphasis/index.js";
 export {
   astroLatexCompile,

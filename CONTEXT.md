@@ -37,3 +37,21 @@ _Avoid_: debug JPG, temp output, snapshot
 **Tex compile error**:
 The failure of a `tex compile` block to produce a compiled tex diagram. In dev it is shown in the page in place of the diagram; it fails `astro build`.
 _Avoid_: LaTeX compilation error, compile failure, error block
+
+### Local links
+
+**Local link**:
+An `<a href>` or `<img src>` on a page that points to somewhere inside the site, whether written relative (`./other`) or root-absolute (`/some/page`).
+_Avoid_: internal link, path, asset path
+
+**Link validation**:
+Checking that a local link's target exists among the site's source docs and files.
+_Avoid_: link check, link verification
+
+**Link normalization**:
+Rewriting a relative local link into a root-absolute one, so it means the same thing whether or not the host adds a trailing slash to the page's URL.
+_Avoid_: path normalization, link resolution
+
+**Source doc**:
+The Markdown or MDX file a page was rendered from.
+_Avoid_: source file, content file

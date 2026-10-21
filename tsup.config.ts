@@ -9,6 +9,9 @@ export default defineConfig({
     "plugins/astro-latex-compile": "src/plugins/astro-latex-compile/index.ts",
     "plugins/astro-normalize-paths":
       "src/plugins/astro-normalize-paths/index.ts",
+    "plugins/astro-local-links": "src/plugins/astro-local-links/index.ts",
+    "plugins/astro-local-links/dev-middleware":
+      "src/plugins/astro-local-links/dev-middleware.ts",
     "plugins/astro-sync-docs-to-public":
       "src/plugins/astro-sync-docs-to-public/index.ts",
     "plugins/astro-sync-docs-to-public/page-script":
@@ -20,7 +23,7 @@ export default defineConfig({
     "plugins/expressive-code-emphasis":
       "src/plugins/expressive-code-emphasis/index.ts",
   },
-  external: ["@expressive-code/core"],
+  external: ["@expressive-code/core", "virtual:astro-local-links/settings"],
   format: ["esm"],
   dts: true,
   clean: true,
