@@ -66,15 +66,10 @@ function normalizeSlug(slug: string): string {
 }
 
 function extractMarkdownLinks(filePath: string): string[] {
-  let content: string;
-  try {
-    content = fs.readFileSync(filePath, "utf-8");
-  } catch {
-    return [];
-  }
-
   // Strip YAML frontmatter before handing to the parser
-  content = content.replace(/^---[\s\S]*?---\s*\n/, "");
+  const content = fs
+    .readFileSync(filePath, "utf-8")
+    .replace(/^---[\s\S]*?---\s*\n/, "");
 
   const tree = unified().use(remarkParse).parse(content);
   const hrefs: string[] = [];

@@ -65,7 +65,7 @@ Generates a Starlight sidebar by parsing markdown links out of `index.md` files.
 - Links to non-markdown files (images, PDFs, etc.) are silently skipped
 - Links to markdown files that do not exist on disk are silently skipped
 - External links and same-page anchor links (`#section`) are silently skipped
-- Fails `astro dev` and `astro build` at startup when a linked page's frontmatter can't be parsed
+- Fails `astro dev` and `astro build` at startup when an index or linked page can't be read or its frontmatter can't be parsed
 
 **Options:**
 
