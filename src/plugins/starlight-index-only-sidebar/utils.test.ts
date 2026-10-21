@@ -26,6 +26,26 @@ describe("getIndexMdSidebarItems", () => {
     ]);
   });
 
+  it("includes a directory whose index is an index.mdx", () => {
+    const rootDirPath = makeFileTree({
+      "guides/index.mdx": "---\ntitle: Guides\n---\n",
+      "guides/setup/index.mdx": "---\ntitle: Setup\n---\n",
+    });
+
+    expect(getIndexMdSidebarItems(join(rootDirPath, "guides"))).toEqual([
+      {
+        label: "Guides",
+        items: [
+          { label: "Overview", slug: "guides/index" },
+          {
+            label: "Setup",
+            items: [{ label: "Overview", slug: "guides/setup/index" }],
+          },
+        ],
+      },
+    ]);
+  });
+
   it("throws when the directory doesn't exist", () => {
     const rootDirPath = makeFileTree({});
     const missingDirPath = join(rootDirPath, "guides");

@@ -16,13 +16,11 @@ function isDir(dirPath: string): boolean {
 }
 
 function findIndexMd(dirPath: string): string | null {
-  const indexMd = path.join(dirPath, "index.md");
-  const indexMdx = path.join(dirPath, "index.mdx");
-  try {
-    if (fs.statSync(indexMd).isFile()) return indexMd;
-    if (fs.statSync(indexMdx).isFile()) return indexMdx;
-  } catch {
-    // continue
+  for (const name of ["index.md", "index.mdx"]) {
+    const indexFilePath = path.join(dirPath, name);
+    if (fs.statSync(indexFilePath, { throwIfNoEntry: false })?.isFile()) {
+      return indexFilePath;
+    }
   }
   return null;
 }
