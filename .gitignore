@@ -26,3 +26,6 @@ public/*
 tex-svgs/
 .external/
 test-latex-output/
+
+# Playwright MCP snapshots
+.playwright-mcp/

@@ -25,6 +25,15 @@ dist/                 # lib build output; app:build also writes here
 - New or renamed plugin: update the `tsup.config.ts` `entry`, `package.json` `exports`, `src/index.ts` and `README.md` together.
 - Only move code into `utils/` once 2+ plugins need it. Plugin-specific helpers stay in that plugin's `utils.ts`.
 
+## Verifying in a browser
+
+When a change affects rendered output or dev-mode behaviour (sidebar, LaTeX, link validation, HMR), check it in a browser. Skip this for type, build-config or test-only changes.
+
+- Use a browser MCP (e.g. Playwright) if one is available. Otherwise fall back to `curl` and the build output.
+- Dev: run `npx astro dev status` first. If a server is already running, reuse it and leave it running. Otherwise start `npm run app:dev -- --background` (port 5600) and stop it with `npx astro dev stop` before ending the turn.
+- Build-only behaviour (e.g. content-layer caching): `npm run app:build`, then `npx astro preview --port 5600 --background`. If a dev server is still on 5600, use `--port 5601` instead. Stop with `npx astro preview stop`.
+- A check means loading the affected pages, reading the accessibility snapshot, and checking the console for errors and warnings. Take screenshots only for layout or styling changes.
+
 ## Publishing
 
 1. Bump `version` in `package.json` (or `npm version <patch|minor|major>`). // LLMs shouldn't bump or publish
