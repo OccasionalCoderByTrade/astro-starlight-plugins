@@ -49,9 +49,25 @@ Checking that a local link's target exists among the site's source docs and file
 _Avoid_: link check, link verification
 
 **Link normalization**:
-Rewriting a relative local link into a root-absolute one, so it means the same thing whether or not the host adds a trailing slash to the page's URL.
+Rewriting a relative local link into a root-absolute one, so it means the same thing whether or not the host adds a trailing slash to the page's URL, and rewriting a file-form link into a page-form link.
 _Avoid_: path normalization, link resolution
 
 **Source doc**:
 The Markdown or MDX file a page was rendered from.
 _Avoid_: source file, content file
+
+**Page path**:
+The URL path Starlight serves a source doc at, made by slugifying each segment of the source doc's path.
+_Avoid_: slug, route, URL
+
+**Non-slug path**:
+A source doc path that differs from its page path, such as `reference/List Syntax.md` served at `/reference/list-syntax/`.
+_Avoid_: unslugified path, raw path
+
+**File-form link**:
+A local link to a source doc written as the source doc's path, so an editor can follow it.
+_Avoid_: file link, raw link
+
+**Page-form link**:
+A local link to a source doc written as its page path.
+_Avoid_: slug link, URL link
