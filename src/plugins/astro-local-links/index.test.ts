@@ -170,4 +170,30 @@ describe("astroLocalLinks", () => {
       `<a href="/guide/intro">x</a>`,
     );
   });
+
+  it("fails build:done before processing any page, listing every page path collision", async () => {
+    const site = makeSite({
+      "src/content/docs/guide/intro.md": "",
+      "src/content/docs/guide/Foo.md": "",
+      "src/content/docs/guide/foo.md": "",
+      "src/content/docs/reference.md": "",
+      "src/content/docs/reference/index.md": "",
+    });
+    const { integration } = await runSetup(site.rootDirPath, "build");
+    const introHtml = pageHtml(`<a href="./foo">x</a>`);
+
+    const buildDone = runBuildDone(integration, site.rootDirPath, {
+      "guide/intro/index.html": introHtml,
+    });
+
+    await expect(buildDone).rejects.toThrow(
+      /2 page path collisions[\s\S]*\/guide\/foo\/[\s\S]*guide\/Foo\.md[\s\S]*guide\/foo\.md[\s\S]*\/reference\/[\s\S]*reference\.md[\s\S]*reference\/index\.md/,
+    );
+    expect(
+      readFileSync(
+        join(site.rootDirPath, "dist/guide/intro/index.html"),
+        "utf-8",
+      ),
+    ).toBe(introHtml);
+  });
 });

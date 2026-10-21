@@ -4,10 +4,10 @@
 
 **Blocked by:** 01 (Pages from non-slug docs resolve)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Build fails before any page is processed, listing every colliding page path and all of its source docs
-- [ ] In dev, a request errors only when its own page, or one of its link targets, has a colliding page path; other pages render normally
-- [ ] The old `x.md` + `x/index.md` ambiguity check is gone, and that case is reported as a collision; its existing tests move to the dev middleware and `astro:build:done` seams
-- [ ] Tests written first, through the dev middleware seam and `astro:build:done`
-- [ ] `npm run lib:build` passes; committed to the current branch
+- [x] Build fails before any page is processed, listing every colliding page path and all of its source docs
+- [x] In dev, a request errors only when its own page, or one of its link targets, has a colliding page path; other pages render normally
+- [x] The old `x.md` + `x/index.md` ambiguity check is gone, and that case is reported as a collision; its existing tests move to the dev middleware and `astro:build:done` seams
+- [x] Tests written first, through the dev middleware seam and `astro:build:done`
+- [x] `npm run lib:build` passes; committed to the current branch

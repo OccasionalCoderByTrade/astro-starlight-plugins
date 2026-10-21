@@ -60,6 +60,10 @@ _Avoid_: source file, content file
 The URL path Starlight serves a source doc at, made by slugifying each segment of the source doc's path.
 _Avoid_: slug, route, URL
 
+**Page path collision**:
+A page path that more than one source doc has, such as `Foo.md` and `foo.md`, or `x.md` and `x/index.md`. It fails the build, and in dev the pages it affects.
+_Avoid_: ambiguous source docs, duplicate page
+
 **Non-slug path**:
 A source doc path that differs from its page path, such as `reference/List Syntax.md` served at `/reference/list-syntax/`.
 _Avoid_: unslugified path, raw path

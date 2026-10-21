@@ -292,4 +292,69 @@ describe("dev middleware", () => {
       pageHtml(""),
     );
   });
+
+  it("throws on a page whose page path several source docs share, naming them all", async () => {
+    const files = {
+      "src/content/docs/guide/Foo.md": "",
+      "src/content/docs/guide/foo.md": "",
+      "src/content/docs/guide/a b.md": "",
+      "src/content/docs/guide/a-b.md": "",
+      "src/content/docs/reference.md": "",
+      "src/content/docs/reference/index.md": "",
+    };
+    const body = pageHtml("");
+
+    await expect(request("/guide/foo/", body, { files })).rejects.toThrow(
+      /\/guide\/foo\/[\s\S]*guide\/Foo\.md[\s\S]*guide\/foo\.md/,
+    );
+    await expect(request("/guide/a-b/", body, { files })).rejects.toThrow(
+      /\/guide\/a-b\/[\s\S]*guide\/a b\.md[\s\S]*guide\/a-b\.md/,
+    );
+    await expect(request("/reference/", body, { files })).rejects.toThrow(
+      /\/reference\/[\s\S]*reference\.md[\s\S]*reference\/index\.md/,
+    );
+  });
+
+  it("throws on a page linking to a colliding page path, but renders the others", async () => {
+    const files = {
+      "src/content/docs/guide/intro.md": "",
+      "src/content/docs/guide/next.md": "",
+      "src/content/docs/reference.md": "",
+      "src/content/docs/reference/index.md": "",
+    };
+
+    await expect(
+      request("/guide/intro/", pageHtml(`<a href="/reference/">x</a>`), {
+        files,
+      }),
+    ).rejects.toThrow(
+      /\/reference\/[\s\S]*reference\.md[\s\S]*reference\/index\.md/,
+    );
+    expect(
+      await request("/guide/next/", pageHtml(`<a href="./intro">x</a>`), {
+        files,
+      }),
+    ).toContain(`<a href="/guide/intro">x</a>`);
+  });
+
+  it("throws on a link to a colliding page path even when link validation skips it", async () => {
+    const files = {
+      "src/content/docs/guide/intro.md": "",
+      "src/content/docs/reference.md": "",
+      "src/content/docs/reference/index.md": "",
+    };
+    const collisionPattern = /\/reference\/[\s\S]*reference\/index\.md/;
+
+    await expect(
+      request("/guide/intro/", pageHtml(`<a href="?/reference/">x</a>`), {
+        files,
+      }),
+    ).rejects.toThrow(collisionPattern);
+    await expect(
+      request("/guide/intro/", pageHtml(`<a href="/reference/">x</a>`), {
+        files,
+        settings: { validate: false },
+      }),
+    ).rejects.toThrow(collisionPattern);
+  });
 });

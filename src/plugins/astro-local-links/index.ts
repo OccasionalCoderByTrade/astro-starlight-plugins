@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import {
   buildSourceDocIndex,
   formatBrokenLinksError,
+  formatPagePathCollisionsError,
   processDocPage,
   STARLIGHT_DOCS_ROUTE,
   SETTINGS_MODULE_ID,
@@ -99,6 +100,10 @@ export function astroLocalLinks(
         if (!settings.validate && !settings.normalize) return;
 
         const sourceDocIndex = buildSourceDocIndex(settings.site.docsDirPath);
+        const pagePathCollisionsError =
+          formatPagePathCollisionsError(sourceDocIndex);
+        if (pagePathCollisionsError) throw new Error(pagePathCollisionsError);
+
         const pagesBrokenLinks: TPageBrokenLinks[] = [];
         const htmlFileUrls = assets.get(STARLIGHT_DOCS_ROUTE) ?? [];
         await Promise.all(

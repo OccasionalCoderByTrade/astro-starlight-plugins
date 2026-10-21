@@ -331,7 +331,7 @@ import { astroLocalLinks } from "starlight-cannoli-plugins/astro-local-links";
 
 **What counts as an existing target:**
 
-- A source doc. `/reference/schemas` matches `reference/schemas.md(x)` or `reference/schemas/index.md(x)`, and `/reference/schemas/index` matches the latter (link normalization rewrites it to `/reference/schemas`, since that's where the page is served). If both files exist, the link is reported as ambiguous.
+- A source doc. `/reference/schemas` matches `reference/schemas.md(x)` or `reference/schemas/index.md(x)`, and `/reference/schemas/index` matches the latter (link normalization rewrites it to `/reference/schemas`, since that's where the page is served).
 - A source doc by its file path, URL-encoded, when its filename isn't a slug: `/reference/List%20Syntax` matches `reference/List Syntax.md`, as does its page path `/reference/list-syntax`. A link that only matches once slugified, like `/reference/LIST-syntax`, is broken. With link normalization off, a file-path link is broken too, since nothing rewrites it to the page path. A skip pattern skips it if it matches either path.
 - A file in `public/`, like `/static/img/logo.png`.
 
@@ -343,6 +343,7 @@ Pages that aren't rendered from a source doc, like `src/pages/*.astro` routes, c
 
 - `astro build` checks every page, then fails once with a list of every broken local link, grouped by source doc.
 - `astro dev` shows the broken links on the page's error screen when you open it.
+- Two source docs with the same page path, like `Foo.md` and `foo.md`, `a b.md` and `a-b.md`, or `x.md` and `x/index.md`, are a page path collision. `astro build` fails before checking any page, listing every collision and its files, so you know which to rename. `astro dev` only errors on the colliding page and pages that link to it.
 
 **What it leaves alone:**
 

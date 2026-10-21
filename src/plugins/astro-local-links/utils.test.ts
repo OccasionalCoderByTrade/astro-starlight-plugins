@@ -108,15 +108,6 @@ describe("processPage link validation", () => {
     expect(brokenHrefs(files, hrefs)).toEqual([]);
   });
 
-  it("reports a link that matches both x.md and x/index.md", () => {
-    const files = {
-      "src/content/docs/reference.md": "",
-      "src/content/docs/reference/index.md": "",
-    };
-
-    expect(brokenHrefs(files, ["/reference"])).toEqual(["/reference"]);
-  });
-
   it("accepts files in public/ and reports doc files that never reached it", () => {
     const files = {
       "public/static/logo.png": "",
@@ -272,18 +263,6 @@ describe("resolveSourceDoc", () => {
     );
     expect(resolveSourceDoc("/notes/my-notes/", sourceDocIndex)).toBe(
       join(site.docsDirPath, "notes/My Notes.md"),
-    );
-  });
-
-  it("throws when a page matches both x.md and x/index.md", () => {
-    const site = makeSite({
-      "src/content/docs/reference.md": "",
-      "src/content/docs/reference/index.md": "",
-    });
-    const sourceDocIndex = buildSourceDocIndex(site.docsDirPath);
-
-    expect(() => resolveSourceDoc("/reference/", sourceDocIndex)).toThrow(
-      /Ambiguous source docs for \/reference\/.*Remove one/s,
     );
   });
 

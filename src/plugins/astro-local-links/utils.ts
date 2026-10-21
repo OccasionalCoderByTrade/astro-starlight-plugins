@@ -31,7 +31,7 @@ export type TLocalLinksSite = {
 
 /**
  * Page path (`guide/intro`, or `` for the home page) → the source docs Starlight serves
- * there. More than one means the page path is ambiguous.
+ * there, sorted. More than one is a page path collision.
  */
 export type TSourceDocIndex = Map<string, string[]>;
 
@@ -84,7 +84,8 @@ const NO_LINK_CHECK_ATTRIBUTE = "data-no-link-check";
 
 /**
  * Resolves, validates and normalizes every local link in one page's final HTML.
- * Returns the rewritten HTML and every broken link found.
+ * Returns the rewritten HTML and every broken link found. Throws on a link to a page path
+ * collision.
  */
 export function processPage(html: string, options: TProcessPageOptions) {
   const document = parse(html);
@@ -132,6 +133,13 @@ export function processPage(html: string, options: TProcessPageOptions) {
       : posix.normalize(pathPart);
     const docLinkTarget =
       sitePath === null ? null : findDocLinkTarget(sitePath, options);
+    // a collision is an error whether or not link validation looks at this link
+    if (docLinkTarget && docLinkTarget.sourceDocFilePaths.length > 1) {
+      throw createPagePathCollisionError(
+        docLinkTarget.pagePath,
+        docLinkTarget.sourceDocFilePaths,
+      );
+    }
     // what a file-form link is rewritten to, keeping the author's trailing slash or lack of one
     const pageSitePath = docLinkTarget?.isFileForm
       ? toPageSitePath(docLinkTarget.pagePath, pathPart.endsWith("/"))
@@ -319,9 +327,6 @@ function findMissingTargetReason(
   if (docLinkTarget === null) {
     return `no source doc or public file at ${sitePath}`;
   }
-  if (docLinkTarget.sourceDocFilePaths.length > 1) {
-    return `ambiguous, matches ${docLinkTarget.sourceDocFilePaths.join(" and ")}`;
-  }
   if (docLinkTarget.isFileForm && !normalize) {
     const pageSitePath = toPageSitePath(docLinkTarget.pagePath, true);
     return (
@@ -347,7 +352,57 @@ export function buildSourceDocIndex(docsDirPath: string): TSourceDocIndex {
     sourceDocFilePaths.push(sourceDocFilePath);
     sourceDocIndex.set(pagePath, sourceDocFilePaths);
   }
+  for (const sourceDocFilePaths of sourceDocIndex.values()) {
+    sourceDocFilePaths.sort();
+  }
   return sourceDocIndex;
+}
+
+/**
+ * One error message listing every page path more than one source doc shares, with their
+ * files, or null if there are none.
+ */
+export function formatPagePathCollisionsError(
+  sourceDocIndex: TSourceDocIndex,
+): string | null {
+  const collisions = [...sourceDocIndex]
+    .filter(([, sourceDocFilePaths]) => sourceDocFilePaths.length > 1)
+    .sort(([firstPagePath], [secondPagePath]) =>
+      firstPagePath.localeCompare(secondPagePath),
+    );
+  if (collisions.length === 0) return null;
+  return (
+    `[astro-local-links] ${collisions.length} page path collision` +
+    `${collisions.length === 1 ? "" : "s"}:\n` +
+    collisions
+      .map(([pagePath, sourceDocFilePaths]) =>
+        formatPagePathCollision(pagePath, sourceDocFilePaths),
+      )
+      .join("\n")
+  );
+}
+
+/** The error for one page path several source docs share. */
+function createPagePathCollisionError(
+  pagePath: string,
+  sourceDocFilePaths: string[],
+): Error {
+  return new Error(
+    `[astro-local-links] Page path collision: ` +
+      formatPagePathCollision(pagePath, sourceDocFilePaths),
+  );
+}
+
+/** Names a page path several source docs share, and each of them. */
+function formatPagePathCollision(
+  pagePath: string,
+  sourceDocFilePaths: string[],
+): string {
+  return (
+    `${sourceDocFilePaths.length} source docs share the page path ` +
+    `${toPageSitePath(pagePath, true)}. Rename all but one of them:\n` +
+    sourceDocFilePaths.map((filePath) => `    - ${filePath}`).join("\n")
+  );
 }
 
 function collectSourceDocFilePaths(dirPath: string): string[] {
@@ -406,7 +461,7 @@ function isFile(filePath: string): boolean {
 
 /**
  * The source doc a page at URL `pathname` was rendered from. Throws when there is none, or
- * when both `x.md` and `x/index.md` exist, since Astro renders both to the same page.
+ * when its page path is a collision.
  */
 export function resolveSourceDoc(
   pathname: string,
@@ -422,11 +477,7 @@ export function resolveSourceDoc(
         `their path with each segment slugified, and none is served at /${pagePath}.`,
     );
   }
-  throw new Error(
-    `[astro-local-links] Ambiguous source docs for ${pathname}: ` +
-      `${sourceDocFilePaths.join(", ")}. Astro renders a folder's index.md and a ` +
-      `same-named .md one level up to the same page. Remove one of them.`,
-  );
+  throw createPagePathCollisionError(pagePath, sourceDocFilePaths);
 }
 
 /** One error message listing every broken local link, grouped by source doc. */
