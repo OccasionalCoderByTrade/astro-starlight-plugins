@@ -1,5 +1,6 @@
 import type { MiddlewareHandler } from "astro";
 import {
+  buildSourceDocIndex,
   formatBrokenLinksError,
   processDocPage,
   STARLIGHT_DOCS_ROUTE,
@@ -8,7 +9,8 @@ import {
 
 /**
  * The dev middleware: runs link validation and link normalization on each Starlight doc
- * page's rendered HTML. Broken links throw, so dev shows them on an error page.
+ * page's rendered HTML. Broken links throw, so dev shows them on an error page. Source docs
+ * are indexed on each request, so ones added or renamed since the last are picked up.
  */
 export function createOnRequest(
   settings: TLocalLinksSettings,
@@ -25,6 +27,7 @@ export function createOnRequest(
       context.url.pathname,
       await response.text(),
       settings,
+      buildSourceDocIndex(settings.site.docsDirPath),
     );
     if (processedPage.pageBrokenLinks) {
       throw new Error(formatBrokenLinksError([processedPage.pageBrokenLinks]));

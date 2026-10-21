@@ -4,14 +4,14 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Page paths: github-slugger `slug()` on each path segment, extension removed, trailing `/index` dropped (`Index.md` → its folder's page path, `v1.2-notes.md` → `/v12-notes/`)
-- [ ] The index covers every docs extension Starlight loads (`.md`, `.mdx`, `.markdown`, `.mdown`, `.mkdn`, `.mkd`, `.mdwn`), excludes `_`-prefixed files, and includes drafts
-- [ ] Page resolution and link targets both use the index; links to files in `public/` are checked as before
-- [ ] Build constructs the index once; the dev middleware rebuilds it per request, so a source doc added between two requests is picked up
-- [ ] The existing `x.md` + `x/index.md` ambiguity error still fires (it's reworked into a proper collision in 03)
-- [ ] `github-slugger@^2.0.0` is a declared dependency; a test checks that the github-slugger Astro resolves has the same major version
-- [ ] Tests written first, through the dev middleware seam and `astro:build:done`; existing tests still pass
-- [ ] Demo doc `reference/List Syntax cOp&&Y.md` added, with a page-form link to it from another reference doc; checked in a browser (dev and build preview), with no console errors
-- [ ] `npm run lib:build` passes; committed to the current branch
+- [x] Page paths: github-slugger `slug()` on each path segment, extension removed, trailing `/index` dropped (`Index.md` → its folder's page path, `v1.2-notes.md` → `/v12-notes/`)
+- [x] The index covers every docs extension Starlight loads (`.md`, `.mdx`, `.markdown`, `.mdown`, `.mkdn`, `.mkd`, `.mdwn`), excludes `_`-prefixed files, and includes drafts
+- [x] Page resolution and link targets both use the index; links to files in `public/` are checked as before
+- [x] Build constructs the index once; the dev middleware rebuilds it per request, so a source doc added between two requests is picked up
+- [x] The existing `x.md` + `x/index.md` ambiguity error still fires (it's reworked into a proper collision in 03)
+- [x] `github-slugger@^2.0.0` is a declared dependency; a test checks that the github-slugger Astro resolves has the same major version
+- [x] Tests written first, through the dev middleware seam and `astro:build:done`; existing tests still pass
+- [x] Demo doc `reference/List Syntax cOp&&Y.md` added, with a page-form link to it from another reference doc; checked in a browser (dev and build preview), with no console errors
+- [x] `npm run lib:build` passes; committed to the current branch

@@ -1,5 +1,14 @@
-import { existsSync, statSync } from "node:fs";
-import { dirname, join, posix, relative, resolve, sep } from "node:path";
+import { existsSync, readdirSync, statSync } from "node:fs";
+import {
+  dirname,
+  extname,
+  join,
+  posix,
+  relative,
+  resolve,
+  sep,
+} from "node:path";
+import { slug } from "github-slugger";
 import { minimatch } from "minimatch";
 import {
   defaultTreeAdapter,
@@ -20,8 +29,15 @@ export type TLocalLinksSite = {
   generatedPathPrefixes: string[];
 };
 
+/**
+ * Page path (`guide/intro`, or `` for the home page) → the source docs Starlight serves
+ * there. More than one means the page path is ambiguous.
+ */
+export type TSourceDocIndex = Map<string, string[]>;
+
 export type TProcessPageOptions = {
   sourceDocFilePath: string;
+  sourceDocIndex: TSourceDocIndex;
   site: TLocalLinksSite;
   validate: false | { skipPatterns: string[] };
   normalize: boolean;
@@ -40,7 +56,7 @@ export type TPageBrokenLinks = {
 /** What the integration resolved from its options and Astro's config. */
 export type TLocalLinksSettings = Omit<
   TProcessPageOptions,
-  "sourceDocFilePath"
+  "sourceDocFilePath" | "sourceDocIndex"
 >;
 
 /** The route Starlight renders every source doc through. */
@@ -48,6 +64,17 @@ export const STARLIGHT_DOCS_ROUTE = "/[...slug]";
 
 /** Virtual module the dev middleware reads the integration's settings from. */
 export const SETTINGS_MODULE_ID = "virtual:astro-local-links/settings";
+
+/** The extensions Starlight's docs loader reads source docs from. */
+const SOURCE_DOC_EXTENSIONS = [
+  ".md",
+  ".mdx",
+  ".markdown",
+  ".mdown",
+  ".mkdn",
+  ".mkd",
+  ".mdwn",
+];
 
 /** The attribute that holds the link value, per link-bearing element. */
 const LINK_ATTRIBUTE_BY_TAG_NAME = { a: "href", img: "src" } as const;
@@ -117,7 +144,7 @@ export function processPage(html: string, options: TProcessPageOptions) {
         ? null
         : sitePath === null
           ? "points outside the docs dir"
-          : findMissingTargetReason(sitePath, options.site);
+          : findMissingTargetReason(sitePath, options);
       if (reason) brokenLinks.push({ href: writtenHref, reason });
     }
 
@@ -221,7 +248,7 @@ function toSitePath(filePath: string, docsDirPath: string): string | null {
 /** Why nothing on the site is served at `sitePath`, or null if something is. */
 function findMissingTargetReason(
   sitePath: string,
-  site: TLocalLinksSite,
+  { site, sourceDocIndex }: TProcessPageOptions,
 ): string | null {
   const docsRelativePagePath = toDocsRelativePagePath(sitePath);
   if (docsRelativePagePath === null)
@@ -229,10 +256,11 @@ function findMissingTargetReason(
   if (isFile(join(site.publicDirPath, docsRelativePagePath))) return null;
 
   if (!/\.[a-z0-9]+$/i.test(docsRelativePagePath)) {
-    const sourceDocFilePaths = findSourceDocFilePaths(
-      docsRelativePagePath,
-      site.docsDirPath,
-    );
+    // the literal-path fallback keeps file-form links passing until they're validated
+    // and rewritten as their own case
+    const sourceDocFilePaths =
+      sourceDocIndex.get(docsRelativePagePath) ??
+      findSourceDocFilePaths(docsRelativePagePath, site.docsDirPath);
     if (sourceDocFilePaths.length === 1) return null;
     if (sourceDocFilePaths.length > 1) {
       return `ambiguous, matches ${sourceDocFilePaths.join(" and ")}`;
@@ -262,6 +290,60 @@ export function findSourceDocFilePaths(
   return candidateFilePaths.filter(isFile);
 }
 
+/**
+ * Every source doc under `docsDirPath`, by the page path Astro gives it by default: each
+ * path segment slugified, extension dropped, with a trailing `index` dropped. Like
+ * Starlight's docs loader, it skips `_`-prefixed files and dotfiles.
+ */
+export function buildSourceDocIndex(docsDirPath: string): TSourceDocIndex {
+  const sourceDocIndex: TSourceDocIndex = new Map();
+  for (const sourceDocFilePath of collectSourceDocFilePaths(docsDirPath)) {
+    const pagePath = toSourceDocPagePath(
+      relative(docsDirPath, sourceDocFilePath),
+    );
+    const sourceDocFilePaths = sourceDocIndex.get(pagePath) ?? [];
+    sourceDocFilePaths.push(sourceDocFilePath);
+    sourceDocIndex.set(pagePath, sourceDocFilePaths);
+  }
+  return sourceDocIndex;
+}
+
+function collectSourceDocFilePaths(dirPath: string): string[] {
+  if (!existsSync(dirPath)) return [];
+  return readdirSync(dirPath).flatMap((entryName) => {
+    if (entryName.startsWith(".")) return [];
+    const entryFileOrDirPath = join(dirPath, entryName);
+    // statSync follows symlinks, as Starlight's docs loader does; a broken one is skipped
+    const entryStats = statSync(entryFileOrDirPath, { throwIfNoEntry: false });
+    if (!entryStats) return [];
+    if (entryStats.isDirectory()) {
+      return collectSourceDocFilePaths(entryFileOrDirPath);
+    }
+    // the extension match is case-sensitive, like the loader's glob
+    const isSourceDoc =
+      entryStats.isFile() &&
+      !entryName.startsWith("_") &&
+      SOURCE_DOC_EXTENSIONS.includes(extname(entryName));
+    return isSourceDoc ? [entryFileOrDirPath] : [];
+  });
+}
+
+/**
+ * `My Guide/List Syntax.md` → `my-guide/list-syntax`, `reference/Index.md` → `reference`.
+ * Unlike Astro's ID, the home page's `index.md` → ``, to match the decoded pathname `/`.
+ */
+function toSourceDocPagePath(docsRelativeFilePath: string): string {
+  const extensionlessFilePath = docsRelativeFilePath.slice(
+    0,
+    -extname(docsRelativeFilePath).length,
+  );
+  return extensionlessFilePath
+    .split(sep)
+    .map((segment) => slug(segment))
+    .join("/")
+    .replace(/(^|\/)index$/, "");
+}
+
 /** `/guide/my%20notes/` → `guide/my notes`; null if the URL encoding is malformed. */
 function toDocsRelativePagePath(sitePath: string): string | null {
   try {
@@ -281,19 +363,16 @@ function isFile(filePath: string): boolean {
  */
 export function resolveSourceDoc(
   pathname: string,
-  docsDirPath: string,
+  sourceDocIndex: TSourceDocIndex,
 ): string {
-  const docsRelativePagePath = toDocsRelativePagePath(pathname) ?? pathname;
-  const sourceDocFilePaths = findSourceDocFilePaths(
-    docsRelativePagePath,
-    docsDirPath,
-  );
+  const pagePath = toDocsRelativePagePath(pathname) ?? pathname;
+  const sourceDocFilePaths = sourceDocIndex.get(pagePath) ?? [];
   if (sourceDocFilePaths.length === 1) return sourceDocFilePaths[0];
 
   if (sourceDocFilePaths.length === 0) {
     throw new Error(
-      `[astro-local-links] No source doc for ${pathname}. Expected one of ` +
-        `${docsRelativePagePath || "."}/index.md(x) or ${docsRelativePagePath}.md(x) under ${docsDirPath}.`,
+      `[astro-local-links] No source doc for ${pathname}. Source docs are served at ` +
+        `their path with each segment slugified, and none is served at /${pagePath}.`,
     );
   }
   throw new Error(
@@ -335,12 +414,14 @@ export function processDocPage(
   pathname: string,
   html: string,
   settings: TLocalLinksSettings,
+  sourceDocIndex: TSourceDocIndex,
 ) {
-  const sourceDocFilePath = resolveSourceDoc(
-    pathname,
-    settings.site.docsDirPath,
-  );
-  const processedPage = processPage(html, { sourceDocFilePath, ...settings });
+  const sourceDocFilePath = resolveSourceDoc(pathname, sourceDocIndex);
+  const processedPage = processPage(html, {
+    sourceDocFilePath,
+    sourceDocIndex,
+    ...settings,
+  });
   const pageBrokenLinks: TPageBrokenLinks | null =
     processedPage.brokenLinks.length > 0
       ? { sourceDocFilePath, brokenLinks: processedPage.brokenLinks }

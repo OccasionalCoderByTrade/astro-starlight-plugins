@@ -3,6 +3,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import { relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
+  buildSourceDocIndex,
   formatBrokenLinksError,
   processDocPage,
   STARLIGHT_DOCS_ROUTE,
@@ -93,6 +94,7 @@ export function astroLocalLinks(
       "astro:build:done": async ({ dir, assets }) => {
         if (!settings.validate && !settings.normalize) return;
 
+        const sourceDocIndex = buildSourceDocIndex(settings.site.docsDirPath);
         const pagesBrokenLinks: TPageBrokenLinks[] = [];
         const htmlFileUrls = assets.get(STARLIGHT_DOCS_ROUTE) ?? [];
         await Promise.all(
@@ -103,6 +105,7 @@ export function astroLocalLinks(
               toPagePathname(relative(fileURLToPath(dir), htmlFilePath)),
               html,
               settings,
+              sourceDocIndex,
             );
 
             if (processedPage.html !== html) {

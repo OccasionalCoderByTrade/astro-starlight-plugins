@@ -149,4 +149,25 @@ describe("astroLocalLinks", () => {
       `<a href="./missing">x</a>`,
     );
   });
+
+  it("finds the source doc of a page from a non-slug path on build:done", async () => {
+    const site = makeSite({
+      "src/content/docs/reference/List Syntax cOp&&Y.md": "",
+      "src/content/docs/guide/intro.md": "",
+    });
+    const { integration } = await runSetup(site.rootDirPath, "build");
+
+    const readDist = await runBuildDone(integration, site.rootDirPath, {
+      "reference/list-syntax-copy/index.html": pageHtml(
+        `<a href="../guide/intro">x</a>`,
+      ),
+      "guide/intro/index.html": pageHtml(
+        `<a href="/reference/list-syntax-copy/">y</a>`,
+      ),
+    });
+
+    expect(readDist("reference/list-syntax-copy/index.html")).toContain(
+      `<a href="/guide/intro">x</a>`,
+    );
+  });
 });

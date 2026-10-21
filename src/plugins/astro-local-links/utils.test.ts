@@ -1,7 +1,8 @@
+import { createRequire } from "node:module";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { makeSite, pageHtml } from "./test-site.js";
-import { processPage, resolveSourceDoc } from "./utils.js";
+import { buildSourceDocIndex, processPage, resolveSourceDoc } from "./utils.js";
 
 const VALIDATE_AND_NORMALIZE = {
   validate: { skipPatterns: [] },
@@ -17,6 +18,7 @@ describe("processPage", () => {
 
     const result = processPage(pageHtml(`<a href="./ref/page#usage">x</a>`), {
       sourceDocFilePath: join(site.docsDirPath, "guide/intro.md"),
+      sourceDocIndex: buildSourceDocIndex(site.docsDirPath),
       site,
       ...VALIDATE_AND_NORMALIZE,
     });
@@ -39,6 +41,7 @@ describe("processPage", () => {
 
     const result = processPage(pageHtml(content), {
       sourceDocFilePath: join(site.docsDirPath, "guide/intro.md"),
+      sourceDocIndex: buildSourceDocIndex(site.docsDirPath),
       site,
       ...VALIDATE_AND_NORMALIZE,
     });
@@ -56,6 +59,7 @@ describe("processPage", () => {
 
     const result = processPage(html, {
       sourceDocFilePath: join(site.docsDirPath, "guide/intro.md"),
+      sourceDocIndex: buildSourceDocIndex(site.docsDirPath),
       site,
       ...VALIDATE_AND_NORMALIZE,
     });
@@ -71,6 +75,7 @@ describe("processPage link validation", () => {
     const content = hrefs.map((href) => `<a href="${href}">x</a>`).join("");
     const result = processPage(pageHtml(content), {
       sourceDocFilePath: join(site.docsDirPath, "guide/intro.md"),
+      sourceDocIndex: buildSourceDocIndex(site.docsDirPath),
       site,
       ...VALIDATE_AND_NORMALIZE,
     });
@@ -135,6 +140,7 @@ describe("processPage link validation", () => {
       pageHtml(`<a href="./missing">x</a>`, `<a href="./chrome-only">y</a>`),
       {
         sourceDocFilePath: join(site.docsDirPath, "guide/intro.md"),
+        sourceDocIndex: buildSourceDocIndex(site.docsDirPath),
         site,
         ...VALIDATE_AND_NORMALIZE,
       },
@@ -153,6 +159,7 @@ describe("processPage link validation", () => {
       pageHtml(`<template><a href="./missing">x</a></template>`),
       {
         sourceDocFilePath: join(site.docsDirPath, "guide/intro.md"),
+        sourceDocIndex: buildSourceDocIndex(site.docsDirPath),
         site,
         ...VALIDATE_AND_NORMALIZE,
       },
@@ -167,6 +174,7 @@ describe("processPage link validation", () => {
 
     const result = processPage(pageHtml(`<img src="./assets/gone.png">`), {
       sourceDocFilePath: join(site.docsDirPath, "guide/intro.md"),
+      sourceDocIndex: buildSourceDocIndex(site.docsDirPath),
       site,
       ...VALIDATE_AND_NORMALIZE,
     });
@@ -187,6 +195,7 @@ describe("processPage link validation", () => {
 
     const result = processPage(pageHtml(content), {
       sourceDocFilePath: join(site.docsDirPath, "guide/intro.md"),
+      sourceDocIndex: buildSourceDocIndex(site.docsDirPath),
       site,
       validate: {
         skipPatterns: ["/csci-320/grade-calculator", "**/draft-*"],
@@ -206,6 +215,7 @@ describe("processPage link validation", () => {
 
     const result = processPage(pageHtml(`<a href="?./draft">a</a>`), {
       sourceDocFilePath: join(site.docsDirPath, "guide/intro.md"),
+      sourceDocIndex: buildSourceDocIndex(site.docsDirPath),
       site,
       validate: false,
       normalize: false,
@@ -246,20 +256,21 @@ describe("resolveSourceDoc", () => {
       "src/content/docs/reference/index.md": "",
       "src/content/docs/notes/My Notes.md": "",
     });
+    const sourceDocIndex = buildSourceDocIndex(site.docsDirPath);
 
-    expect(resolveSourceDoc("/", site.docsDirPath)).toBe(
+    expect(resolveSourceDoc("/", sourceDocIndex)).toBe(
       join(site.docsDirPath, "index.mdx"),
     );
-    expect(resolveSourceDoc("/guide/intro/", site.docsDirPath)).toBe(
+    expect(resolveSourceDoc("/guide/intro/", sourceDocIndex)).toBe(
       join(site.docsDirPath, "guide/intro.md"),
     );
-    expect(resolveSourceDoc("/guide/intro", site.docsDirPath)).toBe(
+    expect(resolveSourceDoc("/guide/intro", sourceDocIndex)).toBe(
       join(site.docsDirPath, "guide/intro.md"),
     );
-    expect(resolveSourceDoc("/reference/", site.docsDirPath)).toBe(
+    expect(resolveSourceDoc("/reference/", sourceDocIndex)).toBe(
       join(site.docsDirPath, "reference/index.md"),
     );
-    expect(resolveSourceDoc("/notes/My%20Notes/", site.docsDirPath)).toBe(
+    expect(resolveSourceDoc("/notes/my-notes/", sourceDocIndex)).toBe(
       join(site.docsDirPath, "notes/My Notes.md"),
     );
   });
@@ -269,17 +280,31 @@ describe("resolveSourceDoc", () => {
       "src/content/docs/reference.md": "",
       "src/content/docs/reference/index.md": "",
     });
+    const sourceDocIndex = buildSourceDocIndex(site.docsDirPath);
 
-    expect(() => resolveSourceDoc("/reference/", site.docsDirPath)).toThrow(
+    expect(() => resolveSourceDoc("/reference/", sourceDocIndex)).toThrow(
       /Ambiguous source docs for \/reference\/.*Remove one/s,
     );
   });
 
   it("throws when a page has no source doc", () => {
-    const site = makeSite({});
+    const sourceDocIndex = buildSourceDocIndex(makeSite({}).docsDirPath);
 
-    expect(() => resolveSourceDoc("/gone/", site.docsDirPath)).toThrow(
+    expect(() => resolveSourceDoc("/gone/", sourceDocIndex)).toThrow(
       /No source doc for \/gone\//,
+    );
+  });
+});
+
+describe("buildSourceDocIndex", () => {
+  it("slugifies with the same github-slugger major version as Astro", () => {
+    const require = createRequire(import.meta.url);
+    const astroRequire = createRequire(require.resolve("astro/package.json"));
+    const majorVersion = (packageJson: { version: string }) =>
+      packageJson.version.split(".")[0];
+
+    expect(majorVersion(require("github-slugger/package.json"))).toBe(
+      majorVersion(astroRequire("github-slugger/package.json")),
     );
   });
 });
