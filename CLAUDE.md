@@ -1,7 +1,6 @@
 ## Conventions
 
-- Never run `npm publish` on my behalf. Don't even ask me if you can run it. I will run it myself when I am ready.
-- Never run git commands that change repo state (commit, push, reset, checkout, branch, etc.) without asking first. Read-only git commands (status, log, diff, show) are fine to run freely.
+- Never run `npm publish` or bump a version to the npm package this project implements. I will run those myself when I am ready.
 - You should not merge any changes to main. Changes are made in `dev`, or otherwise in separate local feature branches if needed to then be merged to dev on completion.
 - Run `npm run lib:build` as a sanity check before committing if the code has changed since the previous commit.
 
