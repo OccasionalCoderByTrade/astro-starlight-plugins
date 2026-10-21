@@ -130,10 +130,8 @@ export function processPage(html: string, options: TProcessPageOptions) {
   return { html: hasChanged ? serialize(document) : html, brokenLinks };
 }
 
-/*
- * Narrow stand-ins for the DOM methods `processPage` needs, over parse5's plain-object tree.
- * They take tag and class names, not selectors, so it's clear they don't match CSS.
- */
+// Narrow stand-ins for the DOM methods `processPage` needs, over parse5's plain-object tree.
+// They take tag and class names, not selectors, so it's clear they don't match CSS.
 
 /**
  * Every element under `root` whose tag is one of `tagNames`, in document order, like
@@ -167,7 +165,10 @@ function closestWithClass(
 /** Index of the attribute whose qualified name (`xlink:href`, not `href`) is `name`. */
 function findAttributeIndex(element: TElement, name: string): number {
   return element.attrs.findIndex(
-    (attr) => (attr.prefix ? `${attr.prefix}:${attr.name}` : attr.name) === name,
+    (attribute) =>
+      (attribute.prefix
+        ? `${attribute.prefix}:${attribute.name}`
+        : attribute.name) === name,
   );
 }
 
@@ -180,10 +181,9 @@ function hasAttribute(element: TElement, name: string): boolean {
   return findAttributeIndex(element, name) !== -1;
 }
 
+/** Replaces the value of an attribute `element` already has. */
 function setAttribute(element: TElement, name: string, value: string) {
-  const attributeIndex = findAttributeIndex(element, name);
-  if (attributeIndex === -1) element.attrs.push({ name, value });
-  else element.attrs[attributeIndex].value = value;
+  element.attrs[findAttributeIndex(element, name)].value = value;
 }
 
 function removeAttribute(element: TElement, name: string) {

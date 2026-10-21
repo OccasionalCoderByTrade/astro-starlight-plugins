@@ -21,7 +21,7 @@
   ```ts
   const items = names.map(name => html`<li>${name}</li>`);
  
-  const mylistStr = html`
+  const itemListHtml = html`
     <ul>
       $${items}
     </ul>

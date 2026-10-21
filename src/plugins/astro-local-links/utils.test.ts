@@ -146,7 +146,7 @@ describe("processPage link validation", () => {
     expect(result.html).toContain(`<a href="/guide/chrome-only">y</a>`);
   });
 
-  it("leaves links inside a <template> alone, since they aren't on the page", () => {
+  it("skips link validation and normalization for local links inside a <template>", () => {
     const site = makeSite({ "src/content/docs/guide/intro.md": "" });
 
     const result = processPage(
