@@ -301,7 +301,7 @@ export default defineConfig({
 An Astro integration for the local links in your docs, meaning every `<a href>` and `<img src>` that points somewhere inside the site. It does two things, each of which you can turn off:
 
 - **Link validation** fails on a local link in a page's content whose target doesn't exist.
-- **Link normalization** rewrites relative links (`./other`, `../ref/page`) to root-absolute ones (`/guide/other`). A relative link in the HTML is resolved against the page's URL, so it can point somewhere different depending on whether your host adds a trailing slash. After normalization, a link means the same thing everywhere, and it matches what your editor opens on ctrl+click.
+- **Link normalization** rewrites relative links (`./other`, `../ref/page`) to root-absolute ones (`/guide/other`). A relative link in the HTML is resolved against the page's URL, so it can point somewhere different depending on whether your host adds a trailing slash. After normalization, a link means the same thing everywhere, and it matches what your editor opens on ctrl+click. It also rewrites a link to a source doc's file path, like `./List%20Syntax` for `List Syntax.md`, to the page path Starlight serves it at (`/guide/list-syntax`).
 
 Both run on each page's final HTML, in dev and in build. That means they cover Markdown links, raw HTML in `.md`, JSX in `.mdx` (including `src={...}` expressions) and HTML rendered by components.
 
@@ -331,7 +331,8 @@ import { astroLocalLinks } from "starlight-cannoli-plugins/astro-local-links";
 
 **What counts as an existing target:**
 
-- A source doc. `/reference/schemas` matches `reference/schemas.md(x)` or `reference/schemas/index.md(x)`, and `/reference/schemas/index` matches the latter. If both files exist, the link is reported as ambiguous.
+- A source doc. `/reference/schemas` matches `reference/schemas.md(x)` or `reference/schemas/index.md(x)`, and `/reference/schemas/index` matches the latter (link normalization rewrites it to `/reference/schemas`, since that's where the page is served). If both files exist, the link is reported as ambiguous.
+- A source doc by its file path, URL-encoded, when its filename isn't a slug: `/reference/List%20Syntax` matches `reference/List Syntax.md`, as does its page path `/reference/list-syntax`. A link that only matches once slugified, like `/reference/LIST-syntax`, is broken. With link normalization off, a file-path link is broken too, since nothing rewrites it to the page path. A skip pattern skips it if it matches either path.
 - A file in `public/`, like `/static/img/logo.png`.
 
 A file that sits next to your docs in `src/content/docs/` (a PDF, an image) only counts once it's in `public/`, because until then its URL would 404. [Sync Docs to Public](#sync-docs-to-public) does that copying for you.

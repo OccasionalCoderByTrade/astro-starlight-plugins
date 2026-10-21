@@ -15,10 +15,14 @@ import {
 export type AstroLocalLinksOptions = {
   /**
    * Link validation: fail on local links inside a page's content whose target doesn't exist.
-   * `skipPatterns` holds globs matched against the link's site path (`/x/y#frag`). Default: true.
+   * `skipPatterns` holds globs matched against the link's site path (`/x/y#frag`), and for a
+   * link to a source doc's file path, also its page path. Default: true.
    */
   validate?: boolean | { skipPatterns?: string[] };
-  /** Link normalization: rewrite relative local links to root-absolute ones. Default: true. */
+  /**
+   * Link normalization: rewrite relative local links to root-absolute ones, and links to a
+   * source doc's file path to its page path. Default: true.
+   */
   normalize?: boolean;
 };
 

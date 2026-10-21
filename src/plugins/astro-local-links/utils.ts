@@ -130,6 +130,12 @@ export function processPage(html: string, options: TProcessPageOptions) {
           options.site.docsDirPath,
         )
       : posix.normalize(pathPart);
+    const docLinkTarget =
+      sitePath === null ? null : findDocLinkTarget(sitePath, options);
+    // what a file-form link is rewritten to, keeping the author's trailing slash or lack of one
+    const pageSitePath = docLinkTarget?.isFileForm
+      ? toPageSitePath(docLinkTarget.pagePath, pathPart.endsWith("/"))
+      : null;
 
     if (options.validate && isInContent && !isValidationSkipped) {
       const fragment = suffix.includes("#")
@@ -137,19 +143,23 @@ export function processPage(html: string, options: TProcessPageOptions) {
         : "";
       const isSkippedByPattern =
         sitePath !== null &&
-        options.validate.skipPatterns.some((pattern) =>
-          minimatch(sitePath + fragment, pattern),
+        options.validate.skipPatterns.some(
+          (pattern) =>
+            minimatch(sitePath + fragment, pattern) ||
+            (pageSitePath !== null &&
+              minimatch(pageSitePath + fragment, pattern)),
         );
       const reason = isSkippedByPattern
         ? null
         : sitePath === null
           ? "points outside the docs dir"
-          : findMissingTargetReason(sitePath, options);
+          : findMissingTargetReason(sitePath, docLinkTarget, options);
       if (reason) brokenLinks.push({ href: writtenHref, reason });
     }
 
-    if (options.normalize && isRelative && sitePath !== null) {
-      setAttribute(element, attribute, sitePath + suffix);
+    const normalizedSitePath = pageSitePath ?? (isRelative ? sitePath : null);
+    if (options.normalize && normalizedSitePath !== null) {
+      setAttribute(element, attribute, normalizedSitePath + suffix);
       hasChanged = true;
     }
   }
@@ -245,49 +255,81 @@ function toSitePath(filePath: string, docsDirPath: string): string | null {
   return "/" + docsRelativeFilePath.split(sep).join("/");
 }
 
+/** A local link's target among the source docs, from `findDocLinkTarget`. */
+type TDocLinkTarget = {
+  pagePath: string;
+  sourceDocFilePaths: string[];
+  /** The link names a source doc's file, not its page, and the two differ. */
+  isFileForm: boolean;
+};
+
+/**
+ * The source docs a link at `sitePath` points to, if it is exactly their page-form link
+ * (`/reference/list-syntax-copy`) or exactly one's file-form link
+ * (`/reference/List%20Syntax%20cOp%26%26Y`). A link that only matches once slugified is
+ * neither, since the host serves only the exact page path.
+ */
+function findDocLinkTarget(
+  sitePath: string,
+  { site, sourceDocIndex }: TProcessPageOptions,
+): TDocLinkTarget | null {
+  const docsRelativeLinkPath = toDocsRelativePagePath(sitePath);
+  if (docsRelativeLinkPath === null) return null;
+  const pagePath = toPagePath(docsRelativeLinkPath.split("/"));
+  const sourceDocFilePaths = sourceDocIndex.get(pagePath);
+  if (!sourceDocFilePaths) return null;
+  if (docsRelativeLinkPath === pagePath) {
+    return { pagePath, sourceDocFilePaths, isFileForm: false };
+  }
+
+  const isFileForm = sourceDocFilePaths.some((sourceDocFilePath) => {
+    const extensionlessFilePath = removeExtension(
+      relative(site.docsDirPath, sourceDocFilePath).split(sep).join("/"),
+    );
+    if (docsRelativeLinkPath === extensionlessFilePath) return true;
+    // an index doc's file-form link can also name its folder
+    const isIndexDoc = slug(posix.basename(extensionlessFilePath)) === "index";
+    const docsRelativeDirPath = posix.dirname(extensionlessFilePath);
+    return (
+      isIndexDoc &&
+      docsRelativeLinkPath ===
+        (docsRelativeDirPath === "." ? "" : docsRelativeDirPath)
+    );
+  });
+  return isFileForm ? { pagePath, sourceDocFilePaths, isFileForm } : null;
+}
+
+/** `café-notes`, with a trailing slash → `/caf%C3%A9-notes/`; `` → `/`. */
+function toPageSitePath(pagePath: string, hasTrailingSlash: boolean): string {
+  if (pagePath === "") return "/";
+  return encodeURI(`/${pagePath}${hasTrailingSlash ? "/" : ""}`);
+}
+
 /** Why nothing on the site is served at `sitePath`, or null if something is. */
 function findMissingTargetReason(
   sitePath: string,
-  { site, sourceDocIndex }: TProcessPageOptions,
+  docLinkTarget: TDocLinkTarget | null,
+  { site, normalize }: TProcessPageOptions,
 ): string | null {
   const docsRelativePagePath = toDocsRelativePagePath(sitePath);
   if (docsRelativePagePath === null)
     return `malformed URL encoding in ${sitePath}`;
   if (isFile(join(site.publicDirPath, docsRelativePagePath))) return null;
 
-  if (!/\.[a-z0-9]+$/i.test(docsRelativePagePath)) {
-    // the literal-path fallback keeps file-form links passing until they're validated
-    // and rewritten as their own case
-    const sourceDocFilePaths =
-      sourceDocIndex.get(docsRelativePagePath) ??
-      findSourceDocFilePaths(docsRelativePagePath, site.docsDirPath);
-    if (sourceDocFilePaths.length === 1) return null;
-    if (sourceDocFilePaths.length > 1) {
-      return `ambiguous, matches ${sourceDocFilePaths.join(" and ")}`;
-    }
+  if (docLinkTarget === null) {
+    return `no source doc or public file at ${sitePath}`;
   }
-  return `no source doc or public file at ${sitePath}`;
-}
-
-/**
- * The source docs that could render the page at `docsRelativePagePath`: `x.md(x)` or
- * `x/index.md(x)`. More than one means the page is ambiguous.
- */
-export function findSourceDocFilePaths(
-  docsRelativePagePath: string,
-  docsDirPath: string,
-): string[] {
-  const candidateFilePaths = [
-    join(docsDirPath, docsRelativePagePath, "index.md"),
-    join(docsDirPath, docsRelativePagePath, "index.mdx"),
-  ];
-  if (docsRelativePagePath) {
-    candidateFilePaths.push(
-      join(docsDirPath, `${docsRelativePagePath}.md`),
-      join(docsDirPath, `${docsRelativePagePath}.mdx`),
+  if (docLinkTarget.sourceDocFilePaths.length > 1) {
+    return `ambiguous, matches ${docLinkTarget.sourceDocFilePaths.join(" and ")}`;
+  }
+  if (docLinkTarget.isFileForm && !normalize) {
+    const pageSitePath = toPageSitePath(docLinkTarget.pagePath, true);
+    return (
+      `links to a source doc by its file path, but its page is served at ` +
+      `${pageSitePath}. Link to ${pageSitePath}, or turn on link normalization.`
     );
   }
-  return candidateFilePaths.filter(isFile);
+  return null;
 }
 
 /**
@@ -333,15 +375,20 @@ function collectSourceDocFilePaths(dirPath: string): string[] {
  * Unlike Astro's ID, the home page's `index.md` → ``, to match the decoded pathname `/`.
  */
 function toSourceDocPagePath(docsRelativeFilePath: string): string {
-  const extensionlessFilePath = docsRelativeFilePath.slice(
-    0,
-    -extname(docsRelativeFilePath).length,
-  );
-  return extensionlessFilePath
-    .split(sep)
+  return toPagePath(removeExtension(docsRelativeFilePath).split(sep));
+}
+
+/** `["My Guide", "List Syntax"]` → `my-guide/list-syntax`, `["guide", "Index"]` → `guide`. */
+function toPagePath(segments: string[]): string {
+  return segments
     .map((segment) => slug(segment))
     .join("/")
     .replace(/(^|\/)index$/, "");
+}
+
+/** `guide/v1.2-notes.md` → `guide/v1.2-notes`. */
+function removeExtension(filePath: string): string {
+  return filePath.slice(0, filePath.length - extname(filePath).length);
 }
 
 /** `/guide/my%20notes/` → `guide/my notes`; null if the URL encoding is malformed. */

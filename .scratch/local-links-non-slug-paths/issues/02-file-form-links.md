@@ -4,14 +4,14 @@
 
 **Blocked by:** 01 (Pages from non-slug docs resolve)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] A file-form link (relative or root-absolute, URL-decoded, matching a source doc's path without extension, or its folder for an `index` doc) passes link validation
-- [ ] Link normalization rewrites file-form links to the `encodeURI`'d page path, keeping the author's trailing slash or lack of one and the `?query#fragment` suffix
-- [ ] A link that only matches after slugifying (`/reference/LIST-syntax-COPY`) is reported broken
-- [ ] With link normalization off, a file-form link whose page path differs is reported broken, and the reason names the page path
-- [ ] `skipPatterns` skip a file-form link when a pattern matches either its file form or its page path
-- [ ] Page-form links behave exactly as before (relative ones still become root-absolute)
-- [ ] Tests written first, through the dev middleware seam
-- [ ] A file-form link to the demo doc is added; checked in a browser (dev and build preview), following it lands on the page, with no console errors
-- [ ] `npm run lib:build` passes; committed to the current branch
+- [x] A file-form link (relative or root-absolute, URL-decoded, matching a source doc's path without extension, or its folder for an `index` doc) passes link validation
+- [x] Link normalization rewrites file-form links to the `encodeURI`'d page path, keeping the author's trailing slash or lack of one and the `?query#fragment` suffix
+- [x] A link that only matches after slugifying (`/reference/LIST-syntax-COPY`) is reported broken
+- [x] With link normalization off, a file-form link whose page path differs is reported broken, and the reason names the page path
+- [x] `skipPatterns` skip a file-form link when a pattern matches either its file form or its page path
+- [x] Page-form links behave exactly as before (relative ones still become root-absolute)
+- [x] Tests written first, through the dev middleware seam
+- [ ] A file-form link to the demo doc is added; checked in a browser (dev and build preview), following it lands on the page, with no console errors (link added and checked with curl in dev and preview: rewritten href, target 200. Playwright browser was locked, so console not checked; covered by 04's final browser pass)
+- [x] `npm run lib:build` passes; committed to the current branch

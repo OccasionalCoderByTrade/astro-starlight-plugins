@@ -3,19 +3,27 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { createOnRequest } from "./on-request.js";
 import { makeSite, pageHtml } from "./test-site.js";
+import type { TLocalLinksSettings } from "./utils.js";
 
-/** The dev middleware over a fresh site holding `files`, and a way to send it requests. */
+type TSettingsOverrides = Partial<Omit<TLocalLinksSettings, "site">>;
+
+/**
+ * The dev middleware over a fresh site holding `files`, and a way to send it requests.
+ * `settings` overrides the defaults, which validate with no skip patterns and normalize.
+ */
 function startDevMiddleware(
   files: Record<string, string> = {
     "src/content/docs/guide/intro.md": "",
     "src/content/docs/guide/next.md": "",
   },
+  settings: TSettingsOverrides = {},
 ) {
   const site = makeSite(files);
   const onRequest = createOnRequest({
     site,
     validate: { skipPatterns: [] },
     normalize: true,
+    ...settings,
   });
 
   /** Runs one request, with `body` as what the page rendered. */
@@ -47,16 +55,24 @@ type TRequestOptions = {
   status?: number;
 };
 
-/** Runs one request against a fresh site holding `files`. */
+/** Runs one request against a fresh site holding `files`, with `settings` overridden. */
 function request(
   pathname: string,
   body: string,
   {
     files,
+    settings,
     ...requestOptions
-  }: TRequestOptions & { files?: Record<string, string> } = {},
+  }: TRequestOptions & {
+    files?: Record<string, string>;
+    settings?: TSettingsOverrides;
+  } = {},
 ) {
-  return startDevMiddleware(files).request(pathname, body, requestOptions);
+  return startDevMiddleware(files, settings).request(
+    pathname,
+    body,
+    requestOptions,
+  );
 }
 
 describe("dev middleware", () => {
@@ -105,6 +121,130 @@ describe("dev middleware", () => {
 
     expect(html).toContain(`<a href="/my-guide/intro">x</a>`);
     expect(html).toContain(`<a href="/my-guide/intro/">y</a>`);
+  });
+
+  it("rewrites file-form links to the page path", async () => {
+    const files = {
+      "src/content/docs/reference/index.md": "",
+      "src/content/docs/reference/List Syntax cOp&&Y.md": "",
+    };
+
+    const html = await request(
+      "/reference/",
+      pageHtml(`<a href="./List%20Syntax%20cOp%26%26Y">x</a>`),
+      { files },
+    );
+
+    expect(html).toContain(`<a href="/reference/list-syntax-copy">x</a>`);
+  });
+
+  it("rewrites root-absolute file-form links, keeping the trailing slash and ?query#fragment", async () => {
+    const files = {
+      "src/content/docs/index.md": "",
+      "src/content/docs/Café Notes/Index.md": "",
+      "src/content/docs/Café Notes/Part One.md": "",
+    };
+
+    const html = await request(
+      "/",
+      pageHtml(
+        `<a href="/Caf%C3%A9%20Notes/Part%20One/?v=1#top">a</a>` +
+          `<a href="/Café Notes/Part One#top">b</a>` +
+          `<a href="/Caf%C3%A9%20Notes/">c</a>` +
+          `<a href="/Caf%C3%A9%20Notes/Index">d</a>` +
+          `<a href="/index">e</a>`,
+      ),
+      { files },
+    );
+
+    expect(html).toContain(
+      `<a href="/caf%C3%A9-notes/part-one/?v=1#top">a</a>`,
+    );
+    expect(html).toContain(`<a href="/caf%C3%A9-notes/part-one#top">b</a>`);
+    expect(html).toContain(`<a href="/caf%C3%A9-notes/">c</a>`);
+    expect(html).toContain(`<a href="/caf%C3%A9-notes">d</a>`);
+    expect(html).toContain(`<a href="/">e</a>`);
+  });
+
+  it("rewrites a link to a folder's index doc by its file name to the folder's page", async () => {
+    const files = {
+      "src/content/docs/guide/intro.md": "",
+      "src/content/docs/reference/index.md": "",
+    };
+
+    const html = await request(
+      "/guide/intro/",
+      pageHtml(
+        `<a href="/reference/index">x</a><a href="../reference/index/">y</a>`,
+      ),
+      { files },
+    );
+
+    expect(html).toContain(`<a href="/reference">x</a>`);
+    expect(html).toContain(`<a href="/reference/">y</a>`);
+  });
+
+  it("reports a link that only matches once slugified as broken", async () => {
+    const files = {
+      "src/content/docs/reference/index.md": "",
+      "src/content/docs/reference/List Syntax cOp&&Y.md": "",
+    };
+
+    await expect(
+      request(
+        "/reference/",
+        pageHtml(
+          `<a href="/reference/LIST-syntax-COPY">x</a>` +
+            `<a href="./list syntax copy">y</a>`,
+        ),
+        { files },
+      ),
+    ).rejects.toThrow(
+      /2 broken local links:[\s\S]*LIST-syntax-COPY: no source doc[\s\S]*list syntax copy: no source doc/,
+    );
+  });
+
+  it("with normalization off, reports file-form links as broken, naming the page path", async () => {
+    const files = {
+      "src/content/docs/reference/index.md": "",
+      "src/content/docs/reference/List Syntax cOp&&Y.md": "",
+      "src/content/docs/reference/slug-name.md": "",
+    };
+
+    await expect(
+      request(
+        "/reference/",
+        pageHtml(
+          `<a href="./List%20Syntax%20cOp%26%26Y">x</a>` +
+            `<a href="./slug-name">y</a><a href="./list-syntax-copy">z</a>`,
+        ),
+        { files, settings: { normalize: false } },
+      ),
+    ).rejects.toThrow(
+      /1 broken local link:[\s\S]*List%20Syntax%20cOp%26%26Y: .*\/reference\/list-syntax-copy\//,
+    );
+  });
+
+  it("skips a file-form link when a skip pattern matches its file form or its page path", async () => {
+    const files = {
+      "src/content/docs/reference/index.md": "",
+      "src/content/docs/reference/List Syntax cOp&&Y.md": "",
+    };
+    const body = pageHtml(`<a href="./List%20Syntax%20cOp%26%26Y#x">x</a>`);
+    // with normalization off, the link is broken unless a skip pattern matches it
+    const requestWithSkipPatterns = (skipPatterns: string[]) =>
+      request("/reference/", body, {
+        files,
+        settings: { validate: { skipPatterns }, normalize: false },
+      });
+
+    await expect(requestWithSkipPatterns([])).rejects.toThrow(/1 broken/);
+    expect(await requestWithSkipPatterns(["/reference/List%20Syntax*#x"])).toBe(
+      body,
+    );
+    expect(
+      await requestWithSkipPatterns(["/reference/list-syntax-copy#x"]),
+    ).toBe(body);
   });
 
   it("finds source docs the way Starlight's docs loader does", async () => {
