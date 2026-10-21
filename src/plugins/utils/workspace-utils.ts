@@ -10,22 +10,17 @@ type TFrontmatter = {
   };
 };
 
+/** A source doc's frontmatter. Throws when the file can't be read or its YAML is malformed. */
 export function parseFrontmatter(filePath: string): TFrontmatter {
-  let content: string;
-  try {
-    content = fs.readFileSync(filePath, "utf-8");
-  } catch {
-    return {};
-  }
+  const content = fs.readFileSync(filePath, "utf-8");
 
   try {
     const { frontmatter } = astroParseFrontmatter(content);
     return frontmatter as TFrontmatter;
   } catch (err) {
-    console.warn(
-      `[parseFrontmatter] Failed to parse frontmatter in ${filePath}:`,
-      err,
+    throw new Error(
+      `[parseFrontmatter] Failed to parse frontmatter in ${filePath}: ${(err as Error).message}`,
+      { cause: err },
     );
-    return {};
   }
 }

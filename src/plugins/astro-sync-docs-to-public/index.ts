@@ -309,12 +309,7 @@ async function incrementalSync(
       ),
     );
   } else if (isMdFile(changedFilePath)) {
-    try {
-      const frontmatter = parseFrontmatter(changedFilePath);
-      if (frontmatter.draft === true) return;
-    } catch {
-      return;
-    }
+    if (parseFrontmatter(changedFilePath).draft === true) return;
     await copyMdFile(changedFilePath, srcDir, publicDir);
   } else {
     const destPath = resolve(publicDir, relativePath);
@@ -353,12 +348,7 @@ async function copyAll(
       if (entry.isDirectory()) {
         await copyAll(srcPath, srcDir, publicDir, ignorePatterns);
       } else if (isMdFile(srcPath)) {
-        try {
-          const frontmatter = parseFrontmatter(srcPath);
-          if (frontmatter.draft === true) return;
-        } catch {
-          return;
-        }
+        if (parseFrontmatter(srcPath).draft === true) return;
         await copyMdFile(srcPath, srcDir, publicDir);
       } else {
         const destPath = resolve(publicDir, relativePath);

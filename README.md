@@ -17,6 +17,7 @@ Automatically generates a nested Starlight sidebar by recursively scanning direc
 - Configurable depth limiting to flatten deeply nested content
 - Two labeling modes: directory names or frontmatter titles
 - Ignores `assets` directories entirely
+- Fails `astro dev` and `astro build` at startup when an index file's frontmatter can't be parsed
 
 **Options:**
 
@@ -64,6 +65,7 @@ Generates a Starlight sidebar by parsing markdown links out of `index.md` files.
 - Links to non-markdown files (images, PDFs, etc.) are silently skipped
 - Links to markdown files that do not exist on disk are silently skipped
 - External links and same-page anchor links (`#section`) are silently skipped
+- Fails `astro dev` and `astro build` at startup when a linked page's frontmatter can't be parsed
 
 **Options:**
 
@@ -397,6 +399,7 @@ Syncs `src/content/docs/` to `public/` so local files (e.g., PDFs, images) refer
 - Watches for changes in dev mode and re-syncs automatically (debounced)
 - Preserves specified child directories in `public/` during sync (e.g., `static/`)
 - Supports glob patterns to exclude files from syncing
+- Fails `astro build` when an md/mdx file's frontmatter can't be parsed, since it can't tell whether the file is a draft. In dev, a re-sync after a save only logs the error.
 
 **Usage:**
 
