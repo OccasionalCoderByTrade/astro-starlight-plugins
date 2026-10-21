@@ -537,6 +537,7 @@ yarn add starlight-cannoli-plugins
 ## Peer Dependencies
 
 - `astro` ≥ 5.0.0
+- `@astrojs/markdown-remark` ^6 or ^7. Astro 5 already installs it. Astro 7 doesn't, but npm and pnpm install it automatically as a peer. With yarn, run `yarn add @astrojs/markdown-remark`.
 - `@astrojs/starlight` ≥ 0.30.0 (optional, only needed if using `starlightIndexOnlySidebar`)
 
 ## License
