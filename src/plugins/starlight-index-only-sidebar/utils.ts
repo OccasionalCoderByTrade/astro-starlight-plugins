@@ -8,12 +8,11 @@ type TOptions = {
   dirnameDeterminesLabels?: boolean;
 };
 
-function isDir(filePath: string): boolean {
-  try {
-    return fs.statSync(filePath).isDirectory();
-  } catch {
-    return false;
-  }
+/** False when nothing is at `dirPath`; throws on any other stat error, such as EACCES. */
+function isDir(dirPath: string): boolean {
+  return (
+    fs.statSync(dirPath, { throwIfNoEntry: false })?.isDirectory() ?? false
+  );
 }
 
 function findIndexMd(dirPath: string): string | null {
@@ -39,9 +38,9 @@ function getSlug(dirPath: string, rootDir: string): string {
 }
 
 function hasIndexMdInSubtree(dirPath: string): boolean {
-  const indexFile = findIndexMd(dirPath);
-  if (indexFile) {
-    const frontmatter = parseFrontmatter(indexFile);
+  const indexFilePath = findIndexMd(dirPath);
+  if (indexFilePath) {
+    const frontmatter = parseFrontmatter(indexFilePath);
     if (frontmatter.draft || frontmatter.sidebar?.hidden) return false;
     return true;
   }
@@ -49,8 +48,8 @@ function hasIndexMdInSubtree(dirPath: string): boolean {
   const entries = fs.readdirSync(dirPath);
   for (const entry of entries) {
     if (entry === "assets") continue;
-    const fullPath = path.join(dirPath, entry);
-    if (isDir(fullPath) && hasIndexMdInSubtree(fullPath)) {
+    const entryPath = path.join(dirPath, entry);
+    if (isDir(entryPath) && hasIndexMdInSubtree(entryPath)) {
       return true;
     }
   }
@@ -94,9 +93,9 @@ function buildSidebarItems(
   const items: TSidebarItem[] = [];
 
   // Add index.md of current directory if it exists
-  const indexFile = findIndexMd(dirPath);
-  if (indexFile) {
-    const frontmatter = parseFrontmatter(indexFile);
+  const indexFilePath = findIndexMd(dirPath);
+  if (indexFilePath) {
+    const frontmatter = parseFrontmatter(indexFilePath);
     if (!frontmatter.draft && !frontmatter.sidebar?.hidden) {
       let label: string;
       if (currentDepth >= maxDepth && parentDirName) {
@@ -131,15 +130,15 @@ function buildSidebarItems(
   for (const entry of entries) {
     if (entry === "assets") continue;
 
-    const fullPath = path.join(dirPath, entry);
-    if (!isDir(fullPath)) continue;
+    const entryPath = path.join(dirPath, entry);
+    if (!isDir(entryPath)) continue;
 
     // Skip if this directory has no index.md in its subtree
-    if (!hasIndexMdInSubtree(fullPath)) continue;
+    if (!hasIndexMdInSubtree(entryPath)) continue;
 
     // Recursively build items for this subdirectory
     const subItems = buildSidebarItems(
-      fullPath,
+      entryPath,
       rootDir,
       currentDepth + 1,
       maxDepth,
@@ -148,7 +147,7 @@ function buildSidebarItems(
     );
 
     // Apply truncation: if no index.md in this dir, promote children instead of wrapping
-    const hasIndex = findIndexMd(fullPath) !== null;
+    const hasIndex = findIndexMd(entryPath) !== null;
     if (!hasIndex) {
       const allGroups = subItems.length > 0 && subItems.every(isGroupItem);
       if (allGroups || (subItems.length === 1 && isGroupItem(subItems[0]))) {
@@ -183,23 +182,23 @@ function flattenIndexFilesAtDepth(
   for (const entry of entries) {
     if (entry === "assets") continue;
 
-    const fullPath = path.join(dirPath, entry);
-    if (!isDir(fullPath)) continue;
+    const entryPath = path.join(dirPath, entry);
+    if (!isDir(entryPath)) continue;
 
-    const indexFile = findIndexMd(fullPath);
-    if (indexFile) {
-      const frontmatter = parseFrontmatter(indexFile);
+    const indexFilePath = findIndexMd(entryPath);
+    if (indexFilePath) {
+      const frontmatter = parseFrontmatter(indexFilePath);
       if (!frontmatter.draft && !frontmatter.sidebar?.hidden) {
         items.push({
           label: pathSegmentToLabel(entry),
-          slug: getSlug(fullPath, rootDir),
+          slug: getSlug(entryPath, rootDir),
         });
       }
     }
 
     // Recursively search deeper directories
     items.push(
-      ...flattenIndexFilesAtDepth(fullPath, rootDir, dirnameDeterminesLabels),
+      ...flattenIndexFilesAtDepth(entryPath, rootDir, dirnameDeterminesLabels),
     );
   }
 

@@ -1,3 +1,4 @@
+import { chmodSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { makeFileTree } from "../tests/file-tree.js";
@@ -32,5 +33,26 @@ describe("getIndexMdSidebarItems", () => {
     expect(() => getIndexMdSidebarItems(missingDirPath)).toThrow(
       missingDirPath,
     );
+  });
+
+  it("throws when a directory under it can't be read", () => {
+    const rootDirPath = makeFileTree({
+      "guides/index.md": "---\ntitle: Guides\n---\n",
+      "guides/locked/index.md": "---\ntitle: Locked\n---\n",
+    });
+    chmodSync(join(rootDirPath, "guides/locked"), 0o000);
+
+    expect(() => getIndexMdSidebarItems(join(rootDirPath, "guides"))).toThrow(
+      /EACCES/,
+    );
+  });
+
+  it("throws the real error when the directory can't be checked", () => {
+    const rootDirPath = makeFileTree({ "locked/guides/index.md": "" });
+    chmodSync(join(rootDirPath, "locked"), 0o000);
+
+    expect(() =>
+      getIndexMdSidebarItems(join(rootDirPath, "locked/guides")),
+    ).toThrow(/EACCES/);
   });
 });

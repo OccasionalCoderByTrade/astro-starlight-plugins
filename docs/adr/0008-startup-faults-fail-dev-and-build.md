@@ -16,7 +16,9 @@ A startup fault leaves the site wrong for the whole session: a sidebar missing e
 
 An incremental fault often comes from a file caught mid-edit, such as frontmatter that's half typed. Throwing there would stop the dev server on every bad save, so it's logged and the next save retries.
 
-One consequence: the sidebars are only built at startup, so bad frontmatter added while dev is running isn't reported until the next dev start or build.
+## Consequences
+
+The sidebars are only built at startup, so bad frontmatter added while dev is running isn't reported until the next dev start or build.
 
 ## Considered Options
 

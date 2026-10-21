@@ -23,26 +23,23 @@ function pathSegmentToLabel(segment: string): string {
   return label;
 }
 
+/** False when nothing is at `filePath`; throws on any other stat error, such as EACCES. */
+function isFile(filePath: string): boolean {
+  return fs.statSync(filePath, { throwIfNoEntry: false })?.isFile() ?? false;
+}
+
 function findIndexMd(dirPath: string): string | null {
   for (const name of ["index.md", "index.mdx"]) {
-    const fullPath = path.join(dirPath, name);
-    try {
-      if (fs.statSync(fullPath).isFile()) return path.resolve(fullPath);
-    } catch {
-      /* continue */
-    }
+    const indexFilePath = path.join(dirPath, name);
+    if (isFile(indexFilePath)) return path.resolve(indexFilePath);
   }
   return null;
 }
 
-function findMarkdownFile(basePath: string): string | null {
+function findMarkdownFile(extensionlessFilePath: string): string | null {
   for (const ext of [".md", ".mdx"]) {
-    const fullPath = basePath + ext;
-    try {
-      if (fs.statSync(fullPath).isFile()) return path.resolve(fullPath);
-    } catch {
-      /* continue */
-    }
+    const markdownFilePath = extensionlessFilePath + ext;
+    if (isFile(markdownFilePath)) return path.resolve(markdownFilePath);
   }
   return null;
 }
@@ -66,12 +63,11 @@ function normalizeSlug(slug: string): string {
 }
 
 function extractMarkdownLinks(filePath: string): string[] {
-  // Strip YAML frontmatter before handing to the parser
-  const content = fs
+  const markdownBody = fs
     .readFileSync(filePath, "utf-8")
     .replace(/^---[\s\S]*?---\s*\n/, "");
 
-  const tree = unified().use(remarkParse).parse(content);
+  const tree = unified().use(remarkParse).parse(markdownBody);
   const hrefs: string[] = [];
 
   visit(tree, "link", (node) => {
@@ -100,12 +96,7 @@ function tryResolveMarkdownFile(
 
   // If href already carries a markdown extension, check that exact path
   if (/\.(mdx?)$/.test(hrefPath)) {
-    try {
-      if (fs.statSync(resolved).isFile()) return resolved;
-    } catch {
-      /* not found */
-    }
-    return null;
+    return isFile(resolved) ? resolved : null;
   }
 
   return findMarkdownFile(resolved);

@@ -36,4 +36,27 @@ describe("getIndexSourcedSidebarItems", () => {
       getIndexSourcedSidebarItems(join(rootDirPath, "guides")),
     ).toThrow(/EACCES/);
   });
+
+  it("throws the real error when an index can't be checked", () => {
+    const rootDirPath = makeFileTree({
+      "guides/index.md": "---\ntitle: Guides\n---\n",
+    });
+    chmodSync(join(rootDirPath, "guides"), 0o000);
+
+    expect(() =>
+      getIndexSourcedSidebarItems(join(rootDirPath, "guides")),
+    ).toThrow(/EACCES/);
+  });
+
+  it("throws when a linked doc can't be checked", () => {
+    const rootDirPath = makeFileTree({
+      "guides/index.md": "---\ntitle: Guides\n---\n\n[Page](./locked/page)\n",
+      "guides/locked/page.md": "---\ntitle: Page\n---\n",
+    });
+    chmodSync(join(rootDirPath, "guides/locked"), 0o000);
+
+    expect(() =>
+      getIndexSourcedSidebarItems(join(rootDirPath, "guides")),
+    ).toThrow(/EACCES/);
+  });
 });

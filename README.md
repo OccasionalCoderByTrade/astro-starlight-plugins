@@ -399,7 +399,7 @@ Syncs `src/content/docs/` to `public/` so local files (e.g., PDFs, images) refer
 - Watches for changes in dev mode and re-syncs automatically (debounced)
 - Preserves specified child directories in `public/` during sync (e.g., `static/`)
 - Supports glob patterns to exclude files from syncing
-- Fails `astro build` when an md/mdx file's frontmatter can't be parsed, since it can't tell whether the file is a draft. In dev, a re-sync after a save only logs the error.
+- Fails `astro dev` and `astro build` at startup when an md/mdx file's frontmatter can't be parsed, since it can't tell whether the file is a draft. In dev, a re-sync after a save only logs the error.
 
 **Usage:**
 
