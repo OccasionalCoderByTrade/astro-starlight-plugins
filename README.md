@@ -395,7 +395,7 @@ Syncs `src/content/docs/` to `public/` so local files (e.g., PDFs, images) refer
 
 **Features:**
 
-- Syncs once at build start
+- Syncs once at build start and once at dev server start; an error in either stops the build or the server from starting
 - Watches for changes in dev mode and re-syncs automatically (debounced)
 - Preserves specified child directories in `public/` during sync (e.g., `static/`)
 - Supports glob patterns to exclude files from syncing

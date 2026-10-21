@@ -1,8 +1,9 @@
 /**
  * Astro integration that syncs a source docs directory to the public directory.
  *
- * Runs once at build start, and in dev mode watches the source directory for
- * changes and incrementally syncs files — no full directory deletion/recreation.
+ * Runs once at build start and once at dev server start, failing either on error. In
+ * dev it then watches the source directory and incrementally syncs changed files,
+ * only logging errors so one bad save doesn't stop the server.
  */
 import { fileURLToPath } from "node:url";
 import type { AstroIntegration } from "astro";
@@ -424,7 +425,7 @@ export function syncDocsToPublic(
         await fullSync(srcDir, publicDir, preserveDirs, ignorePatterns);
       },
 
-      "astro:server:setup": ({ server }: { server: ViteDevServer }) => {
+      "astro:server:setup": async ({ server }: { server: ViteDevServer }) => {
         const pendingPaths = new Set<string>();
         let isSyncing = false;
         let debounceTimer: ReturnType<typeof setTimeout> | null = null;
@@ -459,9 +460,8 @@ export function syncDocsToPublic(
           }
         };
 
-        fullSync(srcDir, publicDir, preserveDirs, ignorePatterns).catch(
-          console.error,
-        );
+        // Awaited so a sync error stops dev from starting, rather than serving a half-synced public/
+        await fullSync(srcDir, publicDir, preserveDirs, ignorePatterns);
 
         server.watcher.add(srcDir);
         server.watcher.on("all", (_event: string, filePath: string) => {
