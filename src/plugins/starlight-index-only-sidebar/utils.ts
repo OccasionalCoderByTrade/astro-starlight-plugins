@@ -46,17 +46,13 @@ function hasIndexMdInSubtree(dirPath: string): boolean {
     return true;
   }
 
-  try {
-    const entries = fs.readdirSync(dirPath);
-    for (const entry of entries) {
-      if (entry === "assets") continue;
-      const fullPath = path.join(dirPath, entry);
-      if (isDir(fullPath) && hasIndexMdInSubtree(fullPath)) {
-        return true;
-      }
+  const entries = fs.readdirSync(dirPath);
+  for (const entry of entries) {
+    if (entry === "assets") continue;
+    const fullPath = path.join(dirPath, entry);
+    if (isDir(fullPath) && hasIndexMdInSubtree(fullPath)) {
+      return true;
     }
-  } catch {
-    return false;
   }
   return false;
 }
@@ -131,50 +127,46 @@ function buildSidebarItems(
   }
 
   // Process subdirectories
-  try {
-    const entries = fs.readdirSync(dirPath).sort();
-    for (const entry of entries) {
-      if (entry === "assets") continue;
+  const entries = fs.readdirSync(dirPath).sort();
+  for (const entry of entries) {
+    if (entry === "assets") continue;
 
-      const fullPath = path.join(dirPath, entry);
-      if (!isDir(fullPath)) continue;
+    const fullPath = path.join(dirPath, entry);
+    if (!isDir(fullPath)) continue;
 
-      // Skip if this directory has no index.md in its subtree
-      if (!hasIndexMdInSubtree(fullPath)) continue;
+    // Skip if this directory has no index.md in its subtree
+    if (!hasIndexMdInSubtree(fullPath)) continue;
 
-      // Recursively build items for this subdirectory
-      const subItems = buildSidebarItems(
-        fullPath,
-        rootDir,
-        currentDepth + 1,
-        maxDepth,
-        dirnameDeterminesLabels,
-        entry,
-      );
+    // Recursively build items for this subdirectory
+    const subItems = buildSidebarItems(
+      fullPath,
+      rootDir,
+      currentDepth + 1,
+      maxDepth,
+      dirnameDeterminesLabels,
+      entry,
+    );
 
-      // Apply truncation: if no index.md in this dir, promote children instead of wrapping
-      const hasIndex = findIndexMd(fullPath) !== null;
-      if (!hasIndex) {
-        const allGroups = subItems.length > 0 && subItems.every(isGroupItem);
-        if (allGroups || (subItems.length === 1 && isGroupItem(subItems[0]))) {
-          items.push(...subItems);
-        } else {
-          // Create a group for this directory
-          items.push({
-            label: pathSegmentToLabel(entry),
-            items: subItems,
-          });
-        }
+    // Apply truncation: if no index.md in this dir, promote children instead of wrapping
+    const hasIndex = findIndexMd(fullPath) !== null;
+    if (!hasIndex) {
+      const allGroups = subItems.length > 0 && subItems.every(isGroupItem);
+      if (allGroups || (subItems.length === 1 && isGroupItem(subItems[0]))) {
+        items.push(...subItems);
       } else {
-        // Create a group for this directory (has index.md)
+        // Create a group for this directory
         items.push({
           label: pathSegmentToLabel(entry),
           items: subItems,
         });
       }
+    } else {
+      // Create a group for this directory (has index.md)
+      items.push({
+        label: pathSegmentToLabel(entry),
+        items: subItems,
+      });
     }
-  } catch {
-    // Directory read error, return what we have
   }
 
   return items;
@@ -187,32 +179,28 @@ function flattenIndexFilesAtDepth(
 ): TSidebarItem[] {
   const items: TSidebarItem[] = [];
 
-  try {
-    const entries = fs.readdirSync(dirPath);
-    for (const entry of entries) {
-      if (entry === "assets") continue;
+  const entries = fs.readdirSync(dirPath);
+  for (const entry of entries) {
+    if (entry === "assets") continue;
 
-      const fullPath = path.join(dirPath, entry);
-      if (!isDir(fullPath)) continue;
+    const fullPath = path.join(dirPath, entry);
+    if (!isDir(fullPath)) continue;
 
-      const indexFile = findIndexMd(fullPath);
-      if (indexFile) {
-        const frontmatter = parseFrontmatter(indexFile);
-        if (!frontmatter.draft && !frontmatter.sidebar?.hidden) {
-          items.push({
-            label: pathSegmentToLabel(entry),
-            slug: getSlug(fullPath, rootDir),
-          });
-        }
+    const indexFile = findIndexMd(fullPath);
+    if (indexFile) {
+      const frontmatter = parseFrontmatter(indexFile);
+      if (!frontmatter.draft && !frontmatter.sidebar?.hidden) {
+        items.push({
+          label: pathSegmentToLabel(entry),
+          slug: getSlug(fullPath, rootDir),
+        });
       }
-
-      // Recursively search deeper directories
-      items.push(
-        ...flattenIndexFilesAtDepth(fullPath, rootDir, dirnameDeterminesLabels),
-      );
     }
-  } catch {
-    // continue
+
+    // Recursively search deeper directories
+    items.push(
+      ...flattenIndexFilesAtDepth(fullPath, rootDir, dirnameDeterminesLabels),
+    );
   }
 
   return items;
@@ -222,6 +210,11 @@ export function getIndexMdSidebarItems(
   directory: string,
   options: TOptions = {},
 ): TSidebarItem[] {
+  if (!isDir(directory)) {
+    throw new Error(
+      `[starlight-index-only-sidebar] Directory not found: "${path.resolve(directory)}"`,
+    );
+  }
   const maxDepth = options.maxDepthNesting ?? 100;
   const dirnameDeterminesLabels = options.dirnameDeterminesLabels ?? true;
   const rootGroupLabel = pathSegmentToLabel(path.basename(directory));

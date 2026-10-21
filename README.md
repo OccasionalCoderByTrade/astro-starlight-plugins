@@ -17,7 +17,7 @@ Automatically generates a nested Starlight sidebar by recursively scanning direc
 - Configurable depth limiting to flatten deeply nested content
 - Two labeling modes: directory names or frontmatter titles
 - Ignores `assets` directories entirely
-- Fails `astro dev` and `astro build` at startup when an index file's frontmatter can't be parsed
+- Fails `astro dev` and `astro build` at startup when an index file's frontmatter can't be parsed, a configured directory doesn't exist, or a directory under it can't be read
 
 **Options:**
 
