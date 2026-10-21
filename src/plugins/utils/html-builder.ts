@@ -3,12 +3,12 @@
  
   ## Basic usage
  
-  Interpolated values are automatically HTML-escaped, preventing XSS:
- 
+  Interpolated values are automatically HTML-escaped (quotes included, so they
+  are safe inside attributes too), preventing XSS:
+
   ```ts
   const title = '<script>alert(1)</script>';
   const elementStr = html`<h1>${title}</h1>`;
-  const element = elementStr.asElement();
   console.log(elementStr.toString()); // <h1>&lt;script&gt;alert(1)&lt;/script&gt;</h1>
   ```
  
@@ -21,56 +21,19 @@
   ```ts
   const items = names.map(name => html`<li>${name}</li>`);
  
-  const mylistElement = html`
+  const mylistStr = html`
     <ul>
       $${items}
     </ul>
-  `.asElement();
+  `;
   ```
  */
 
-import { JSDOM } from "jsdom";
-
-const { document } = new JSDOM("").window;
+import { escapeUTF8 } from "entities";
 
 export type TInterpolatedValue = string | HtmlString | number | boolean;
 
-const HtmlSanitizer = {
-  tempElement: document.createElement("div"),
-  sanitize(htmlString: string): string {
-    this.tempElement.textContent = htmlString;
-    return this.tempElement.innerHTML;
-  },
-};
-
-export class HtmlString extends String {
-  element: Element | null = null;
-
-  constructor(value: string) {
-    super(value);
-  }
-
-  asElement(): Element {
-    if (this.element !== null) {
-      return this.element;
-    }
-
-    const temp = document.createElement("div");
-    temp.innerHTML = this.valueOf();
-
-    if (temp.childElementCount > 1) {
-      throw new Error("html template does not accept more than 1 element");
-    }
-
-    const child = temp.firstElementChild;
-    if (child === null) {
-      throw new Error("html template produced no elements");
-    }
-
-    this.element = child;
-    return this.element;
-  }
-}
+export class HtmlString extends String {}
 
 export function html(
   literalValues: TemplateStringsArray,
@@ -90,7 +53,7 @@ export function html(
     const isSanitize = !literalVal.endsWith("$");
     if (isSanitize) {
       result += literalVal;
-      result += HtmlSanitizer.sanitize(interpolatedVal);
+      result += escapeUTF8(interpolatedVal);
     } else {
       result += literalVal.slice(0, -1);
       result += interpolatedVal;
