@@ -1,8 +1,16 @@
-import { JSDOM } from "jsdom";
 import { existsSync, statSync } from "node:fs";
 import { dirname, join, posix, relative, resolve, sep } from "node:path";
 import { minimatch } from "minimatch";
-import { STARLIGHT_CONTENT_SELECTOR } from "../utils/starlight-selectors.js";
+import {
+  defaultTreeAdapter,
+  parse,
+  serialize,
+  type DefaultTreeAdapterTypes,
+} from "parse5";
+import { STARLIGHT_CONTENT_CLASS } from "../utils/starlight-selectors.js";
+
+type TElement = DefaultTreeAdapterTypes.Element;
+type TParentNode = DefaultTreeAdapterTypes.ParentNode;
 
 /** Where the site a page belongs to keeps its files. */
 export type TLocalLinksSite = {
@@ -52,32 +60,31 @@ const NO_LINK_CHECK_ATTRIBUTE = "data-no-link-check";
  * Returns the rewritten HTML and every broken link found.
  */
 export function processPage(html: string, options: TProcessPageOptions) {
-  const dom = new JSDOM(html);
-  const document = dom.window.document;
+  const document = parse(html);
   const brokenLinks: TBrokenLink[] = [];
   let hasChanged = false;
 
-  const selector = Object.keys(LINK_ATTRIBUTE_BY_TAG_NAME).join(", ");
-  for (const element of document.querySelectorAll(selector)) {
-    const tagName =
-      element.tagName.toLowerCase() as keyof typeof LINK_ATTRIBUTE_BY_TAG_NAME;
+  const tagNames = Object.keys(LINK_ATTRIBUTE_BY_TAG_NAME);
+  for (const element of findElements(document, tagNames)) {
+    const tagName = element.tagName as keyof typeof LINK_ATTRIBUTE_BY_TAG_NAME;
     const attribute = LINK_ATTRIBUTE_BY_TAG_NAME[tagName];
-    const writtenHref = element.getAttribute(attribute);
+    const writtenHref = getAttribute(element, attribute);
     if (!writtenHref) continue;
 
     // skip markers are written by authors, so they only mean something inside the content
-    const isInContent = element.closest(STARLIGHT_CONTENT_SELECTOR) !== null;
+    const isInContent =
+      closestWithClass(element, STARLIGHT_CONTENT_CLASS) !== null;
     let href = writtenHref;
     let isValidationSkipped = false;
     if (isInContent && href.startsWith("?")) {
       href = href.slice(1);
       isValidationSkipped = true;
     }
-    if (isInContent && element.hasAttribute(NO_LINK_CHECK_ATTRIBUTE)) {
-      element.removeAttribute(NO_LINK_CHECK_ATTRIBUTE);
+    if (isInContent && hasAttribute(element, NO_LINK_CHECK_ATTRIBUTE)) {
+      removeAttribute(element, NO_LINK_CHECK_ATTRIBUTE);
       isValidationSkipped = true;
     }
-    if (href !== writtenHref) element.setAttribute(attribute, href);
+    if (href !== writtenHref) setAttribute(element, attribute, href);
     hasChanged ||= href !== writtenHref || isValidationSkipped;
     if (!isLocalLink(href)) continue;
     if (
@@ -115,12 +122,73 @@ export function processPage(html: string, options: TProcessPageOptions) {
     }
 
     if (options.normalize && isRelative && sitePath !== null) {
-      element.setAttribute(attribute, sitePath + suffix);
+      setAttribute(element, attribute, sitePath + suffix);
       hasChanged = true;
     }
   }
 
-  return { html: hasChanged ? dom.serialize() : html, brokenLinks };
+  return { html: hasChanged ? serialize(document) : html, brokenLinks };
+}
+
+/*
+ * Narrow stand-ins for the DOM methods `processPage` needs, over parse5's plain-object tree.
+ * They take tag and class names, not selectors, so it's clear they don't match CSS.
+ */
+
+/**
+ * Every element under `root` whose tag is one of `tagNames`, in document order, like
+ * `querySelectorAll`. A <template>'s contents sit in its `content`, not its `childNodes`,
+ * so they're skipped, as in the DOM.
+ */
+function findElements(root: TParentNode, tagNames: string[]): TElement[] {
+  const elements: TElement[] = [];
+  for (const child of root.childNodes) {
+    if (!defaultTreeAdapter.isElementNode(child)) continue;
+    if (tagNames.includes(child.tagName)) elements.push(child);
+    elements.push(...findElements(child, tagNames));
+  }
+  return elements;
+}
+
+/** The nearest element, starting at `element` itself, that has class `className`. */
+function closestWithClass(
+  element: TElement,
+  className: string,
+): TElement | null {
+  let node: TParentNode | null = element;
+  while (node !== null && defaultTreeAdapter.isElementNode(node)) {
+    const classNames = getAttribute(node, "class")?.split(/[ \t\n\f\r]+/);
+    if (classNames?.includes(className)) return node;
+    node = node.parentNode;
+  }
+  return null;
+}
+
+/** Index of the attribute whose qualified name (`xlink:href`, not `href`) is `name`. */
+function findAttributeIndex(element: TElement, name: string): number {
+  return element.attrs.findIndex(
+    (attr) => (attr.prefix ? `${attr.prefix}:${attr.name}` : attr.name) === name,
+  );
+}
+
+function getAttribute(element: TElement, name: string): string | null {
+  const attributeIndex = findAttributeIndex(element, name);
+  return attributeIndex === -1 ? null : element.attrs[attributeIndex].value;
+}
+
+function hasAttribute(element: TElement, name: string): boolean {
+  return findAttributeIndex(element, name) !== -1;
+}
+
+function setAttribute(element: TElement, name: string, value: string) {
+  const attributeIndex = findAttributeIndex(element, name);
+  if (attributeIndex === -1) element.attrs.push({ name, value });
+  else element.attrs[attributeIndex].value = value;
+}
+
+function removeAttribute(element: TElement, name: string) {
+  const attributeIndex = findAttributeIndex(element, name);
+  if (attributeIndex !== -1) element.attrs.splice(attributeIndex, 1);
 }
 
 /**

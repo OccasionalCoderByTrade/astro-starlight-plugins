@@ -146,6 +146,22 @@ describe("processPage link validation", () => {
     expect(result.html).toContain(`<a href="/guide/chrome-only">y</a>`);
   });
 
+  it("leaves links inside a <template> alone, since they aren't on the page", () => {
+    const site = makeSite({ "src/content/docs/guide/intro.md": "" });
+
+    const result = processPage(
+      pageHtml(`<template><a href="./missing">x</a></template>`),
+      {
+        sourceDocFilePath: join(site.docsDirPath, "guide/intro.md"),
+        site,
+        ...VALIDATE_AND_NORMALIZE,
+      },
+    );
+
+    expect(result.brokenLinks).toEqual([]);
+    expect(result.html).toContain(`<a href="./missing">x</a>`);
+  });
+
   it("validates <img src> like <a href>", () => {
     const site = makeSite({ "src/content/docs/guide/intro.md": "" });
 
