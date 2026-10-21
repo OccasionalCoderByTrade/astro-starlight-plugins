@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 ---
 
 # Startup faults fail both dev and build; dev re-sync faults only log
