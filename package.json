@@ -74,7 +74,6 @@
   "dependencies": {
     "entities": "^8.1.0",
     "eslint-cannoli-plugins": "^1.0.13",
-    "jsdom": "^29.0.2",
     "mdast-util-to-string": "^4.0.0",
     "minimatch": "^9.0.0",
     "parse5": "^8.0.1",
@@ -127,6 +126,7 @@
     "globals": "^17.4.0",
     "hast": "^1.0.0",
     "jiti": "^2.6.1",
+    "jsdom": "^29.0.2",
     "lodash": "^4.17.23",
     "pino": "^10.3.1",
     "rehype-class-names": "^2.0.0",
