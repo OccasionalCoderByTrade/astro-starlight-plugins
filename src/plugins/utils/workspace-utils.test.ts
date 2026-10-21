@@ -22,7 +22,7 @@ describe("parseFrontmatter", () => {
     const filePath = join(rootDirPath, "broken.md");
 
     expect(() => parseFrontmatter(filePath)).toThrow(filePath);
-    expect(() => parseFrontmatter(filePath)).toThrow("(3:1)");
+    expect(() => parseFrontmatter(filePath)).toThrow("line 3, column 1");
   });
 
   it("throws when the file can't be read", () => {
