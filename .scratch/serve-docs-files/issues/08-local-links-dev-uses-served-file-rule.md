@@ -6,8 +6,8 @@
 
 **Status:** ready-for-agent
 
-- [ ] With the serve integration present: a link to a served docs asset or raw doc passes; one to an ignored, draft or `_`-prefixed file fails
-- [ ] Without it: only `public/` files pass, as before
-- [ ] Files the user put in `public/` still pass either way
-- [ ] Tests through the dev request handler and `astro:config:setup`, using the existing helpers
-- [ ] README Local Links section says how dev validation finds served docs files
+- [x] With the serve integration present: a link to a served docs asset or raw doc passes; one to an ignored, draft or `_`-prefixed file fails
+- [x] Without it: only `public/` files pass, as before
+- [x] Files the user put in `public/` still pass either way
+- [x] Tests through the dev request handler and `astro:config:setup`, using the existing helpers
+- [x] README Local Links section says how dev validation finds served docs files

@@ -3,7 +3,10 @@ import { dirname, join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
 import { astroLocalLinks, type AstroLocalLinksOptions } from "./index.js";
+import { createServedFileRule } from "../utils/served-file-rule.js";
+import { createOnRequest } from "./on-request.js";
 import { makeSite, pageHtml } from "./test-site.js";
+import { SETTINGS_MODULE_ID } from "./utils.js";
 
 /** Runs `astro:config:setup` the way Astro would, with the hook arguments it uses. */
 async function runSetup(
@@ -11,11 +14,12 @@ async function runSetup(
   command: string,
   options: AstroLocalLinksOptions = {},
   astroBasePath = "/",
-  integrations: { name: string }[] = [],
+  integrations: unknown[] = [],
 ) {
   const integration = astroLocalLinks(options);
   const setup = integration.hooks["astro:config:setup"]!;
   const middlewareEntrypoints: unknown[] = [];
+  const vitePlugins: TVitePlugin[] = [];
   const params = {
     command,
     config: {
@@ -24,15 +28,83 @@ async function runSetup(
       publicDir: pathToFileURL(`${rootDirPath}/public/`),
       base: astroBasePath,
       build: { assets: "_astro" },
-      integrations,
+      integrations: [integration, ...integrations],
     },
     addMiddleware: (middleware: { entrypoint: unknown }) =>
       middlewareEntrypoints.push(middleware.entrypoint),
-    updateConfig: () => {},
+    updateConfig: (update: { vite?: { plugins?: TVitePlugin[] } }) => {
+      vitePlugins.push(...(update.vite?.plugins ?? []));
+    },
   } as unknown as Parameters<typeof setup>[0];
 
   await setup(params);
-  return { integration, middlewareEntrypoints };
+  return { integration, middlewareEntrypoints, vitePlugins };
+}
+
+type TVitePlugin = {
+  resolveId: (id: string) => string | undefined;
+  load: (id: string) => string | undefined;
+};
+
+/**
+ * Runs `astro:config:setup` in dev, then builds the dev request handler from the settings
+ * its virtual module serves, the way the dev middleware does.
+ */
+async function startDevRequestHandler(
+  rootDirPath: string,
+  integrations: unknown[] = [],
+) {
+  const { vitePlugins } = await runSetup(
+    rootDirPath,
+    "dev",
+    {},
+    "/",
+    integrations,
+  );
+  const settingsModuleSource = vitePlugins
+    .map((plugin) => {
+      const resolvedId = plugin.resolveId(SETTINGS_MODULE_ID);
+      return resolvedId === undefined ? undefined : plugin.load(resolvedId);
+    })
+    .find((source) => source !== undefined)!;
+  const settings = JSON.parse(
+    settingsModuleSource.replace(/^export default /, "").replace(/;$/, ""),
+  );
+  const onRequest = createOnRequest(settings);
+
+  /** Runs one request for a doc page at `pathname` that rendered `content`. */
+  return async (pathname: string, content: string) => {
+    const context = {
+      url: new URL(`http://localhost${pathname}`),
+      routePattern: "/[...slug]",
+    } as Parameters<typeof onRequest>[0];
+    const next = async () =>
+      new Response(pageHtml(content), {
+        headers: { "content-type": "text/html" },
+      });
+    const response = (await onRequest(context, next)) as Response;
+    return response.text();
+  };
+}
+
+/**
+ * Stands in for `astroServeDocsFiles` as `config.integrations` holds it: found by its name,
+ * with its served-file rule as a custom hook, since Astro's config validation keeps only
+ * `name` and `hooks`.
+ */
+function fakeServeDocsFilesIntegration(
+  docsDirPath: string,
+  ignorePatterns: string[] = [],
+) {
+  return {
+    name: "astro-serve-docs-files",
+    hooks: {
+      "astro-serve-docs-files:served-file-rule": createServedFileRule({
+        docsDirPath,
+        ignorePatterns,
+      }),
+    },
+  };
 }
 
 /** Writes `htmlByDistRelativeFilePath` into `<root>/dist` and runs `astro:build:done` with them as Starlight's doc pages. */
@@ -462,5 +534,62 @@ describe("astroLocalLinks", () => {
     );
 
     await expect(buildDone).resolves.toBeUndefined();
+  });
+
+  describe("dev link validation of docs files", () => {
+    const files = {
+      "src/content/docs/guide/intro.md": "",
+      "src/content/docs/guide/notes.md": "",
+      "src/content/docs/guide/draft.md": "---\ndraft: true\n---\n",
+      "src/content/docs/guide/slides.pdf": "pdf",
+      "src/content/docs/guide/scratch.txt": "txt",
+      "src/content/docs/guide/_private.pdf": "pdf",
+      "public/guide/logo.png": "png",
+    };
+
+    it("accepts docs files the serve integration serves, and files in public/", async () => {
+      const site = makeSite(files);
+      const handleRequest = await startDevRequestHandler(site.rootDirPath, [
+        fakeServeDocsFilesIntegration(site.docsDirPath, ["**/*.txt"]),
+      ]);
+
+      const content =
+        '<a href="./slides.pdf">a</a><a href="./notes.md">b</a>' +
+        '<a href="./logo.png">c</a>';
+      await expect(
+        handleRequest("/guide/intro/", content),
+      ).resolves.toContain("/guide/slides.pdf");
+    });
+
+    it.each([
+      ["an ignored file", "./scratch.txt"],
+      ["a draft raw doc", "./draft.md"],
+      ["a _-prefixed file", "./_private.pdf"],
+      ["a missing file", "./missing.pdf"],
+    ])(
+      "rejects a link to %s with the serve integration present",
+      async (_, href) => {
+        const site = makeSite(files);
+        const handleRequest = await startDevRequestHandler(site.rootDirPath, [
+          fakeServeDocsFilesIntegration(site.docsDirPath, ["**/*.txt"]),
+        ]);
+
+        await expect(
+          handleRequest("/guide/intro/", `<a href="${href}">x</a>`),
+        ).rejects.toThrow(href.replace("./", ""));
+      },
+    );
+
+    it("only accepts files in public/ without the serve integration", async () => {
+      const site = makeSite(files);
+      const handleRequest = await startDevRequestHandler(site.rootDirPath);
+
+      await expect(
+        handleRequest("/guide/intro/", '<a href="./logo.png">c</a>'),
+      ).resolves.toContain("/guide/logo.png");
+      await expect(
+        handleRequest("/guide/intro/", '<a href="./slides.pdf">a</a>'),
+      ).rejects.toThrow("slides.pdf");
+    });
   });
 });

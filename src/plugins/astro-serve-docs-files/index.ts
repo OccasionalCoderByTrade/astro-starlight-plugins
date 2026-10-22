@@ -4,17 +4,21 @@
  * each file from source on request; in a build Astro writes each one into the output
  * directory. Nothing is written to or deleted from `public/`.
  */
+import { relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { AstroIntegration } from "astro";
+import type { AstroIntegration, AstroIntegrationLogger } from "astro";
+import type { ViteDevServer } from "vite";
 import { minimatch } from "minimatch";
 import {
   createServedFileRule,
   type ServedFileRule,
 } from "../utils/served-file-rule.js";
+import type { TDocsFileRouteSettings } from "./docs-file-route.js";
 import {
-  listServedFilePaths,
-  type TDocsFileRouteSettings,
-} from "./docs-file-route.js";
+  createPublicCollisionMiddleware,
+  findPublicCollisions,
+  formatPublicCollisionsMessage,
+} from "./public-collisions.js";
 import {
   DOCS_FILE_ROUTE_PATTERN,
   formatRouteCollisionsError,
@@ -192,7 +196,9 @@ export type AstroServeDocsFilesIntegration = AstroIntegration & {
    * It leaves out drafts, any file or dir whose name starts with `_` or `.` (and everything
    * under one) and `ignorePatterns` matches, and throws on unparseable frontmatter. Callable
    * once `astro:config:setup` has run, since the docs directory comes from Astro's config.
-   * Other integrations find this one by name in `config.integrations` to read it.
+   * Astro keeps only `name` and `hooks` in `config.integrations`, so other integrations
+   * find this one there by name and read the same rule from its
+   * `astro-serve-docs-files:served-file-rule` hook.
    */
   servedFileRule: ServedFileRule;
 };
@@ -243,6 +249,18 @@ function siblingModuleUrl(moduleName: string): URL {
   );
 }
 
+/**
+ * Clears Astro's dev route cache, so the endpoint's `getStaticPaths` reruns and picks up an
+ * added or deleted docs file. `astro:content-changed` is internal Astro API, not public, so
+ * this is the only place that sends it; an Astro upgrade that breaks it breaks it here.
+ */
+function clearRouteCache(server: ViteDevServer): void {
+  for (const environment of Object.values(server.environments)) {
+    if (environment.name === "client") continue;
+    environment.hot.send("astro:content-changed", {});
+  }
+}
+
 export function astroServeDocsFiles(
   options: AstroServeDocsFilesOptions = {},
 ): AstroServeDocsFilesIntegration {
@@ -253,6 +271,7 @@ export function astroServeDocsFiles(
   } = options;
   let routeSettings: TDocsFileRouteSettings | undefined;
   let resolvedServedFileRule: ServedFileRule | undefined;
+  let publicDirPath: string | undefined;
   let routeConflictListener:
     ReturnType<typeof listenForRouteConflicts> | undefined;
 
@@ -265,16 +284,43 @@ export function astroServeDocsFiles(
     return resolvedServedFileRule(relativePath);
   };
 
-  // Fails dev and build at startup on unparseable frontmatter, rather than on a request
+  // Fails dev and build at startup on unparseable frontmatter or a public/ collision,
+  // rather than on a request (ADR 0008)
   const checkServedFiles = () => {
-    if (!routeSettings) return;
-    listServedFilePaths(routeSettings.docsDirPath, servedFileRule);
+    if (!routeSettings || !publicDirPath) return;
+    const publicCollisions = findPublicCollisions(
+      { docsDirPath: routeSettings.docsDirPath, publicDirPath },
+      servedFileRule,
+    );
+    if (publicCollisions.length > 0) {
+      throw new Error(
+        formatPublicCollisionsMessage(
+          SERVE_DOCS_FILES_INTEGRATION_NAME,
+          publicCollisions,
+        ),
+      );
+    }
+  };
+
+  // Mid-session, a bad save only logs, so it doesn't stop the dev server
+  const logUnparseableFrontmatter = (
+    relativeFilePath: string,
+    logger: AstroIntegrationLogger,
+  ) => {
+    try {
+      servedFileRule(relativeFilePath);
+    } catch (error) {
+      logger.error(error instanceof Error ? error.message : String(error));
+    }
   };
 
   return {
     name: SERVE_DOCS_FILES_INTEGRATION_NAME,
     servedFileRule,
     hooks: {
+      // Astro's config validation keeps only `name` and `hooks` of each integration in
+      // `config.integrations`, so other integrations read the rule from here
+      "astro-serve-docs-files:served-file-rule": servedFileRule,
       "astro:config:setup": ({
         config,
         injectRoute,
@@ -287,6 +333,7 @@ export function astroServeDocsFiles(
           new URL("content/docs/", config.srcDir),
         ).replace(/[\\/]+$/, "");
         routeSettings = { docsDirPath, ignorePatterns };
+        publicDirPath = fileURLToPath(config.publicDir);
         resolvedServedFileRule = createServedFileRule(routeSettings);
 
         const resolvedSettingsModuleId = `\0${SETTINGS_MODULE_ID}`;
@@ -342,8 +389,26 @@ export function astroServeDocsFiles(
         routeConflictListener = listenForRouteConflicts(logger.options);
       },
 
-      "astro:server:setup": () => {
+      "astro:server:setup": ({ server, logger }) => {
         checkServedFiles();
+        if (!routeSettings || !publicDirPath) return;
+        const { docsDirPath } = routeSettings;
+
+        server.middlewares.use(
+          createPublicCollisionMiddleware(
+            SERVE_DOCS_FILES_INTEGRATION_NAME,
+            { docsDirPath, publicDirPath },
+            servedFileRule,
+          ),
+        );
+
+        server.watcher.on("all", (event, filePath) => {
+          if (!filePath.startsWith(docsDirPath + sep)) return;
+          if (event === "add" || event === "unlink") clearRouteCache(server);
+          if (event === "add" || event === "change") {
+            logUnparseableFrontmatter(relative(docsDirPath, filePath), logger);
+          }
+        });
       },
 
       // Astro on its own only warns about some of these and misses the rest

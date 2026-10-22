@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { existsSync, readdirSync, statSync } from "node:fs";
 import {
   dirname,
@@ -47,6 +48,11 @@ export type TProcessPageOptions = {
    * served ends up there. Default: `site.publicDirPath`.
    */
   servedFilesDirPath?: string;
+  /**
+   * In dev, the serve integration's served-file rule, if it's installed: a link to a file
+   * under the docs dir also counts when the rule accepts its docs-relative path.
+   */
+  servedDocsFileRule?: (docsRelativeFilePath: string) => boolean;
 };
 
 export type TBrokenLink = {
@@ -66,6 +72,59 @@ export type TLocalLinksSettings = Omit<
   TProcessPageOptions,
   "sourceDocFilePath" | "sourceDocIndex"
 >;
+
+/**
+ * The settings the dev middleware gets, as JSON. The served-file rule can't be JSON, so it
+ * comes as the id `registerServedFileRule` gave it.
+ */
+export type TLocalLinksDevSettings = Omit<
+  TLocalLinksSettings,
+  "servedDocsFileRule"
+> & { servedFileRuleId?: string };
+
+/** The name `astroServeDocsFiles` gives its integration, which this one finds it by. */
+export const SERVE_DOCS_FILES_INTEGRATION_NAME = "astro-serve-docs-files";
+
+/** The route `astroServeDocsFiles` injects to serve docs files. */
+export const SERVE_DOCS_FILES_ROUTE_PATTERN = "/[...path]";
+
+/** The custom hook `astroServeDocsFiles` exposes its served-file rule as. */
+export const SERVED_FILE_RULE_HOOK_NAME = `${SERVE_DOCS_FILES_INTEGRATION_NAME}:served-file-rule`;
+
+type TServedFileRule = (docsRelativeFilePath: string) => boolean;
+
+/**
+ * The served-file rules `registerServedFileRule` holds, by id. It lives on `globalThis`
+ * because the integration and the dev middleware each load their own copy of this module:
+ * one through Node, the other through Vite's module runner, in the same process.
+ */
+function servedFileRules(): Map<string, TServedFileRule> {
+  const registryKey = Symbol.for("astro-local-links/served-file-rules");
+  const registryHolder = globalThis as { [registryKey]?: Map<string, TServedFileRule> };
+  registryHolder[registryKey] ??= new Map();
+  return registryHolder[registryKey];
+}
+
+/** Keeps `servedFileRule` for the dev middleware to find by the id this returns. */
+export function registerServedFileRule(servedFileRule: TServedFileRule): string {
+  const servedFileRuleId = randomUUID();
+  servedFileRules().set(servedFileRuleId, servedFileRule);
+  return servedFileRuleId;
+}
+
+/** The rule `registerServedFileRule` kept under `servedFileRuleId`. */
+export function findServedFileRule(
+  servedFileRuleId: string,
+): TServedFileRule {
+  const servedFileRule = servedFileRules().get(servedFileRuleId);
+  if (!servedFileRule) {
+    throw new Error(
+      `[astro-local-links] the served-file rule of ${SERVE_DOCS_FILES_INTEGRATION_NAME} ` +
+        `wasn't found. Does the dev middleware run in a different process from the integration?`,
+    );
+  }
+  return servedFileRule;
+}
 
 /** The route Starlight renders every source doc through, except a custom `404.md`. */
 export const STARLIGHT_DOC_ROUTE = "/[...slug]";
@@ -358,6 +417,13 @@ function findBrokenLinkDetails(
     docsRelativeLinkPath,
   );
   if (isFile(servedFilePath)) return null;
+  if (
+    options.servedDocsFileRule &&
+    isFile(join(site.docsDirPath, docsRelativeLinkPath)) &&
+    options.servedDocsFileRule(docsRelativeLinkPath)
+  ) {
+    return null;
+  }
 
   const rawDocLinkPagePath = findRawDocLinkPagePath(
     docsRelativeLinkPath,

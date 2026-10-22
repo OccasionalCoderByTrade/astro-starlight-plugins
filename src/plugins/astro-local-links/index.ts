@@ -8,16 +8,17 @@ import {
   formatPagePathCollisionsError,
   formatShadowedDocsError,
   processDocPage,
+  registerServedFileRule,
+  SERVE_DOCS_FILES_INTEGRATION_NAME,
+  SERVE_DOCS_FILES_ROUTE_PATTERN,
+  SERVED_FILE_RULE_HOOK_NAME,
   STARLIGHT_DOC_ROUTE,
   SETTINGS_MODULE_ID,
   STARLIGHT_404_PAGE_PATH,
+  type TLocalLinksDevSettings,
   type TLocalLinksSettings,
   type TPageBrokenLinks,
 } from "./utils.js";
-
-/** `astroServeDocsFiles`'s name and the route it injects, known here without importing it. */
-const SERVE_DOCS_FILES_INTEGRATION_NAME = "astro-serve-docs-files";
-const SERVE_DOCS_FILES_ROUTE_PATTERN = "/[...path]";
 
 export type AstroLocalLinksOptions = {
   /**
@@ -89,6 +90,20 @@ export function astroLocalLinks(
         if (command !== "dev" || (!settings.validate && !settings.normalize)) {
           return;
         }
+        // A file under the docs dir counts in dev if astroServeDocsFiles serves it. Its rule
+        // is only kept here: it can't be called before that integration's own config:setup.
+        // Astro keeps only `name` and `hooks` in `config.integrations`, so the rule is a hook
+        const servedFileRule = config.integrations.find(
+          (integration) => integration.name === SERVE_DOCS_FILES_INTEGRATION_NAME,
+        )?.hooks[SERVED_FILE_RULE_HOOK_NAME] as
+          | ((relativePath: string) => boolean)
+          | undefined;
+        const devSettings: TLocalLinksDevSettings = {
+          ...settings,
+          servedFileRuleId: servedFileRule
+            ? registerServedFileRule(servedFileRule)
+            : undefined,
+        };
         const resolvedSettingsModuleId = `\0${SETTINGS_MODULE_ID}`;
         updateConfig({
           vite: {
@@ -101,7 +116,7 @@ export function astroLocalLinks(
                     : undefined,
                 load: (id: string) =>
                   id === resolvedSettingsModuleId
-                    ? `export default ${JSON.stringify(settings)};`
+                    ? `export default ${JSON.stringify(devSettings)};`
                     : undefined,
               },
             ],
