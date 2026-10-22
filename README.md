@@ -331,8 +331,8 @@ import { astroLocalLinks } from "starlight-cannoli-plugins/astro-local-links";
 
 **What counts as an existing target:**
 
-- A source doc. `/reference/schemas` matches `reference/schemas.md(x)` or `reference/schemas/index.md(x)`, and `/reference/schemas/index` matches the latter (link normalization rewrites it to `/reference/schemas`, since that's where the page is served).
-- A source doc by its file path, URL-encoded, when its filename isn't a slug: `/reference/List%20Syntax` matches `reference/List Syntax.md`, as does its page path `/reference/list-syntax`. A link that only matches once slugified, like `/reference/LIST-syntax`, is broken. With link normalization off, a file-path link is broken too, since nothing rewrites it to the page path. A skip pattern skips it if it matches either path.
+- A source doc. `/reference/schemas` matches `reference/schemas.md(x)` or `reference/schemas/index.md(x)`, or any other extension Starlight loads (`.markdown`, `.mdown`...). `/reference/schemas/index` matches the latter too, as a file-form link (see [Non-slug filenames](#non-slug-filenames)), so link normalization rewrites it to `/reference/schemas`.
+- A source doc by its file path, when its filename isn't a slug. See [Non-slug filenames](#non-slug-filenames) below.
 - A file in `public/`, like `/static/img/logo.png`.
 
 A file that sits next to your docs in `src/content/docs/` (a PDF, an image) only counts once it's in `public/`, because until then its URL would 404. [Sync Docs to Public](#sync-docs-to-public) does that copying for you.
@@ -343,7 +343,7 @@ Pages that aren't rendered from a source doc, like `src/pages/*.astro` routes, c
 
 - `astro build` checks every page, then fails once with a list of every broken local link, grouped by source doc.
 - `astro dev` shows the broken links on the page's error screen when you open it.
-- Two source docs with the same page path, like `Foo.md` and `foo.md`, `a b.md` and `a-b.md`, or `x.md` and `x/index.md`, are a page path collision. `astro build` fails before checking any page, listing every collision and its files, so you know which to rename. `astro dev` only errors on the colliding page and pages that link to it.
+- Two source docs with the same page path fail the build before any page is checked. See [Non-slug filenames](#non-slug-filenames).
 
 **What it leaves alone:**
 
@@ -385,11 +385,28 @@ These only skip link validation. The link still gets normalized.
 **Limitations:**
 
 - Astro's `base` option isn't supported yet. Setting it makes the integration throw at startup.
-- A page's source doc is found from its URL, so a doc whose URL differs from its file path (a frontmatter `slug`, or a file name Starlight changes when making its URL) isn't found, and the integration throws.
+- A frontmatter `slug` and a custom `docsLoader({ generateId })` aren't supported. See [Non-slug filenames](#non-slug-filenames).
 
 **Migrating from `rehypeValidateLinks` and `astroNormalizePaths`:**
 
 Both are replaced by `astroLocalLinks` and now throw when called. Remove `rehypeValidateLinks` from `markdown.rehypePlugins` and `astroNormalizePaths()` from `integrations`, then add `astroLocalLinks()`. `rehypeValidateLinks`' `skipPatterns` moves to `astroLocalLinks({ validate: { skipPatterns } })`.
+
+#### Non-slug filenames
+
+Starlight serves each source doc at its page path, made by slugifying each segment of its file path. So `reference/List Syntax.md` is served at `/reference/list-syntax/`, and `My Guide/Intro.md` at `/my-guide/intro/`. You can link to a doc like that in two ways, and both pass link validation:
+
+- **Page-form link**, the URL readers see: `/reference/list-syntax/`, or `./list-syntax` from a sibling doc.
+- **File-form link**, the file path without its extension, URL-encoded: `./List%20Syntax`, or `/reference/List%20Syntax`. Your editor can follow these to the file.
+
+Link normalization rewrites file-form links to the page path, URL-encoded where needed, so readers don't hit a 404. It keeps your trailing slash or lack of one, and any `?query#fragment`. With link normalization off, a file-form link is reported as broken, and the error names the page path to link to instead. A skip pattern skips a file-form link if it matches either its file form or its page path.
+
+A link has to be exactly one of the two forms. One that only matches once slugified, like `/reference/LIST-syntax`, is broken, since hosts serve only the exact page path.
+
+Slug filenames (`list-syntax.md`) are still simpler, because then the two forms are the same link. Non-slug filenames are there for files you'd rather not rename, like ones imported from a notes vault.
+
+Two source docs with the same page path, like `Foo.md` and `foo.md`, `a b.md` and `a-b.md`, or `x.md` and `x/index.md`, are a page path collision. `astro build` fails before checking any page, listing every collision and its files, so you know which to rename. `astro dev` only errors on the colliding page and pages whose content links to it.
+
+Page paths are worked out the way Starlight's docs loader does it by default. A frontmatter `slug` and a custom `docsLoader({ generateId })` change where Starlight serves a page, so they aren't supported. Pages that use them usually can't be matched to their source doc, and the integration throws.
 
 ### Sync Docs to Public
 

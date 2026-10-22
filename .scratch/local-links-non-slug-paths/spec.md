@@ -1,4 +1,4 @@
-Status: ready-for-agent
+Status: resolved
 
 # astro-local-links: support source docs with non-slug paths
 

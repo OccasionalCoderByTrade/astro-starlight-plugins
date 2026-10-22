@@ -4,9 +4,9 @@
 
 **Blocked by:** 02 (File-form links), 03 (Page path collisions)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] README Local Links section has a "Non-slug filenames" subsection covering the points above, in the README's existing style
-- [ ] Full test suite passes
-- [ ] Final browser pass over the demo doc and the links to it, in dev and build preview, with no console errors
-- [ ] `npm run lib:build` passes; committed to the current branch
+- [x] README Local Links section has a "Non-slug filenames" subsection covering the points above, in the README's existing style
+- [x] Full test suite passes
+- [x] Final browser pass over the demo doc and the links to it, in dev and build preview, with no console errors
+- [x] `npm run lib:build` passes; committed to the current branch
