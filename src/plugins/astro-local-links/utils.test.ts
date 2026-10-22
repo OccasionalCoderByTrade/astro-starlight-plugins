@@ -2,7 +2,12 @@ import { createRequire } from "node:module";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { makeSite, pageHtml } from "./test-site.js";
-import { buildSourceDocIndex, processPage, resolveSourceDoc } from "./utils.js";
+import {
+  buildSourceDocIndex,
+  formatBrokenLinksError,
+  processPage,
+  resolveSourceDoc,
+} from "./utils.js";
 
 const VALIDATE_AND_NORMALIZE = {
   validate: { skipPatterns: [] },
@@ -234,8 +239,169 @@ describe("processPage link validation", () => {
     expect(brokenHrefs(files, ["./my%20notes.pdf", "./caf%C3%A9"])).toEqual([]);
   });
 
+  it("reports a raw doc link with no copy in public/, naming the page link to use instead", () => {
+    const site = makeSite({
+      "src/content/docs/guide/intro.md": "",
+      "src/content/docs/guide/auto-list-syntax.md": "",
+    });
+
+    const result = processPage(
+      pageHtml(`<a href="./auto-list-syntax.md#usage">x</a>`),
+      {
+        sourceDocFilePath: join(site.docsDirPath, "guide/intro.md"),
+        sourceDocIndex: buildSourceDocIndex(site.docsDirPath),
+        site,
+        ...VALIDATE_AND_NORMALIZE,
+      },
+    );
+
+    expect(result.brokenLinks).toEqual([
+      {
+        href: "./auto-list-syntax.md#usage",
+        reason:
+          "raw doc link, but public/guide/auto-list-syntax.md doesn't exist. " +
+          "To link to the page, use ./auto-list-syntax#usage.",
+        isRawDocLink: true,
+      },
+    ]);
+    expect(result.html).toContain(
+      `<a href="/guide/auto-list-syntax.md#usage">x</a>`,
+    );
+  });
+
+  it("names the page path for a raw doc link when its extensionless link would be broken", () => {
+    const site = makeSite({
+      "src/content/docs/guide/intro.md": "",
+      "src/content/docs/guide/List Syntax.md": "",
+      "src/content/docs/guide/auto-list-syntax.md": "",
+      "src/content/docs/reference/index.md": "",
+    });
+    const content =
+      `<a href="./List%20Syntax.md">a</a>` +
+      `<a href="./auto-list-syntax.md">b</a>` +
+      `<a href="../reference/index.md">c</a>`;
+
+    const result = processPage(pageHtml(content), {
+      sourceDocFilePath: join(site.docsDirPath, "guide/intro.md"),
+      sourceDocIndex: buildSourceDocIndex(site.docsDirPath),
+      site,
+      validate: { skipPatterns: [] },
+      normalize: false,
+    });
+
+    expect(result.brokenLinks.map((brokenLink) => brokenLink.reason)).toEqual([
+      "raw doc link, but public/guide/List Syntax.md doesn't exist. " +
+        "To link to the page, use /guide/list-syntax.",
+      "raw doc link, but public/guide/auto-list-syntax.md doesn't exist. " +
+        "To link to the page, use ./auto-list-syntax.",
+      "raw doc link, but public/reference/index.md doesn't exist. " +
+        "To link to the page, use /reference.",
+    ]);
+  });
+
+  it("accepts a raw doc link copied into public/, and treats a .md that names no source doc as a public file", () => {
+    const files = {
+      "src/content/docs/guide/synced.md": "",
+      "public/guide/synced.md": "",
+      "src/content/docs/guide/_partial.md": "",
+    };
+
+    const site = makeSite({ "src/content/docs/guide/intro.md": "", ...files });
+    const result = processPage(
+      pageHtml(
+        `<a href="./synced.md">a</a><a href="./notes.md">b</a><a href="./_partial.md">c</a>`,
+      ),
+      {
+        sourceDocFilePath: join(site.docsDirPath, "guide/intro.md"),
+        sourceDocIndex: buildSourceDocIndex(site.docsDirPath),
+        site,
+        ...VALIDATE_AND_NORMALIZE,
+      },
+    );
+
+    expect(result.brokenLinks).toEqual([
+      {
+        href: "./notes.md",
+        reason: "no source doc or public file at /guide/notes.md",
+      },
+      {
+        href: "./_partial.md",
+        reason: "no source doc or public file at /guide/_partial.md",
+      },
+    ]);
+  });
+
+  it("only counts a link as a raw doc link when it names a source doc's file, extension case included", () => {
+    const site = makeSite({
+      "src/content/docs/guide/intro.md": "",
+      "src/content/docs/guide/sibling.md": "",
+      "src/content/docs/reference/index.md": "",
+    });
+
+    const result = processPage(
+      pageHtml(`<a href="./sibling.MD">a</a><a href="/reference.md">b</a>`),
+      {
+        sourceDocFilePath: join(site.docsDirPath, "guide/intro.md"),
+        sourceDocIndex: buildSourceDocIndex(site.docsDirPath),
+        site,
+        ...VALIDATE_AND_NORMALIZE,
+      },
+    );
+
+    expect(result.brokenLinks).toEqual([
+      {
+        href: "./sibling.MD",
+        reason: "no source doc or public file at /guide/sibling.MD",
+      },
+      {
+        href: "/reference.md",
+        reason: "no source doc or public file at /reference.md",
+      },
+    ]);
+  });
+
   it("reports a relative link that climbs out of the docs dir", () => {
     expect(brokenHrefs({}, ["../../../outside"])).toEqual(["../../../outside"]);
+  });
+});
+
+describe("formatBrokenLinksError", () => {
+  it("explains raw doc links once, after every broken link", () => {
+    const rawDocLinkFields = {
+      reason: "raw doc link, but public/guide/a.md doesn't exist.",
+      isRawDocLink: true,
+    };
+
+    const error = formatBrokenLinksError([
+      {
+        sourceDocFilePath: "/site/src/content/docs/guide/b.md",
+        brokenLinks: [{ href: "./a.md", ...rawDocLinkFields }],
+      },
+      {
+        sourceDocFilePath: "/site/src/content/docs/guide/c.md",
+        brokenLinks: [
+          { href: "./a.md", ...rawDocLinkFields },
+          { href: "./missing", reason: "no source doc or public file" },
+        ],
+      },
+    ]);
+
+    expect(error.match(/is a raw doc link/g)).toHaveLength(1);
+    expect(error).toMatch(
+      /- \.\/missing: no source doc or public file\n\nA link /,
+    );
+    expect(error).toContain("syncDocsToPublic");
+  });
+
+  it("leaves out the raw doc link explanation when no broken link is one", () => {
+    const error = formatBrokenLinksError([
+      {
+        sourceDocFilePath: "/site/src/content/docs/guide/b.md",
+        brokenLinks: [{ href: "./missing", reason: "no source doc" }],
+      },
+    ]);
+
+    expect(error).not.toContain("raw doc link");
   });
 });
 

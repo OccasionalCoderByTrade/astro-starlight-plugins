@@ -339,6 +339,8 @@ import { astroLocalLinks } from "starlight-cannoli-plugins/astro-local-links";
 
 A file that sits next to your docs in `src/content/docs/` (a PDF, an image) only counts once it's in `public/`, because until then its URL would 404. [Sync Docs to Public](#sync-docs-to-public) does that copying for you.
 
+That includes source docs themselves. A link with the doc's extension, like `./auto-list-syntax.md`, is a **raw doc link**: it sends readers to the raw Markdown, not to the page built from it. It's never rewritten to the page path, so it only passes once the `.md` file is in `public/`, copied there by hand or by Sync Docs to Public. If it's missing, the error names the link to use for the page instead. To link to the page, drop the extension.
+
 Pages that aren't rendered from a source doc, like `src/pages/*.astro` routes, can't be checked. Link to them with one of the skips below.
 
 **When it fails:**

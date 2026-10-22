@@ -58,6 +58,7 @@ export function astroLocalLinks(
 
         settings = {
           site: {
+            rootDirPath: fileURLToPath(config.root),
             docsDirPath: fileURLToPath(new URL("content/docs/", config.srcDir)),
             publicDirPath: fileURLToPath(config.publicDir),
             // `/_image` serves optimized images in dev, `/@fs/` and `/@id/` are Vite's

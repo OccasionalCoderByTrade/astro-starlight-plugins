@@ -23,6 +23,7 @@ type TParentNode = DefaultTreeAdapterTypes.ParentNode;
 
 /** Where the site a page belongs to keeps its files. */
 export type TLocalLinksSite = {
+  rootDirPath: string;
   docsDirPath: string;
   publicDirPath: string;
   /** Root-absolute URL prefixes Astro and Vite generate (optimized images, bundled assets). */
@@ -46,6 +47,8 @@ export type TProcessPageOptions = {
 export type TBrokenLink = {
   href: string;
   reason: string;
+  /** The link is a raw doc link, which the error explains once. */
+  isRawDocLink?: boolean;
 };
 
 export type TPageBrokenLinks = {
@@ -168,12 +171,19 @@ export function processPage(html: string, options: TProcessPageOptions) {
             (pageSitePath !== null &&
               minimatch(pageSitePath + fragment, pattern)),
         );
-      const reason = isSkippedByPattern
+      const brokenLinkDetails = isSkippedByPattern
         ? null
         : sitePath === null
-          ? "points outside the docs dir"
-          : findMissingTargetReason(sitePath, docLinkTarget, options);
-      if (reason) brokenLinks.push({ href: writtenHref, reason });
+          ? { reason: "points outside the docs dir" }
+          : findBrokenLinkDetails(
+              sitePath,
+              { pathPart, suffix },
+              docLinkTarget,
+              options,
+            );
+      if (brokenLinkDetails) {
+        brokenLinks.push({ href: writtenHref, ...brokenLinkDetails });
+      }
     }
 
     const normalizedSitePath = pageSitePath ?? (isRelative ? sitePath : null);
@@ -324,28 +334,81 @@ function toPageSitePath(pagePath: string, hasTrailingSlash: boolean): string {
   return encodeURI(`/${pagePath}${hasTrailingSlash ? "/" : ""}`);
 }
 
-/** Why nothing on the site is served at `sitePath`, or null if something is. */
-function findMissingTargetReason(
+/**
+ * Why nothing on the site is served at `sitePath`, or null if something is. `writtenHref`
+ * is the link's href as written, split by `splitHref`.
+ */
+function findBrokenLinkDetails(
   sitePath: string,
+  writtenHref: ReturnType<typeof splitHref>,
   docLinkTarget: TDocLinkTarget | null,
-  { site, normalize }: TProcessPageOptions,
-): string | null {
-  const docsRelativePagePath = toDocsRelativePagePath(sitePath);
-  if (docsRelativePagePath === null)
-    return `malformed URL encoding in ${sitePath}`;
-  if (isFile(join(site.publicDirPath, docsRelativePagePath))) return null;
+  options: TProcessPageOptions,
+): Omit<TBrokenLink, "href"> | null {
+  const { site, normalize } = options;
+  const docsRelativeLinkPath = toDocsRelativePagePath(sitePath);
+  if (docsRelativeLinkPath === null)
+    return { reason: `malformed URL encoding in ${sitePath}` };
+  const publicFilePath = join(site.publicDirPath, docsRelativeLinkPath);
+  if (isFile(publicFilePath)) return null;
 
+  const rawDocLinkPagePath = findRawDocLinkPagePath(
+    docsRelativeLinkPath,
+    options,
+  );
+  if (rawDocLinkPagePath !== null) {
+    // the extensionless link is a file-form link, broken without link normalization unless
+    // the file path is also the page path
+    const isExtensionlessLinkBroken =
+      !normalize &&
+      removeExtension(docsRelativeLinkPath) !== rawDocLinkPagePath;
+    const pageHref = isExtensionlessLinkBroken
+      ? toPageSitePath(rawDocLinkPagePath, false)
+      : removeExtension(writtenHref.pathPart);
+    const rootRelativePublicFilePath = relative(
+      site.rootDirPath,
+      publicFilePath,
+    )
+      .split(sep)
+      .join("/");
+    return {
+      reason:
+        `raw doc link, but ${rootRelativePublicFilePath} doesn't exist. ` +
+        `To link to the page, use ${pageHref}${writtenHref.suffix}.`,
+      isRawDocLink: true,
+    };
+  }
   if (docLinkTarget === null) {
-    return `no source doc or public file at ${sitePath}`;
+    return { reason: `no source doc or public file at ${sitePath}` };
   }
   if (docLinkTarget.isFileForm && !normalize) {
     const pageSitePath = toPageSitePath(docLinkTarget.pagePath, true);
-    return (
-      `links to a source doc by its file path, but its page is served at ` +
-      `${pageSitePath}. Link to ${pageSitePath}, or turn on link normalization.`
-    );
+    return {
+      reason:
+        `links to a source doc by its file path, but its page is served at ` +
+        `${pageSitePath}. Link to ${pageSitePath}, or turn on link normalization.`,
+    };
   }
   return null;
+}
+
+/**
+ * The page path of the source doc a raw doc link names: `guide/List Syntax.md` →
+ * `guide/list-syntax`. Null if the link doesn't name a source doc's file, extension
+ * included.
+ */
+function findRawDocLinkPagePath(
+  docsRelativeLinkPath: string,
+  { site, sourceDocIndex }: TProcessPageOptions,
+): string | null {
+  // the extension match is case-sensitive, like the loader's glob
+  if (!SOURCE_DOC_EXTENSIONS.includes(extname(docsRelativeLinkPath))) {
+    return null;
+  }
+  const pagePath = toPagePath(removeExtension(docsRelativeLinkPath).split("/"));
+  const sourceDocFilePath = join(site.docsDirPath, docsRelativeLinkPath);
+  return sourceDocIndex.get(pagePath)?.includes(sourceDocFilePath)
+    ? pagePath
+    : null;
 }
 
 /**
@@ -576,11 +639,22 @@ export function formatBrokenLinksError(
         .map((brokenLink) => `  - ${brokenLink.href}: ${brokenLink.reason}`)
         .join("\n"),
   );
+  const hasRawDocLink = pagesBrokenLinks.some((page) =>
+    page.brokenLinks.some((brokenLink) => brokenLink.isRawDocLink),
+  );
   return (
     `[astro-local-links] ${brokenLinkCount} broken local link` +
-    `${brokenLinkCount === 1 ? "" : "s"}:\n${pageSections.join("\n")}`
+    `${brokenLinkCount === 1 ? "" : "s"}:\n${pageSections.join("\n")}` +
+    (hasRawDocLink ? `\n\n${RAW_DOC_LINK_EXPLANATION}` : "")
   );
 }
+
+const RAW_DOC_LINK_EXPLANATION =
+  `A link to a source doc with its extension (like ./auto-list-syntax.md) is a raw doc link: ` +
+  `it sends readers to the raw Markdown source, not to the page built from it. If that's ` +
+  `what you want, the source doc must also exist in public/. Copy it there, or let ` +
+  `syncDocsToPublic mirror src/content/docs/ into public/. To link to the page instead, ` +
+  `drop the extension or use the page path.`;
 
 /**
  * Runs `processPage` on the HTML of the Starlight doc page at URL `pathname`, after finding

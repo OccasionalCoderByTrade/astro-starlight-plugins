@@ -147,6 +147,23 @@ describe("astroLocalLinks", () => {
     );
   });
 
+  it("fails build:done on a raw doc link with no copy in public/, naming the copy's path from the project root", async () => {
+    const site = makeSite({
+      "src/content/docs/reference/index.md": "",
+      "src/content/docs/reference/auto-list-syntax.md": "",
+    });
+    const { integration } = await runSetup(site.rootDirPath, "build");
+
+    const buildDone = runBuildDone(integration, site.rootDirPath, {
+      "reference/index.html": pageHtml(`<a href="./auto-list-syntax.md">x</a>`),
+      "reference/auto-list-syntax/index.html": pageHtml(""),
+    });
+
+    await expect(buildDone).rejects.toThrow(
+      /\.\/auto-list-syntax\.md: raw doc link, but public\/reference\/auto-list-syntax\.md doesn't exist/,
+    );
+  });
+
   it("does nothing on build:done with validation and normalization off", async () => {
     const site = makeSite({ "src/content/docs/guide/intro.md": "" });
     const { integration } = await runSetup(site.rootDirPath, "build", {

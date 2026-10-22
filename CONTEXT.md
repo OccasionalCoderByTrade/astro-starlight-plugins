@@ -77,8 +77,12 @@ A source doc path that differs from its page path, such as `reference/List Synta
 _Avoid_: unslugified path, raw path
 
 **File-form link**:
-A local link to a source doc written as the source doc's path, so an editor can follow it.
+A local link to a source doc written as the source doc's path without its extension, so an editor can follow it. It means the source doc's page.
 _Avoid_: file link, raw link
+
+**Raw doc link**:
+A local link to a source doc written as the source doc's path with its extension, such as `./auto-list-syntax.md`. It means the raw Markdown itself, never its page, so a copy of the source doc must exist at that path in `public/`.
+_Avoid_: source link, source-file link, file-form link (with extension)
 
 **Page-form link**:
 A local link to a source doc written as its page path.
