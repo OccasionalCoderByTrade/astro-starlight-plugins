@@ -12,10 +12,10 @@ export default defineConfig({
     "plugins/astro-local-links": "src/plugins/astro-local-links/index.ts",
     "plugins/astro-local-links/dev-middleware":
       "src/plugins/astro-local-links/dev-middleware.ts",
-    "plugins/astro-sync-docs-to-public":
-      "src/plugins/astro-sync-docs-to-public/index.ts",
-    "plugins/astro-sync-docs-to-public/page-script":
-      "src/plugins/astro-sync-docs-to-public/page-script.ts",
+    "plugins/astro-serve-docs-files":
+      "src/plugins/astro-serve-docs-files/index.ts",
+    "plugins/astro-serve-docs-files/page-script":
+      "src/plugins/astro-serve-docs-files/page-script.ts",
     "plugins/starlight-dom-patches":
       "src/plugins/starlight-dom-patches/index.ts",
     "plugins/starlight-dom-patches/page-script":

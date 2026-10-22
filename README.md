@@ -335,9 +335,9 @@ import { astroLocalLinks } from "starlight-cannoli-plugins/astro-local-links";
 
 - A source doc. `/reference/schemas` matches `reference/schemas.md(x)` or `reference/schemas/index.md(x)`, or any other extension Starlight loads (`.markdown`, `.mdown`...). `/reference/schemas/index` matches the latter too, as a file-form link (see [Non-slug filenames](#non-slug-filenames)), so link normalization rewrites it to `/reference/schemas`.
 - A source doc by its file path, when its filename isn't a slug. See [Non-slug filenames](#non-slug-filenames) below.
-- A file the site serves, like `/static/img/logo.png`. In `astro build` that's any file in the build output: files from `public/`, docs files that [Sync Docs to Public](#sync-docs-to-public) serves, and whatever other integrations write. In `astro dev` it's a file in `public/`.
+- A file the site serves, like `/static/img/logo.png`. In `astro build` that's any file in the build output: files from `public/`, docs files that [Serve Docs Files](#serve-docs-files) serves, and whatever other integrations write. In `astro dev` it's a file in `public/`.
 
-A file that sits next to your docs in `src/content/docs/` (a PDF, an image) only counts if the site serves it, because otherwise its URL would 404. [Sync Docs to Public](#sync-docs-to-public) does that for you.
+A file that sits next to your docs in `src/content/docs/` (a PDF, an image) only counts if the site serves it, because otherwise its URL would 404. [Serve Docs Files](#serve-docs-files) does that for you.
 
 That includes source docs themselves. A link with the doc's extension, like `./auto-list-syntax.md`, is a **raw doc link**: it sends readers to the raw Markdown, not to the page built from it. It's never rewritten to the page path, so it only passes if the raw doc is served (a draft, for instance, isn't). If it isn't, the error says so and names the link to use for the page instead. To link to the page, drop the extension.
 
@@ -414,7 +414,9 @@ Two source docs with the same page path, like `Foo.md` and `foo.md`, `a b.md` an
 
 Page paths are worked out the way Starlight's docs loader does it by default. A frontmatter `slug` and a custom `docsLoader({ generateId })` change where Starlight serves a page, so they aren't supported. Pages that use them usually can't be matched to their source doc, and the integration throws.
 
-### Sync Docs to Public
+### Serve Docs Files
+
+Renamed from `syncDocsToPublic` in 4.0.0. Import `astroServeDocsFiles` instead (subpath export: `starlight-cannoli-plugins/astro-serve-docs-files`).
 
 Syncs `src/content/docs/` to `public/` so local files (e.g., PDFs, images) referenced in markdown are served by the dev server and included in builds. In dev mode, it watches for file changes and re-syncs automatically — no restart needed.
 
@@ -432,11 +434,11 @@ Syncs `src/content/docs/` to `public/` so local files (e.g., PDFs, images) refer
 // astro.config.mjs
 import { defineConfig } from "astro/config";
 import starlight from "@astrojs/starlight";
-import { syncDocsToPublic } from "starlight-cannoli-plugins";
+import { astroServeDocsFiles } from "starlight-cannoli-plugins";
 
 export default defineConfig({
   integrations: [
-    syncDocsToPublic({ preserveDirs: ["static"] }),
+    astroServeDocsFiles({ preserveDirs: ["static"] }),
     starlight({ title: "My Docs" }),
   ],
 });
@@ -450,7 +452,7 @@ export default defineConfig({
 - `enableAskAiOption` (optional, default: `false`): Adds "Ask ChatGPT", "Ask Claude", and "Ask Gemini" entries to the same `⋮` dropdown, each opening the respective chat app in a new tab with a prompt pre-filled to read the page's raw markdown URL. Independent of `exposePageSrcButton` — enabling this on its own still injects the dropdown button, containing only the "Ask" entries.
 
 ```ts
-syncDocsToPublic({
+astroServeDocsFiles({
   preserveDirs: ["static"],
   ignorePatterns: ["**/*.txt", "**/drafts/**"],
   exposePageSrcButton: true,
