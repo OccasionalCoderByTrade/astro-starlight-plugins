@@ -335,7 +335,7 @@ import { astroLocalLinks } from "starlight-cannoli-plugins/astro-local-links";
 
 - A source doc. `/reference/schemas` matches `reference/schemas.md(x)` or `reference/schemas/index.md(x)`, or any other extension Starlight loads (`.markdown`, `.mdown`...). `/reference/schemas/index` matches the latter too, as a file-form link (see [Non-slug filenames](#non-slug-filenames)), so link normalization rewrites it to `/reference/schemas`.
 - A source doc by its file path, when its filename isn't a slug. See [Non-slug filenames](#non-slug-filenames) below.
-- A file the site serves, like `/static/img/logo.png`. In `astro build` that's any file in the build output: files from `public/`, docs files that [Serve Docs Files](#serve-docs-files) serves, and whatever other integrations write. In `astro dev` it's a file in `public/`.
+- A file the site serves, like `/static/img/logo.png`. In `astro build` that's any file in the build output: files from `public/`, docs files that [Serve Docs Files](#serve-docs-files) serves, and whatever other integrations write. In `astro dev` it's a file in `public/`, or a file under `src/content/docs/` that Serve Docs Files would serve. Local Links finds Serve Docs Files by its integration name in Astro's `integrations` and uses the same served-file rule, so drafts, `_`- or `.`-prefixed files and `ignorePatterns` matches fail in dev just as they would in a build. Without Serve Docs Files installed, only `public/` counts in dev.
 
 A file that sits next to your docs in `src/content/docs/` (a PDF, an image) only counts if the site serves it, because otherwise its URL would 404. [Serve Docs Files](#serve-docs-files) does that for you.
 
@@ -456,7 +456,7 @@ astroServeDocsFiles({
 });
 ```
 
-**Served-file rule:** the integration object has a `servedFileRule(relativePath)` field that says whether a path relative to the docs directory is served, by the rules above. It throws on unparseable frontmatter. Other integrations can find this one by name (`astro-serve-docs-files`) in `config.integrations` and call it once `astro:config:setup` has run.
+**Served-file rule:** the integration object has a `servedFileRule(relativePath)` field that says whether a path relative to the docs directory is served, by the rules above. It throws on unparseable frontmatter. Astro keeps only `name` and `hooks` of each integration in `config.integrations`, so the same function is also the `astro-serve-docs-files:served-file-rule` hook. Other integrations can find this one by name (`astro-serve-docs-files`) in `config.integrations`, read that hook, and call it once `astro:config:setup` has run.
 
 **Upgrading to 4.0.0:**
 

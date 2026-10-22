@@ -4,7 +4,9 @@ import {
   formatBrokenLinksError,
   formatShadowedDocError,
   processDocPage,
+  findServedFileRule,
   STARLIGHT_DOC_ROUTE,
+  type TLocalLinksDevSettings,
   type TLocalLinksSettings,
 } from "./utils.js";
 
@@ -16,8 +18,16 @@ import {
  * are indexed on each request, so ones added or renamed since the last are picked up.
  */
 export function createOnRequest(
-  settings: TLocalLinksSettings,
+  devSettings: TLocalLinksDevSettings,
 ): MiddlewareHandler {
+  const { servedFileRuleId, ...otherSettings } = devSettings;
+  const settings: TLocalLinksSettings = {
+    ...otherSettings,
+    servedDocsFileRule:
+      servedFileRuleId === undefined
+        ? undefined
+        : findServedFileRule(servedFileRuleId),
+  };
   return async (context, next) => {
     const response = await next();
     // Redirects and endpoints can shadow a doc too, so only error responses skip the check
