@@ -81,8 +81,20 @@ A local link to a source doc written as the source doc's path without its extens
 _Avoid_: file link, raw link
 
 **Raw doc link**:
-A local link to a source doc written as the source doc's path with its extension, such as `./auto-list-syntax.md`. It means the raw Markdown itself, never its page, so a copy of the source doc must exist at that path in `public/`.
+A local link to a source doc written as the source doc's path with its extension, such as `./auto-list-syntax.md`. It means the raw doc, never the page, so it only works when the raw doc is served.
 _Avoid_: source link, source-file link, file-form link (with extension)
+
+**Raw doc**:
+A source doc served as-is at its source path, such as `/reference/auto-list-syntax.md`, rather than rendered into a page.
+_Avoid_: raw Markdown, source copy, public copy
+
+**Docs asset**:
+A file under the docs directory that isn't a source doc, such as a PDF or image, served at its path relative to that directory.
+_Avoid_: public file, synced file, static file, attachment
+
+**Served path collision**:
+A served path that a raw doc or docs asset shares with a file in `public/` or with another route's output, such as `public/reference/notes.pdf` next to `src/content/docs/reference/notes.pdf`, or a docs `zap/index.html` next to a `src/pages/zap.astro` page. It fails the build. One with a `public/` file also fails dev at startup.
+_Avoid_: public collision, shadowed asset
 
 **Page-form link**:
 A local link to a source doc written as its page path.

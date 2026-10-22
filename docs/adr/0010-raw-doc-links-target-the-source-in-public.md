@@ -1,6 +1,8 @@
 ---
-status: accepted
+status: accepted, partly superseded by ADR 0011
 ---
+
+> Where a raw doc is served is superseded by ADR 0011: raw docs are served by `astroServeDocsFiles`'s endpoint, not from `public/`. That raw doc links are never rewritten still stands.
 
 # Raw doc links target the source in `public/` and are never rewritten
 
