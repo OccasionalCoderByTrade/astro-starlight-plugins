@@ -198,8 +198,10 @@ export interface AstroServeDocsFilesOptions {
 export type AstroServeDocsFilesIntegration = AstroIntegration & {
   /**
    * The resolved served-file rule: whether a path relative to the docs directory is served.
-   * It leaves out drafts, any file or dir whose name starts with `_` or `.` (and everything
-   * under one) and `ignorePatterns` matches, and throws on unparseable frontmatter. Callable
+   * It leaves out any file or dir whose name starts with `_` or `.` (and everything under
+   * one), `ignorePatterns` matches and, outside `astro dev`, drafts. It throws on
+   * unparseable frontmatter. It's fixed to the mode Astro runs in, so callers needn't know
+   * it. Callable
    * once `astro:config:setup` has run, since the docs directory comes from Astro's config.
    * Astro keeps only `name` and `hooks` in `config.integrations`, so other integrations
    * find this one there by name and read the same rule from its
@@ -330,6 +332,7 @@ export function astroServeDocsFiles(
       // `config.integrations`, so other integrations read the rule from here
       [SERVED_FILE_RULE_HOOK_NAME]: servedFileRule,
       "astro:config:setup": ({
+        command,
         config,
         injectRoute,
         injectScript,
@@ -340,7 +343,12 @@ export function astroServeDocsFiles(
         const docsDirPath = fileURLToPath(
           new URL("content/docs/", config.srcDir),
         ).replace(/[\\/]+$/, "");
-        routeSettings = { docsDirPath, ignorePatterns };
+        // Like Starlight, which renders draft pages in dev and drops them from builds
+        routeSettings = {
+          docsDirPath,
+          ignorePatterns,
+          serveDrafts: command === "dev",
+        };
         publicDirPath = fileURLToPath(config.publicDir);
         ignoresPrerenderConflicts =
           config.prerenderConflictBehavior === "ignore";

@@ -12,6 +12,8 @@ import { SOURCE_DOC_EXTENSIONS } from "../utils/workspace-utils.js";
 export type TDocsFileRouteSettings = {
   docsDirPath: string;
   ignorePatterns: string[];
+  /** True in dev, where Starlight renders drafts too. */
+  serveDrafts: boolean;
 };
 
 const UTF8 = "; charset=utf-8";
@@ -95,8 +97,8 @@ export function listServedFilePaths(
  * its path under the docs directory, read from source on each request.
  */
 export function createDocsFileRoute(settings: TDocsFileRouteSettings) {
-  const { docsDirPath, ignorePatterns } = settings;
-  const isServed = createServedFileRule({ docsDirPath, ignorePatterns });
+  const { docsDirPath } = settings;
+  const isServed = createServedFileRule(settings);
 
   return {
     // Dev setup and build start already threw on unparseable frontmatter, so here it's a

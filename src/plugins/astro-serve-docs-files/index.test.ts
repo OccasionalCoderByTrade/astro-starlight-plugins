@@ -28,6 +28,8 @@ type TVitePlugin = {
   load: (id: string) => string | undefined;
 };
 
+type TAstroCommand = "dev" | "build";
+
 /**
  * Runs `astro:config:setup` for a project holding `files`, with a fake Astro config whose
  * `srcDir` and `publicDir` default to Astro's. Returns what the hook injected.
@@ -37,6 +39,7 @@ async function runConfigSetup(
   options: AstroServeDocsFilesOptions = {},
   dirs: { srcDir?: string; publicDir?: string } = {},
   otherConfig: Record<string, unknown> = {},
+  command: TAstroCommand = "dev",
 ) {
   const rootDirPath = makeFileTree(files);
   const rootUrl = pathToFileURL(rootDirPath + "/");
@@ -47,7 +50,7 @@ async function runConfigSetup(
     params: unknown,
   ) => Promise<void> | void;
   await configSetupHook({
-    command: "dev",
+    command,
     config: {
       root: rootUrl,
       srcDir: new URL(dirs.srcDir ?? "src/", rootUrl),
@@ -94,13 +97,30 @@ describe("astroServeDocsFiles config setup", () => {
       {},
       { ignorePatterns: ["scratch"] },
       { srcDir: "site-src/" },
+      {},
+      "build",
     );
 
     expect(loadRouteSettings(vitePlugins)).toEqual({
       docsDirPath: join(rootDirPath, "site-src/content/docs"),
       ignorePatterns: ["scratch"],
+      serveDrafts: false,
     });
   });
+
+  it.each([
+    ["dev", true],
+    ["build", false],
+  ] as const)(
+    "tells the route to serve drafts in %s: %s",
+    async (command, expectedServeDrafts) => {
+      const { vitePlugins } = await runConfigSetup({}, {}, {}, {}, command);
+
+      expect(loadRouteSettings(vitePlugins).serveDrafts).toBe(
+        expectedServeDrafts,
+      );
+    },
+  );
 
   it("rejects ignorePatterns that hide raw docs while the page-action bar is on", async () => {
     await expect(
@@ -230,12 +250,10 @@ describe("astroServeDocsFiles served path collisions with public/ at startup", (
     async (hookName) => {
       const { integration } = await runConfigSetup(
         {
-          "public/guide/draft.md": "x",
           "public/guide/_partial.md": "x",
           "public/_assets/logo.png": "x",
           "public/.obsidian/workspace.json": "x",
           "public/scratch/figure.png": "x",
-          "src/content/docs/guide/draft.md": "---\ndraft: true\n---\n",
           "src/content/docs/guide/_partial.md": "---\ntitle: P\n---\n",
           "src/content/docs/_assets/logo.png": "png",
           "src/content/docs/.obsidian/workspace.json": "{}",
@@ -247,6 +265,22 @@ describe("astroServeDocsFiles served path collisions with public/ at startup", (
       await expect(runHook(integration, hookName)).resolves.toBeUndefined();
     },
   );
+
+  it("fails dev startup on a draft that clashes with public/, which a build doesn't serve", async () => {
+    const files = {
+      "public/guide/draft.md": "a stale copy",
+      "src/content/docs/guide/draft.md": "---\ndraft: true\n---\n",
+    };
+    const dev = await runConfigSetup(files, {}, {}, {}, "dev");
+    const build = await runConfigSetup(files, {}, {}, {}, "build");
+
+    await expect(runHook(dev.integration, "astro:server:setup")).rejects.toThrow(
+      /public\/guide\/draft\.md/,
+    );
+    await expect(
+      runHook(build.integration, "astro:build:start"),
+    ).resolves.toBeUndefined();
+  });
 
   it("reads public/ from Astro's publicDir", async () => {
     const { integration } = await runConfigSetup(
@@ -361,55 +395,72 @@ describe("astroServeDocsFiles served path collisions with public/ mid-session in
 
   it("lets a public/ file through when its docs twin isn't served", async () => {
     const { rootDirPath, integration } = await runConfigSetup({
-      "src/content/docs/guide/draft.md": "---\ndraft: true\n---\n",
+      "src/content/docs/guide/_partial.md": "---\ntitle: P\n---\n",
     });
     const devMiddlewares = await runDevMiddlewareSetup(integration);
     mkdirSync(join(rootDirPath, "public/guide"), { recursive: true });
-    writeFileSync(join(rootDirPath, "public/guide/draft.md"), "mine");
+    writeFileSync(join(rootDirPath, "public/guide/_partial.md"), "mine");
 
     expect(
-      requestDevServer(devMiddlewares, "/guide/draft.md").reachedNext,
+      requestDevServer(devMiddlewares, "/guide/_partial.md").reachedNext,
     ).toBe(true);
   });
 });
 
 describe("astroServeDocsFiles servedFileRule", () => {
-  it("serves source docs and docs assets, leaving out drafts, _/. prefixes and ignorePatterns", async () => {
-    const { integration } = await runConfigSetup(
-      {
-        "src/content/docs/guide/page.md": "---\ntitle: Page\n---\n",
-        "src/content/docs/guide/hidden.mdx":
-          "---\ntitle: Hidden\nsidebar:\n  hidden: true\n---\n",
-        "src/content/docs/guide/draft.md": "---\ndraft: true\n---\n",
-        "src/content/docs/guide/draft-figure.png": "png",
-        "src/content/docs/guide/_partial.md": "---\ntitle: Partial\n---\n",
-        "src/content/docs/_assets/logo.png": "png",
-        "src/content/docs/.obsidian/workspace.json": "{}",
-        "src/content/docs/guide/notes.txt": "scratch",
-        "src/content/docs/scratch/figure.png": "png",
-      },
-      { ignorePatterns: ["**/*.txt", "scratch"] },
-    );
-    const { servedFileRule } = integration;
+  const servedFileRuleFiles = {
+    "src/content/docs/guide/page.md": "---\ntitle: Page\n---\n",
+    "src/content/docs/guide/hidden.mdx":
+      "---\ntitle: Hidden\nsidebar:\n  hidden: true\n---\n",
+    "src/content/docs/guide/draft.md": "---\ndraft: true\n---\n",
+    "src/content/docs/guide/draft-figure.png": "png",
+    "src/content/docs/guide/_partial.md": "---\ntitle: Partial\n---\n",
+    "src/content/docs/_assets/logo.png": "png",
+    "src/content/docs/.obsidian/workspace.json": "{}",
+    "src/content/docs/guide/notes.txt": "scratch",
+    "src/content/docs/scratch/figure.png": "png",
+  };
 
-    expect(servedFileRule("guide/page.md")).toBe(true);
-    expect(servedFileRule("guide/hidden.mdx")).toBe(true);
-    expect(servedFileRule("guide/draft-figure.png")).toBe(true);
-    expect(servedFileRule("guide/draft.md")).toBe(false);
-    expect(servedFileRule("guide/_partial.md")).toBe(false);
-    expect(servedFileRule("_assets/logo.png")).toBe(false);
-    expect(servedFileRule(".obsidian/workspace.json")).toBe(false);
-    expect(servedFileRule("guide/notes.txt")).toBe(false);
-    expect(servedFileRule("scratch/figure.png")).toBe(false);
-  });
+  it.each([
+    ["build", false],
+    ["dev", true],
+  ] as const)(
+    "serves source docs and docs assets, leaving out _/. prefixes and ignorePatterns, and drafts only in a build (%s)",
+    async (command, expectedDraftServed) => {
+      const { integration } = await runConfigSetup(
+        servedFileRuleFiles,
+        { ignorePatterns: ["**/*.txt", "scratch"] },
+        {},
+        {},
+        command,
+      );
+      const { servedFileRule } = integration;
+
+      expect(servedFileRule("guide/page.md")).toBe(true);
+      expect(servedFileRule("guide/hidden.mdx")).toBe(true);
+      expect(servedFileRule("guide/draft-figure.png")).toBe(true);
+      expect(servedFileRule("guide/draft.md")).toBe(expectedDraftServed);
+      expect(servedFileRule("guide/_partial.md")).toBe(false);
+      expect(servedFileRule("_assets/logo.png")).toBe(false);
+      expect(servedFileRule(".obsidian/workspace.json")).toBe(false);
+      expect(servedFileRule("guide/notes.txt")).toBe(false);
+      expect(servedFileRule("scratch/figure.png")).toBe(false);
+    },
+  );
 
   it.each([".markdown", ".mdown", ".mkdn", ".mkd", ".mdwn"])(
-    "leaves out a draft with any source doc extension Starlight reads (%s)",
+    "leaves out a draft with any source doc extension Starlight reads in a build (%s)",
     async (extension) => {
-      const { integration } = await runConfigSetup({
-        [`src/content/docs/draft${extension}`]: "---\ndraft: true\n---\n",
-        [`src/content/docs/page${extension}`]: "---\ntitle: Page\n---\n",
-      });
+      const { integration } = await runConfigSetup(
+        {
+          [`src/content/docs/draft${extension}`]: "---\ndraft: true\n---\n",
+          [`src/content/docs/page${extension}`]: "---\ntitle: Page\n---\n",
+        },
+        {},
+        {},
+        {},
+        "build",
+      );
 
       expect(integration.servedFileRule(`draft${extension}`)).toBe(false);
       expect(integration.servedFileRule(`page${extension}`)).toBe(true);
@@ -421,18 +472,29 @@ describe("astroServeDocsFiles servedFileRule", () => {
       { "site-src/content/docs/draft.md": "---\ndraft: true\n---\n" },
       {},
       { srcDir: "site-src/" },
+      {},
+      "build",
     );
 
     expect(integration.servedFileRule("draft.md")).toBe(false);
   });
 
-  it("throws, naming the file, on unparseable frontmatter", async () => {
-    const { integration } = await runConfigSetup({
-      "src/content/docs/broken.md": "---\ntitle: [unclosed\n---\n",
-    });
+  it.each(["dev", "build"] as const)(
+    "throws, naming the file, on unparseable frontmatter (%s)",
+    async (command) => {
+      const { integration } = await runConfigSetup(
+        { "src/content/docs/broken.md": "---\ntitle: [unclosed\n---\n" },
+        {},
+        {},
+        {},
+        command,
+      );
 
-    expect(() => integration.servedFileRule("broken.md")).toThrow(/broken\.md/);
-  });
+      expect(() => integration.servedFileRule("broken.md")).toThrow(
+        /broken\.md/,
+      );
+    },
+  );
 
   it("also exposes it as a custom hook, since Astro drops other fields from config.integrations", () => {
     const integration = astroServeDocsFiles();

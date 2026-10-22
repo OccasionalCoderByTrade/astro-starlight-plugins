@@ -90,7 +90,7 @@ async function startDevRequestHandler(
 /**
  * Stands in for `astroServeDocsFiles` as `config.integrations` holds it: found by its name,
  * with its served-file rule as a custom hook, since Astro's config validation keeps only
- * `name` and `hooks`.
+ * `name` and `hooks`. Its rule is in dev mode, so it serves drafts.
  */
 function fakeServeDocsFilesIntegration(
   docsDirPath: string,
@@ -102,6 +102,7 @@ function fakeServeDocsFilesIntegration(
       "astro-serve-docs-files:served-file-rule": createServedFileRule({
         docsDirPath,
         ignorePatterns,
+        serveDrafts: true,
       }),
     },
   };
@@ -555,15 +556,14 @@ describe("astroLocalLinks", () => {
 
       const content =
         '<a href="./slides.pdf">a</a><a href="./notes.md">b</a>' +
-        '<a href="./logo.png">c</a>';
-      await expect(handleRequest("/guide/intro/", content)).resolves.toContain(
-        "/guide/slides.pdf",
-      );
+        '<a href="./logo.png">c</a><a href="./draft.md">d</a>';
+      const html = await handleRequest("/guide/intro/", content);
+      expect(html).toContain("/guide/slides.pdf");
+      expect(html).toContain("/guide/draft.md");
     });
 
     it.each([
       ["an ignored file", "./scratch.txt"],
-      ["a draft raw doc", "./draft.md"],
       ["a _-prefixed file", "./_private.pdf"],
       ["a missing file", "./missing.pdf"],
     ])(

@@ -11,6 +11,7 @@ import { createDocsFileRoute } from "./docs-file-route.js";
 function makeRoute(
   files: Record<string, string | Buffer>,
   ignorePatterns: string[] = [],
+  serveDrafts = false,
 ) {
   const rootDirPath = makeFileTree({});
   const docsDirPath = join(rootDirPath, "src/content/docs");
@@ -24,7 +25,7 @@ function makeRoute(
     writeFileSync(filePath, contents);
   }
   mkdirSync(docsDirPath, { recursive: true });
-  return createDocsFileRoute({ docsDirPath, ignorePatterns });
+  return createDocsFileRoute({ docsDirPath, ignorePatterns, serveDrafts });
 }
 
 /** Calls the route's `GET` the way Astro does for a request to `relativeFilePath`. */
@@ -87,6 +88,29 @@ describe("docs file route", () => {
       "index.md",
       "reference/deep/nested/List Syntax.pdf",
     ]);
+  });
+
+  it("lists and serves drafts when serveDrafts is on, still leaving out _/. prefixes and ignorePatterns", async () => {
+    const draftDoc = "---\ndraft: true\n---\n\n# Work in progress\n";
+    const route = makeRoute(
+      {
+        "guide/page.md": "---\ntitle: Page\n---\n",
+        "guide/draft.md": draftDoc,
+        "guide/_partial.md": "---\ntitle: Partial\n---\n",
+        ".obsidian/workspace.json": "{}",
+        "scratch/notes.txt": "scratch",
+      },
+      ["scratch"],
+      true,
+    );
+
+    expect(await listServedPaths(route)).toEqual([
+      "guide/draft.md",
+      "guide/page.md",
+    ]);
+    expect(await (await requestFile(route, "guide/draft.md")).text()).toBe(
+      draftDoc,
+    );
   });
 
   it("returns a raw doc's bytes unchanged, frontmatter included", async () => {
