@@ -18,7 +18,10 @@ import {
 } from "node:fs/promises";
 import { resolve, relative, dirname } from "node:path";
 import { minimatch } from "minimatch";
-import { parseFrontmatter } from "../utils/workspace-utils.js";
+import {
+  createServedFileRule,
+  type ServedFileRule,
+} from "../utils/served-file-rule.js";
 
 const css = String.raw;
 
@@ -219,7 +222,7 @@ async function fullSync(
   srcDir: string,
   publicDir: string,
   preserveDirs: string[],
-  ignorePatterns: string[],
+  isServed: ServedFileRule,
 ): Promise<void> {
   await mkdir(publicDir, { recursive: true });
 
@@ -232,7 +235,7 @@ async function fullSync(
       ),
   );
 
-  await copyAll(srcDir, srcDir, publicDir, ignorePatterns);
+  await copyAll(srcDir, srcDir, publicDir, isServed);
   console.log(
     `[starlight-sync-docs-to-public] Synced ${DEFAULT_SRC_DIR}/ → ${DEFAULT_PUBLIC_DIR}/ (full sync)`,
   );
@@ -272,17 +275,10 @@ async function incrementalSync(
   changedFilePath: string,
   srcDir: string,
   publicDir: string,
-  ignorePatterns: string[],
+  isServed: ServedFileRule,
 ): Promise<void> {
   const relativePath = relative(srcDir, changedFilePath);
-
-  if (
-    ignorePatterns.some((pattern) =>
-      minimatch(relativePath, pattern, { dot: true }),
-    )
-  ) {
-    return;
-  }
+  if (!isServed(relativePath)) return;
 
   let srcStat;
   try {
@@ -305,12 +301,11 @@ async function incrementalSync(
           resolve(changedFilePath, file),
           srcDir,
           publicDir,
-          ignorePatterns,
+          isServed,
         ),
       ),
     );
   } else if (isMdFile(changedFilePath)) {
-    if (parseFrontmatter(changedFilePath).draft === true) return;
     await copyMdFile(changedFilePath, srcDir, publicDir);
   } else {
     const destPath = resolve(publicDir, relativePath);
@@ -323,14 +318,13 @@ async function incrementalSync(
 }
 
 /**
- * Recursively copies srcDir into publicDir, applying ignore/draft filters
- * and remapping non-index md/mdx files to their nested index path.
+ * Recursively copies srcDir into publicDir, skipping what the served-file rule leaves out.
  */
 async function copyAll(
   currentSrc: string,
   srcDir: string,
   publicDir: string,
-  ignorePatterns: string[],
+  isServed: ServedFileRule,
 ): Promise<void> {
   const entries = await readdir(currentSrc, { withFileTypes: true });
   await Promise.all(
@@ -338,18 +332,11 @@ async function copyAll(
       const srcPath = resolve(currentSrc, entry.name);
       const relativePath = relative(srcDir, srcPath);
 
-      if (
-        ignorePatterns.some((pattern) =>
-          minimatch(relativePath, pattern, { dot: true }),
-        )
-      ) {
-        return;
-      }
+      if (!isServed(relativePath)) return;
 
       if (entry.isDirectory()) {
-        await copyAll(srcPath, srcDir, publicDir, ignorePatterns);
+        await copyAll(srcPath, srcDir, publicDir, isServed);
       } else if (isMdFile(srcPath)) {
-        if (parseFrontmatter(srcPath).draft === true) return;
         await copyMdFile(srcPath, srcDir, publicDir);
       } else {
         const destPath = resolve(publicDir, relativePath);
@@ -375,6 +362,7 @@ export function syncDocsToPublic(
   const preserveDirs = rawPreserveDirs.map((preserveDir) =>
     preserveDir.replace(/\/+$/, ""),
   );
+  const isServed = createServedFileRule({ docsDirPath: srcDir, ignorePatterns });
 
   return {
     name: "astro-sync-docs-to-public",
@@ -422,7 +410,7 @@ export function syncDocsToPublic(
       },
 
       "astro:build:start": async () => {
-        await fullSync(srcDir, publicDir, preserveDirs, ignorePatterns);
+        await fullSync(srcDir, publicDir, preserveDirs, isServed);
       },
 
       "astro:server:setup": async ({ server }: { server: ViteDevServer }) => {
@@ -443,7 +431,7 @@ export function syncDocsToPublic(
                     changedPath,
                     srcDir,
                     publicDir,
-                    ignorePatterns,
+                    isServed,
                   ).catch((err) => {
                     console.error(
                       `[starlight-sync-docs-to-public] Error syncing ${changedPath}:`,
@@ -461,7 +449,7 @@ export function syncDocsToPublic(
         };
 
         // Awaited so a sync error stops dev from starting, rather than serving a half-synced public/
-        await fullSync(srcDir, publicDir, preserveDirs, ignorePatterns);
+        await fullSync(srcDir, publicDir, preserveDirs, isServed);
 
         server.watcher.add(srcDir);
         server.watcher.on("all", (_event: string, filePath: string) => {

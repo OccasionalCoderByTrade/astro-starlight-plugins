@@ -6,9 +6,9 @@
 
 **Status:** ready-for-agent
 
-- [ ] The rule lives in the shared utils and takes a path relative to the docs directory plus the plugin's `ignorePatterns`
-- [ ] Drafts (`draft: true`) are left out; docs assets next to a draft are still served; `sidebar.hidden` docs are still served
-- [ ] `_`- and `.`-prefixed files are left out, and so is everything under a `_`- or `.`-prefixed directory
-- [ ] Unparseable frontmatter throws, naming the file; the current sync's startup and dev-save behaviour around that error is unchanged
-- [ ] Both the full and incremental sync use the rule instead of their own draft/ignore checks
-- [ ] Tests cover each exclusion through the plugin's hooks, in the style of the existing dev-setup test
+- [x] The rule lives in the shared utils and takes a path relative to the docs directory plus the plugin's `ignorePatterns`
+- [x] Drafts (`draft: true`) are left out; docs assets next to a draft are still served; `sidebar.hidden` docs are still served
+- [x] `_`- and `.`-prefixed files are left out, and so is everything under a `_`- or `.`-prefixed directory
+- [x] Unparseable frontmatter throws, naming the file; the current sync's startup and dev-save behaviour around that error is unchanged
+- [x] Both the full and incremental sync use the rule instead of their own draft/ignore checks
+- [x] Tests cover each exclusion through the plugin's hooks, in the style of the existing dev-setup test

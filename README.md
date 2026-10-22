@@ -424,6 +424,7 @@ Syncs `src/content/docs/` to `public/` so local files (e.g., PDFs, images) refer
 - Watches for changes in dev mode and re-syncs automatically (debounced)
 - Preserves specified child directories in `public/` during sync (e.g., `static/`)
 - Supports glob patterns to exclude files from syncing
+- Never copies drafts (`draft: true`), or any file or directory whose name starts with `_` or `.` (like `_partial.md`, `_assets/` or `.obsidian/`), along with everything under one. Files next to a draft, and docs with `sidebar.hidden`, are still copied.
 - Fails `astro dev` and `astro build` at startup when an md/mdx file's frontmatter can't be parsed, since it can't tell whether the file is a draft. In dev, a re-sync after a save only logs the error.
 
 **Usage:**
@@ -445,7 +446,7 @@ export default defineConfig({
 **Options:**
 
 - `preserveDirs` (required): Names of child directories inside `public/` to preserve during sync. These will not be deleted when re-syncing.
-- `ignorePatterns` (optional): Glob patterns for files to exclude from syncing. Patterns are matched against paths relative to `src/content/docs/`.
+- `ignorePatterns` (optional): Glob patterns for files to exclude from syncing. Patterns are matched against paths relative to `src/content/docs/`. A pattern that matches a directory excludes everything under it.
 - `exposePageSrcButton` (optional, default: `false`): Injects a client-side script on every page that adds a `⋮` dropdown next to the page's `<h1>` with "Copy Page", "Copy raw URL", and "View raw" actions for the page's raw markdown source.
 - `enableAskAiOption` (optional, default: `false`): Adds "Ask ChatGPT", "Ask Claude", and "Ask Gemini" entries to the same `⋮` dropdown, each opening the respective chat app in a new tab with a prompt pre-filled to read the page's raw markdown URL. Independent of `exposePageSrcButton` — enabling this on its own still injects the dropdown button, containing only the "Ask" entries.
 
