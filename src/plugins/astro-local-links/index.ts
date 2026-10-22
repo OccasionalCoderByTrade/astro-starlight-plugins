@@ -15,6 +15,10 @@ import {
   type TPageBrokenLinks,
 } from "./utils.js";
 
+/** `astroServeDocsFiles`'s name and the route it injects, known here without importing it. */
+const SERVE_DOCS_FILES_INTEGRATION_NAME = "astro-serve-docs-files";
+const SERVE_DOCS_FILES_ROUTE_PATTERN = "/[...path]";
+
 export type AstroLocalLinksOptions = {
   /**
    * Link validation: fail on local links inside a page's content whose target doesn't exist.
@@ -40,6 +44,8 @@ export function astroLocalLinks(
 ): AstroIntegration {
   const { validate = true, normalize = true } = options;
   let settings: TLocalLinksSettings;
+  // The serve plugin's endpoint, whose clashes with doc pages that plugin reports itself
+  let docsFileRoutePattern: string | undefined;
 
   return {
     name: "astro-local-links",
@@ -74,6 +80,11 @@ export function astroLocalLinks(
           },
           normalize,
         };
+        docsFileRoutePattern = config.integrations.some(
+          ({ name }) => name === SERVE_DOCS_FILES_INTEGRATION_NAME,
+        )
+          ? SERVE_DOCS_FILES_ROUTE_PATTERN
+          : undefined;
 
         if (command !== "dev" || (!settings.validate && !settings.normalize)) {
           return;
@@ -112,12 +123,14 @@ export function astroLocalLinks(
         const distDirPath = fileURLToPath(dir);
         const shadowedDocsError = formatShadowedDocsError(
           [...assets].flatMap(([routePattern, fileUrls]) =>
-            fileUrls.map((fileUrl) => ({
-              pathname: toPagePathname(
-                relative(distDirPath, fileURLToPath(fileUrl)),
-              ),
-              routePattern,
-            })),
+            routePattern === docsFileRoutePattern
+              ? []
+              : fileUrls.map((fileUrl) => ({
+                  pathname: toPagePathname(
+                    relative(distDirPath, fileURLToPath(fileUrl)),
+                  ),
+                  routePattern,
+                })),
           ),
           sourceDocIndex,
         );

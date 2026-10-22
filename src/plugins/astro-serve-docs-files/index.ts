@@ -15,6 +15,11 @@ import {
   listServedFilePaths,
   type TDocsFileRouteSettings,
 } from "./docs-file-route.js";
+import {
+  DOCS_FILE_ROUTE_PATTERN,
+  formatRouteCollisionsError,
+  listenForRouteConflicts,
+} from "./route-collisions.js";
 
 export type { ServedFileRule };
 
@@ -156,7 +161,6 @@ const pageSrcStyles = css`
   }
 `;
 
-
 export interface AstroServeDocsFilesOptions {
   /**
    * Glob patterns for files not to serve.
@@ -249,6 +253,8 @@ export function astroServeDocsFiles(
   } = options;
   let routeSettings: TDocsFileRouteSettings | undefined;
   let resolvedServedFileRule: ServedFileRule | undefined;
+  let routeConflictListener:
+    ReturnType<typeof listenForRouteConflicts> | undefined;
 
   const servedFileRule: ServedFileRule = (relativePath) => {
     if (!resolvedServedFileRule) {
@@ -303,7 +309,7 @@ export function astroServeDocsFiles(
           },
         });
         injectRoute({
-          pattern: "/[...path]",
+          pattern: DOCS_FILE_ROUTE_PATTERN,
           entrypoint: siblingModuleUrl("route"),
           prerender: true,
         });
@@ -331,12 +337,26 @@ export function astroServeDocsFiles(
         }
       },
 
-      "astro:build:start": () => {
+      "astro:build:start": ({ logger }) => {
         checkServedFiles();
+        routeConflictListener = listenForRouteConflicts(logger.options);
       },
 
       "astro:server:setup": () => {
         checkServedFiles();
+      },
+
+      // Astro on its own only warns about some of these and misses the rest
+      "astro:build:done": ({ dir, assets }) => {
+        routeConflictListener?.stop();
+        if (!routeSettings) return;
+        const routeCollisionsError = formatRouteCollisionsError({
+          assets,
+          routeConflicts: routeConflictListener?.routeConflicts ?? [],
+          distDirPath: fileURLToPath(dir),
+          docsDirPath: routeSettings.docsDirPath,
+        });
+        if (routeCollisionsError) throw new Error(routeCollisionsError);
       },
     },
   };

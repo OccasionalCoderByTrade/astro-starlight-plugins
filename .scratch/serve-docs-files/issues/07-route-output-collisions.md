@@ -6,8 +6,8 @@
 
 **Status:** ready-for-agent
 
-- [ ] `astro:build:done` fails, listing every output file the endpoint shares with another route and naming both routes
-- [ ] Passes when nothing is shared (test with a fake `assets` map)
-- [ ] `astroLocalLinks` recognises the serve plugin's endpoint (by the route it injects) and leaves it out of the shadowed doc check; real shadowed docs (e.g. a `src/pages` page at a doc's page path) are still reported
-- [ ] Checked in a real build: a stray `index.html` and an extensionless file next to a source doc each fail the build with this error only
-- [ ] Neither plugin imports the other
+- [x] `astro:build:done` fails, listing every output file the endpoint shares with another route and naming both routes
+- [x] Passes when nothing is shared (test with a fake `assets` map)
+- [x] `astroLocalLinks` recognises the serve plugin's endpoint (by the route it injects) and leaves it out of the shadowed doc check; real shadowed docs (e.g. a `src/pages` page at a doc's page path) are still reported
+- [x] Checked in a real build: a stray `index.html` and an extensionless file next to a source doc each fail the build with this error only
+- [x] Neither plugin imports the other

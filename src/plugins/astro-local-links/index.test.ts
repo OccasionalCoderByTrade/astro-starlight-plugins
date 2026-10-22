@@ -11,6 +11,7 @@ async function runSetup(
   command: string,
   options: AstroLocalLinksOptions = {},
   astroBasePath = "/",
+  integrations: { name: string }[] = [],
 ) {
   const integration = astroLocalLinks(options);
   const setup = integration.hooks["astro:config:setup"]!;
@@ -23,6 +24,7 @@ async function runSetup(
       publicDir: pathToFileURL(`${rootDirPath}/public/`),
       base: astroBasePath,
       build: { assets: "_astro" },
+      integrations,
     },
     addMiddleware: (middleware: { entrypoint: unknown }) =>
       middlewareEntrypoints.push(middleware.entrypoint),
@@ -150,7 +152,8 @@ describe("astroLocalLinks", () => {
   it("fails build:done on a raw doc link to a draft, saying it isn't served and naming the page link", async () => {
     const site = makeSite({
       "src/content/docs/reference/index.md": "",
-      "src/content/docs/reference/auto-list-syntax.md": "---\ndraft: true\n---\n",
+      "src/content/docs/reference/auto-list-syntax.md":
+        "---\ndraft: true\n---\n",
       "public/reference/auto-list-syntax.md": "",
     });
     const { integration } = await runSetup(site.rootDirPath, "build");
@@ -221,7 +224,9 @@ describe("astroLocalLinks", () => {
       "guide/intro/index.html": pageHtml(`<a href="./notes.pdf">x</a>`),
     });
 
-    await expect(buildDone).rejects.toThrow(/1 broken local link[\s\S]*\.\/notes\.pdf/);
+    await expect(buildDone).rejects.toThrow(
+      /1 broken local link[\s\S]*\.\/notes\.pdf/,
+    );
   });
 
   it("does nothing on build:done with validation and normalization off", async () => {
@@ -318,6 +323,54 @@ describe("astroLocalLinks", () => {
     expect(
       readFileSync(join(distDirPath, "guide/intro/index.html"), "utf-8"),
     ).toBe(introHtml);
+  });
+
+  it("leaves the serve plugin's endpoint out of the shadowed doc check, still reporting other routes", async () => {
+    const site = makeSite({
+      "src/content/docs/guide/intro.md": "",
+      "src/content/docs/reference/bar.md": "",
+    });
+    const distDirPath = join(site.rootDirPath, "dist");
+    const toUrl = (distRelativeFilePath: string) =>
+      pathToFileURL(join(distDirPath, distRelativeFilePath));
+    const assets = () =>
+      new Map([
+        ["/[...slug]", []],
+        ["/[...path]", [toUrl("reference/bar")]],
+        ["/guide/intro", [toUrl("guide/intro/index.html")]],
+      ]);
+    const { integration: integrationWithServePlugin } = await runSetup(
+      site.rootDirPath,
+      "build",
+      {},
+      "/",
+      [{ name: "astro-serve-docs-files" }],
+    );
+    const { integration: integrationWithoutServePlugin } = await runSetup(
+      site.rootDirPath,
+      "build",
+    );
+
+    const buildDoneWithServePlugin = runBuildDoneWithAssets(
+      integrationWithServePlugin,
+      distDirPath,
+      assets(),
+    );
+    await expect(buildDoneWithServePlugin).rejects.toThrow(
+      /1 shadowed doc,[\s\S]*\/guide\/intro\b/,
+    );
+    await expect(buildDoneWithServePlugin).rejects.not.toThrow(
+      /\[\.\.\.path\]/,
+    );
+    await expect(
+      runBuildDoneWithAssets(
+        integrationWithoutServePlugin,
+        distDirPath,
+        assets(),
+      ),
+    ).rejects.toThrow(
+      /2 shadowed docs[\s\S]*\/reference\/bar[\s\S]*\[\.\.\.path\]/,
+    );
   });
 
   it("fails build:done on a shadowed draft, though Starlight wrote no page for it", async () => {

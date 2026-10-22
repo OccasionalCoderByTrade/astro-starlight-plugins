@@ -96,7 +96,10 @@ describe("astroServeDocsFiles config setup", () => {
 
   it("rejects ignorePatterns that hide raw docs while the page-action bar is on", async () => {
     await expect(
-      runConfigSetup({}, { enableAskAiOption: true, ignorePatterns: ["**/*.md"] }),
+      runConfigSetup(
+        {},
+        { enableAskAiOption: true, ignorePatterns: ["**/*.md"] },
+      ),
     ).rejects.toThrow(/"\*\*\/\*\.md"/);
     await expect(
       runConfigSetup({}, { ignorePatterns: ["**/*.md"] }),
@@ -110,7 +113,10 @@ async function runHook(
   hookName: "astro:server:setup" | "astro:build:start",
 ) {
   const hook = integration.hooks[hookName] as (params: unknown) => unknown;
-  await hook({ server: { watcher: { add: () => {}, on: () => {} } } });
+  await hook({
+    server: { watcher: { add: () => {}, on: () => {} } },
+    logger: { options: makeLogOptions().logOptions },
+  });
 }
 
 /** Every file under `dirPath` (relative path → bytes as hex). */
@@ -210,5 +216,196 @@ describe("astroServeDocsFiles servedFileRule", () => {
     });
 
     expect(() => integration.servedFileRule("broken.md")).toThrow(/broken\.md/);
+  });
+});
+
+/** Astro's log options: the destination every Astro and integration logger writes to. */
+function makeLogOptions(level = "info") {
+  const writtenMessages: string[] = [];
+  const logOptions = {
+    level,
+    destination: {
+      write: (event: { label: string; level: string; message: string }) => {
+        writtenMessages.push(event.message);
+      },
+    },
+  };
+  return { logOptions, writtenMessages };
+}
+
+type TLogOptions = ReturnType<typeof makeLogOptions>["logOptions"];
+
+/** Logs a warning the way Astro's logger does: dropped when the log level hides it. */
+function astroWarn(logOptions: TLogOptions, label: string, message: string) {
+  const levelOrder = ["debug", "info", "warn", "error", "silent"];
+  if (levelOrder.indexOf(logOptions.level) > levelOrder.indexOf("warn")) {
+    return;
+  }
+  logOptions.destination.write({ label, level: "warn", message });
+}
+
+/** Astro's warning when two routes render the same URL and it drops the lower-priority one. */
+function routeConflictWarning(
+  pathname: string,
+  losingRoutePattern: string,
+  winningRoutePattern: string,
+) {
+  return (
+    `Could not render \`${pathname}\` from route \`${losingRoutePattern}\` as it ` +
+    `conflicts with higher priority route \`${winningRoutePattern}\`.`
+  );
+}
+
+/**
+ * Runs `astro:build:start`, then `duringBuild` (where Astro would render pages), then
+ * `astro:build:done` with a fake `assets` map of route pattern → output files.
+ */
+async function runBuild(
+  integration: ReturnType<typeof astroServeDocsFiles>,
+  rootDirPath: string,
+  assets: Record<string, string[]>,
+  options: { logOptions?: TLogOptions; duringBuild?: () => void } = {},
+) {
+  const logger = { options: options.logOptions ?? makeLogOptions().logOptions };
+  const buildStartHook = integration.hooks["astro:build:start"] as (
+    params: unknown,
+  ) => unknown;
+  const buildDoneHook = integration.hooks["astro:build:done"] as (
+    params: unknown,
+  ) => unknown;
+  await buildStartHook({ logger });
+  options.duringBuild?.();
+  const distDirUrl = pathToFileURL(join(rootDirPath, "dist") + "/");
+  await buildDoneHook({
+    logger,
+    dir: distDirUrl,
+    assets: new Map(
+      Object.entries(assets).map(([routePattern, distRelativeFilePaths]) => [
+        routePattern,
+        distRelativeFilePaths.map(
+          (distRelativeFilePath) => new URL(distRelativeFilePath, distDirUrl),
+        ),
+      ]),
+    ),
+  });
+}
+
+const EMPTY_DOCS_DIR = { "src/content/docs/": "" };
+
+describe("astroServeDocsFiles collisions with other routes", () => {
+  it("fails build:done, listing every output file the endpoint shares with another route and both routes", async () => {
+    const { rootDirPath, integration } = await runConfigSetup(EMPTY_DOCS_DIR);
+
+    await expect(
+      runBuild(integration, rootDirPath, {
+        "/[...path]": [
+          "guide/page.md",
+          "reference/baz/index.html",
+          "zap/index.html",
+        ],
+        "/[...slug]": ["index.html", "reference/baz/index.html"],
+        "/zap": ["zap/index.html"],
+      }),
+    ).rejects.toThrow(
+      /2 served path collisions[\s\S]*reference\/baz\/index\.html[\s\S]*\/\[\.\.\.path\][\s\S]*\/\[\.\.\.slug\][\s\S]*zap\/index\.html[\s\S]*\/\[\.\.\.path\][\s\S]*\/zap\b/,
+    );
+  });
+
+  it("passes build:done when the endpoint shares no output file", async () => {
+    const { rootDirPath, integration } = await runConfigSetup(EMPTY_DOCS_DIR);
+
+    await expect(
+      runBuild(integration, rootDirPath, {
+        "/[...path]": ["guide/page.md", "guide/diagram.pdf"],
+        "/[...slug]": ["index.html", "guide/page/index.html"],
+        "/404": ["404.html"],
+      }),
+    ).resolves.toBeUndefined();
+  });
+
+  it("fails build:done on a URL the endpoint and another route both render, which Astro only warns about", async () => {
+    const { rootDirPath, integration } = await runConfigSetup(EMPTY_DOCS_DIR);
+    const { logOptions, writtenMessages } = makeLogOptions();
+
+    await expect(
+      runBuild(
+        integration,
+        rootDirPath,
+        { "/[...path]": ["reference/bar"], "/[...slug]": ["index.html"] },
+        {
+          logOptions,
+          duringBuild: () => {
+            astroWarn(
+              logOptions,
+              "build",
+              routeConflictWarning(
+                "/reference/bar",
+                "/[...slug]",
+                "/[...path]",
+              ),
+            );
+            astroWarn(
+              logOptions,
+              "build",
+              routeConflictWarning("/notes.json", "/[...path]", "/notes.json"),
+            );
+          },
+        },
+      ),
+    ).rejects.toThrow(
+      /2 served path collisions[\s\S]*\/notes\.json[\s\S]*\/\[\.\.\.path\][\s\S]*\/notes\.json[\s\S]*\/reference\/bar[\s\S]*\/\[\.\.\.path\][\s\S]*\/\[\.\.\.slug\]/,
+    );
+    // Astro's own warning is still shown
+    expect(writtenMessages).toHaveLength(2);
+  });
+
+  it("finds those URL clashes even when the log level hides warnings, without showing them", async () => {
+    const { rootDirPath, integration } = await runConfigSetup(EMPTY_DOCS_DIR);
+    const { logOptions, writtenMessages } = makeLogOptions("silent");
+
+    await expect(
+      runBuild(
+        integration,
+        rootDirPath,
+        { "/[...path]": ["reference/bar"] },
+        {
+          logOptions,
+          duringBuild: () =>
+            astroWarn(
+              logOptions,
+              "build",
+              routeConflictWarning(
+                "/reference/bar",
+                "/[...slug]",
+                "/[...path]",
+              ),
+            ),
+        },
+      ),
+    ).rejects.toThrow(/1 served path collision\b[\s\S]*\/reference\/bar/);
+    expect(writtenMessages).toEqual([]);
+    expect(logOptions.level).toBe("silent");
+  });
+
+  it("ignores URL clashes between other routes, and stops listening once the build is done", async () => {
+    const { rootDirPath, integration } = await runConfigSetup(EMPTY_DOCS_DIR);
+    const { logOptions, writtenMessages } = makeLogOptions();
+    const originalDestination = logOptions.destination;
+    const otherConflictWarning = routeConflictWarning("/a", "/[...slug]", "/a");
+
+    await expect(
+      runBuild(
+        integration,
+        rootDirPath,
+        { "/[...path]": ["guide/page.md"] },
+        {
+          logOptions,
+          duringBuild: () =>
+            astroWarn(logOptions, "build", otherConflictWarning),
+        },
+      ),
+    ).resolves.toBeUndefined();
+    expect(writtenMessages).toEqual([otherConflictWarning]);
+    expect(logOptions.destination).toBe(originalDestination);
   });
 });
