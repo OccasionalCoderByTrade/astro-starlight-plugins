@@ -580,6 +580,24 @@ describe("astroLocalLinks", () => {
       },
     );
 
+    it("fails a link to a doc whose frontmatter became unparseable, still checking the page's other links", async () => {
+      const site = makeSite({
+        ...files,
+        "src/content/docs/guide/broken.md": "---\ntitle: [unclosed\n---\n",
+      });
+      const handleRequest = await startDevRequestHandler(site.rootDirPath, [
+        fakeServeDocsFilesIntegration(site.docsDirPath),
+      ]);
+
+      const brokenLinksError = handleRequest(
+        "/guide/intro/",
+        '<a href="./broken.md">a</a><a href="./missing.pdf">b</a>',
+      );
+
+      await expect(brokenLinksError).rejects.toThrow(/2 broken local links/);
+      await expect(brokenLinksError).rejects.toThrow(/broken\.md/);
+    });
+
     it("only accepts files in public/ without the serve integration", async () => {
       const site = makeSite(files);
       const handleRequest = await startDevRequestHandler(site.rootDirPath);

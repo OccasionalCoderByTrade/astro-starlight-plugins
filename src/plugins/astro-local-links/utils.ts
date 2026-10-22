@@ -400,10 +400,18 @@ function findBrokenLinkDetails(
   if (isFile(servedFilePath)) return null;
   if (
     options.servedDocsFileRule &&
-    isFile(join(site.docsDirPath, docsRelativeLinkPath)) &&
-    options.servedDocsFileRule(docsRelativeLinkPath)
+    isFile(join(site.docsDirPath, docsRelativeLinkPath))
   ) {
-    return null;
+    try {
+      if (options.servedDocsFileRule(docsRelativeLinkPath)) return null;
+    } catch (error) {
+      // Unparseable frontmatter saved mid-session: the serve plugin doesn't serve the file
+      return {
+        reason:
+          `/${docsRelativeLinkPath} isn't served: ` +
+          (error instanceof Error ? error.message : String(error)),
+      };
+    }
   }
 
   const rawDocLinkPagePath = findRawDocLinkPagePath(

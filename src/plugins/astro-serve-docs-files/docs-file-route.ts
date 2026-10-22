@@ -5,6 +5,7 @@ import {
   createServedFileRule,
   type ServedFileRule,
 } from "../utils/served-file-rule.js";
+import { SERVE_DOCS_FILES_INTEGRATION_NAME } from "../utils/serve-docs-files-integration.js";
 import { SOURCE_DOC_EXTENSIONS } from "../utils/workspace-utils.js";
 
 /** What the route module needs from the integration, passed as JSON through a virtual module. */
@@ -58,22 +59,33 @@ function contentTypeOf(filePath: string): string {
 
 /**
  * Every served file under `docsDirPath`, as a `/`-separated path relative to it. Skips a
- * dir the rule leaves out without walking it. Throws when the rule does (unparseable
- * frontmatter).
+ * dir the rule leaves out without walking it. When the rule throws (unparseable
+ * frontmatter), this throws too, unless `onRuleError` is given: then that entry is left
+ * out, and `onRuleError` gets the error.
  */
 export function listServedFilePaths(
   docsDirPath: string,
   isServed: ServedFileRule,
+  onRuleError?: (error: unknown) => void,
 ): string[] {
+  const isEntryServed = (docsRelativeEntryPath: string) => {
+    if (!onRuleError) return isServed(docsRelativeEntryPath);
+    try {
+      return isServed(docsRelativeEntryPath);
+    } catch (error) {
+      onRuleError(error);
+      return false;
+    }
+  };
   const walk = (relativeDirSegments: string[]): string[] =>
     readdirSync(resolve(docsDirPath, ...relativeDirSegments), {
       withFileTypes: true,
     }).flatMap((entry) => {
-      const relativeSegments = [...relativeDirSegments, entry.name];
-      const relativePath = relativeSegments.join("/");
-      if (!isServed(relativePath)) return [];
-      if (entry.isDirectory()) return walk(relativeSegments);
-      return entry.isFile() ? [relativePath] : [];
+      const relativeEntrySegments = [...relativeDirSegments, entry.name];
+      const docsRelativeEntryPath = relativeEntrySegments.join("/");
+      if (!isEntryServed(docsRelativeEntryPath)) return [];
+      if (entry.isDirectory()) return walk(relativeEntrySegments);
+      return entry.isFile() ? [docsRelativeEntryPath] : [];
     });
   return walk([]);
 }
@@ -87,8 +99,15 @@ export function createDocsFileRoute(settings: TDocsFileRouteSettings) {
   const isServed = createServedFileRule({ docsDirPath, ignorePatterns });
 
   return {
+    // Dev setup and build start already threw on unparseable frontmatter, so here it's a
+    // save made mid-session in dev: that file isn't served, and the rest still are
     getStaticPaths: () =>
-      listServedFilePaths(docsDirPath, isServed).map((relativeFilePath) => ({
+      listServedFilePaths(docsDirPath, isServed, (error) =>
+        console.error(
+          `[${SERVE_DOCS_FILES_INTEGRATION_NAME}] Not serving a docs file: ` +
+            (error instanceof Error ? error.message : String(error)),
+        ),
+      ).map((relativeFilePath) => ({
         params: { path: relativeFilePath },
       })),
     // Astro only routes a request here when `getStaticPaths` listed its path

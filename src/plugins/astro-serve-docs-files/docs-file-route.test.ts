@@ -1,6 +1,6 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { makeFileTree } from "../tests/file-tree.js";
 import { createDocsFileRoute } from "./docs-file-route.js";
 
@@ -40,7 +40,30 @@ async function listServedPaths(route: ReturnType<typeof makeRoute>) {
   return staticPaths.map((staticPath) => staticPath.params.path).sort();
 }
 
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
 describe("docs file route", () => {
+  it("leaves out and logs a doc whose frontmatter can't be parsed, still listing the rest", async () => {
+    const consoleErrorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+    const route = makeRoute({
+      "guide/page.md": "---\ntitle: Page\n---\n",
+      "guide/broken.md": "---\ntitle: [unclosed\n---\n",
+      "guide/figure.png": "png",
+    });
+
+    expect(await listServedPaths(route)).toEqual([
+      "guide/figure.png",
+      "guide/page.md",
+    ]);
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      expect.stringMatching(/broken\.md/),
+    );
+  });
+
   it("lists exactly the files the served-file rule accepts", async () => {
     const route = makeRoute(
       {
