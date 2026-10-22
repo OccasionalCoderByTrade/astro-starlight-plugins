@@ -62,7 +62,6 @@ export default defineConfig({
       debug: true,
     }),
     astroServeDocsFiles({
-      preserveDirs: ["static"],
       exposePageSrcButton: false,
       enableAskAiOption: true,
     }),

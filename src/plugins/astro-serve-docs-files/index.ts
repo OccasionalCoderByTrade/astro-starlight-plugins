@@ -1,27 +1,22 @@
 /**
- * Astro integration that syncs a source docs directory to the public directory.
- *
- * Runs once at build start and once at dev server start, failing either on error. In
- * dev it then watches the source directory and incrementally syncs changed files,
- * only logging errors so one bad save doesn't stop the server.
+ * Astro integration that serves every raw doc and docs asset at its path under the docs
+ * directory, through one injected, prerendered `/[...path]` route. In dev the route reads
+ * each file from source on request; in a build Astro writes each one into the output
+ * directory. Nothing is written to or deleted from `public/`.
  */
 import { fileURLToPath } from "node:url";
 import type { AstroIntegration } from "astro";
-import type { ViteDevServer } from "vite";
-import {
-  mkdir,
-  readdir,
-  readFile,
-  writeFile,
-  rm,
-  stat,
-} from "node:fs/promises";
-import { resolve, relative, dirname } from "node:path";
 import { minimatch } from "minimatch";
 import {
   createServedFileRule,
   type ServedFileRule,
 } from "../utils/served-file-rule.js";
+import {
+  listServedFilePaths,
+  type TDocsFileRouteSettings,
+} from "./docs-file-route.js";
+
+export type { ServedFileRule };
 
 const css = String.raw;
 
@@ -161,16 +156,13 @@ const pageSrcStyles = css`
   }
 `;
 
+
 export interface AstroServeDocsFilesOptions {
   /**
-   * Names of child directories inside public/ to preserve during sync.
-   * These directories will not be modified during re-syncing.
-   */
-  preserveDirs: string[];
-  /**
-   * Glob patterns for files to exclude from syncing.
-   * Patterns are matched against paths relative to src/content/docs/.
-   * Example: ["*.txt", "drafts/"]
+   * Glob patterns for files not to serve.
+   * Patterns are matched against paths relative to the docs directory (`src/content/docs/`).
+   * A pattern that matches a directory leaves out everything under it.
+   * Example: ["**\/*.txt", "drafts"]
    */
   ignorePatterns?: string[];
   /**
@@ -189,8 +181,20 @@ export interface AstroServeDocsFilesOptions {
   enableAskAiOption?: boolean;
 }
 
-const DEFAULT_SRC_DIR = "src/content/docs";
-const DEFAULT_PUBLIC_DIR = "public";
+/** The integration object `astroServeDocsFiles` returns. */
+export type AstroServeDocsFilesIntegration = AstroIntegration & {
+  /**
+   * The resolved served-file rule: whether a path relative to the docs directory is served.
+   * It leaves out drafts, any file or dir whose name starts with `_` or `.` (and everything
+   * under one) and `ignorePatterns` matches, and throws on unparseable frontmatter. Callable
+   * once `astro:config:setup` has run, since the docs directory comes from Astro's config.
+   * Other integrations find this one by name in `config.integrations` to read it.
+   */
+  servedFileRule: ServedFileRule;
+};
+
+const SERVE_DOCS_FILES_INTEGRATION_NAME = "astro-serve-docs-files";
+const SETTINGS_MODULE_ID = "virtual:astro-serve-docs-files/settings";
 
 function validateOptions(options: AstroServeDocsFilesOptions): void {
   const mdProbePaths = ["test.md", "test.mdx", "foo/test.md", "foo/test.mdx"];
@@ -215,160 +219,95 @@ function validateOptions(options: AstroServeDocsFilesOptions): void {
 }
 
 /**
- * Full sync: delete non-preserved dirs and copy everything.
- * Only called on initial startup and build.
+ * Where a module shipped next to this file lives: `.ts` in this repo, or a separate build
+ * entry in `dist/` reached from either this plugin's own entry or the root entry's chunk.
  */
-async function fullSync(
-  srcDir: string,
-  publicDir: string,
-  preserveDirs: string[],
-  isServed: ServedFileRule,
-): Promise<void> {
-  await mkdir(publicDir, { recursive: true });
-
-  const items = await readdir(publicDir, { withFileTypes: true });
-  await Promise.all(
-    items
-      .filter((item) => item.isDirectory() && !preserveDirs.includes(item.name))
-      .map((item) =>
-        rm(resolve(publicDir, item.name), { recursive: true, force: true }),
-      ),
-  );
-
-  await copyAll(srcDir, srcDir, publicDir, isServed);
-  console.log(
-    `[astro-serve-docs-files] Synced ${DEFAULT_SRC_DIR}/ → ${DEFAULT_PUBLIC_DIR}/ (full sync)`,
-  );
-}
-
-function isMdFile(filePath: string): boolean {
-  return filePath.endsWith(".md") || filePath.endsWith(".mdx");
-}
-
-function getDestPath(
-  srcFilePath: string,
-  srcDir: string,
-  publicDir: string,
-): string {
-  return resolve(publicDir, relative(srcDir, srcFilePath));
-}
-
-/**
- * Copies a single md/mdx file to its remapped destination in public.
- */
-async function copyMdFile(
-  srcFilePath: string,
-  srcDir: string,
-  publicDir: string,
-): Promise<void> {
-  const destPath = getDestPath(srcFilePath, srcDir, publicDir);
-  await mkdir(dirname(destPath), { recursive: true });
-  const content = await readFile(srcFilePath);
-  await writeFile(destPath, content);
-}
-
-/**
- * Incremental sync: copy a single changed file or directory.
- * Called when a file changes in dev mode.
- */
-async function incrementalSync(
-  changedFilePath: string,
-  srcDir: string,
-  publicDir: string,
-  isServed: ServedFileRule,
-): Promise<void> {
-  const relativePath = relative(srcDir, changedFilePath);
-  if (!isServed(relativePath)) return;
-
-  let srcStat;
-  try {
-    srcStat = await stat(changedFilePath);
-  } catch (err) {
-    if ((err as NodeJS.ErrnoException)?.code === "ENOENT") {
-      const deletePath = getDestPath(changedFilePath, srcDir, publicDir);
-      await rm(deletePath, { recursive: true, force: true });
-      return;
-    }
-    throw err;
+function siblingModuleUrl(moduleName: string): URL {
+  const currentFilePath = fileURLToPath(import.meta.url);
+  if (currentFilePath.endsWith(".ts")) {
+    return new URL(`./${moduleName}.ts`, import.meta.url);
   }
-
-  if (srcStat.isDirectory()) {
-    await mkdir(resolve(publicDir, relativePath), { recursive: true });
-    const files = await readdir(changedFilePath);
-    await Promise.all(
-      files.map((file) =>
-        incrementalSync(
-          resolve(changedFilePath, file),
-          srcDir,
-          publicDir,
-          isServed,
-        ),
-      ),
+  if (currentFilePath.endsWith("astro-serve-docs-files.js")) {
+    return new URL(
+      `./astro-serve-docs-files/${moduleName}.js`,
+      import.meta.url,
     );
-  } else if (isMdFile(changedFilePath)) {
-    await copyMdFile(changedFilePath, srcDir, publicDir);
-  } else {
-    const destPath = resolve(publicDir, relativePath);
-    await mkdir(dirname(destPath), { recursive: true });
-    const content = await readFile(changedFilePath);
-    await writeFile(destPath, content);
   }
-
-  console.log(`[astro-serve-docs-files] Synced ${relativePath}`);
-}
-
-/**
- * Recursively copies srcDir into publicDir, skipping what the served-file rule leaves out.
- */
-async function copyAll(
-  currentSrc: string,
-  srcDir: string,
-  publicDir: string,
-  isServed: ServedFileRule,
-): Promise<void> {
-  const entries = await readdir(currentSrc, { withFileTypes: true });
-  await Promise.all(
-    entries.map(async (entry) => {
-      const srcPath = resolve(currentSrc, entry.name);
-      const relativePath = relative(srcDir, srcPath);
-
-      if (!isServed(relativePath)) return;
-
-      if (entry.isDirectory()) {
-        await copyAll(srcPath, srcDir, publicDir, isServed);
-      } else if (isMdFile(srcPath)) {
-        await copyMdFile(srcPath, srcDir, publicDir);
-      } else {
-        const destPath = resolve(publicDir, relativePath);
-        await mkdir(dirname(destPath), { recursive: true });
-        const content = await readFile(srcPath);
-        await writeFile(destPath, content);
-      }
-    }),
+  return new URL(
+    `./plugins/astro-serve-docs-files/${moduleName}.js`,
+    import.meta.url,
   );
 }
 
 export function astroServeDocsFiles(
-  options: AstroServeDocsFilesOptions,
-): AstroIntegration {
-  const srcDir = resolve(DEFAULT_SRC_DIR);
-  const publicDir = resolve(DEFAULT_PUBLIC_DIR);
+  options: AstroServeDocsFilesOptions = {},
+): AstroServeDocsFilesIntegration {
   const {
-    preserveDirs: rawPreserveDirs,
     ignorePatterns = [],
     exposePageSrcButton = false,
     enableAskAiOption = false,
   } = options;
-  const preserveDirs = rawPreserveDirs.map((preserveDir) =>
-    preserveDir.replace(/\/+$/, ""),
-  );
-  const isServed = createServedFileRule({ docsDirPath: srcDir, ignorePatterns });
+  let routeSettings: TDocsFileRouteSettings | undefined;
+  let resolvedServedFileRule: ServedFileRule | undefined;
+
+  const servedFileRule: ServedFileRule = (relativePath) => {
+    if (!resolvedServedFileRule) {
+      throw new Error(
+        `[${SERVE_DOCS_FILES_INTEGRATION_NAME}] servedFileRule was called before astro:config:setup ran.`,
+      );
+    }
+    return resolvedServedFileRule(relativePath);
+  };
+
+  // Fails dev and build at startup on unparseable frontmatter, rather than on a request
+  const checkServedFiles = () => {
+    if (!routeSettings) return;
+    listServedFilePaths(routeSettings.docsDirPath, servedFileRule);
+  };
 
   return {
-    name: "astro-serve-docs-files",
+    name: SERVE_DOCS_FILES_INTEGRATION_NAME,
+    servedFileRule,
     hooks: {
-      "astro:config:setup": ({ injectScript }) => {
+      "astro:config:setup": ({
+        config,
+        injectRoute,
+        injectScript,
+        updateConfig,
+      }) => {
         validateOptions(options);
+
+        const docsDirPath = fileURLToPath(
+          new URL("content/docs/", config.srcDir),
+        ).replace(/[\\/]+$/, "");
+        routeSettings = { docsDirPath, ignorePatterns };
+        resolvedServedFileRule = createServedFileRule(routeSettings);
+
+        const resolvedSettingsModuleId = `\0${SETTINGS_MODULE_ID}`;
+        const settingsModuleSource = `export default ${JSON.stringify(routeSettings)};`;
+        updateConfig({
+          vite: {
+            plugins: [
+              {
+                name: "astro-serve-docs-files-settings",
+                resolveId: (id: string) =>
+                  id === SETTINGS_MODULE_ID
+                    ? resolvedSettingsModuleId
+                    : undefined,
+                load: (id: string) =>
+                  id === resolvedSettingsModuleId
+                    ? settingsModuleSource
+                    : undefined,
+              },
+            ],
+          },
+        });
+        injectRoute({
+          pattern: "/[...path]",
+          entrypoint: siblingModuleUrl("route"),
+          prerender: true,
+        });
+
         if (exposePageSrcButton || enableAskAiOption) {
           injectScript(
             "page",
@@ -378,26 +317,9 @@ export function astroServeDocsFiles(
             document.head.appendChild(styleElement);
           `,
           );
-          // Three contexts require three different paths to page-script.js:
-          // 1. Local dev (.ts source): page-script.ts lives alongside index.ts
-          // 2. Dist, own entry (dist/plugins/astro-serve-docs-files.js): page-script is one level deeper
-          // 3. Dist, bundled into another entry (e.g. dist/index.js via re-export): must prefix with plugins/
-          const currentFile = fileURLToPath(import.meta.url);
-          let pageScriptUrl: URL;
-          if (currentFile.endsWith(".ts")) {
-            pageScriptUrl = new URL("./page-script.ts", import.meta.url);
-          } else if (currentFile.endsWith("astro-serve-docs-files.js")) {
-            pageScriptUrl = new URL(
-              "./astro-serve-docs-files/page-script.js",
-              import.meta.url,
-            );
-          } else {
-            pageScriptUrl = new URL(
-              "./plugins/astro-serve-docs-files/page-script.js",
-              import.meta.url,
-            );
-          }
-          const scriptPath = JSON.stringify(fileURLToPath(pageScriptUrl));
+          const scriptPath = JSON.stringify(
+            fileURLToPath(siblingModuleUrl("page-script")),
+          );
           const actionBarOptions = JSON.stringify({
             exposePageSrcButton,
             enableAskAiOption,
@@ -409,55 +331,12 @@ export function astroServeDocsFiles(
         }
       },
 
-      "astro:build:start": async () => {
-        await fullSync(srcDir, publicDir, preserveDirs, isServed);
+      "astro:build:start": () => {
+        checkServedFiles();
       },
 
-      "astro:server:setup": async ({ server }: { server: ViteDevServer }) => {
-        const pendingPaths = new Set<string>();
-        let isSyncing = false;
-        let debounceTimer: ReturnType<typeof setTimeout> | null = null;
-
-        const performSync = async () => {
-          if (isSyncing) return;
-          isSyncing = true;
-          try {
-            while (pendingPaths.size > 0) {
-              const paths = [...pendingPaths];
-              pendingPaths.clear();
-              await Promise.all(
-                paths.map((changedPath) =>
-                  incrementalSync(
-                    changedPath,
-                    srcDir,
-                    publicDir,
-                    isServed,
-                  ).catch((err) => {
-                    console.error(
-                      `[astro-serve-docs-files] Error syncing ${changedPath}:`,
-                      err,
-                    );
-                  }),
-                ),
-              );
-            }
-          } finally {
-            isSyncing = false;
-            // Paths that arrived between the last while-check and isSyncing=false
-            if (pendingPaths.size > 0) void performSync();
-          }
-        };
-
-        // Awaited so a sync error stops dev from starting, rather than serving a half-synced public/
-        await fullSync(srcDir, publicDir, preserveDirs, isServed);
-
-        server.watcher.add(srcDir);
-        server.watcher.on("all", (_event: string, filePath: string) => {
-          if (!filePath.startsWith(srcDir)) return;
-          pendingPaths.add(filePath);
-          if (debounceTimer) clearTimeout(debounceTimer);
-          debounceTimer = setTimeout(performSync, 100);
-        });
+      "astro:server:setup": () => {
+        checkServedFiles();
       },
     },
   };

@@ -21,8 +21,6 @@ pnpm-debug.log*
 
 # macOS-specific files
 .DS_Store
-public/*
-!public/static/
 tex-svgs/
 .external/
 test-latex-output/

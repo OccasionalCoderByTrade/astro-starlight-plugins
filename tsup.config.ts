@@ -16,6 +16,8 @@ export default defineConfig({
       "src/plugins/astro-serve-docs-files/index.ts",
     "plugins/astro-serve-docs-files/page-script":
       "src/plugins/astro-serve-docs-files/page-script.ts",
+    "plugins/astro-serve-docs-files/route":
+      "src/plugins/astro-serve-docs-files/route.ts",
     "plugins/starlight-dom-patches":
       "src/plugins/starlight-dom-patches/index.ts",
     "plugins/starlight-dom-patches/page-script":
@@ -23,7 +25,11 @@ export default defineConfig({
     "plugins/expressive-code-emphasis":
       "src/plugins/expressive-code-emphasis/index.ts",
   },
-  external: ["@expressive-code/core", "virtual:astro-local-links/settings"],
+  external: [
+    "@expressive-code/core",
+    "virtual:astro-local-links/settings",
+    "virtual:astro-serve-docs-files/settings",
+  ],
   format: ["esm"],
   dts: true,
   clean: true,

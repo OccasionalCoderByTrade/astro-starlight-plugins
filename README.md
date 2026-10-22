@@ -416,18 +416,16 @@ Page paths are worked out the way Starlight's docs loader does it by default. A 
 
 ### Serve Docs Files
 
-Renamed from `syncDocsToPublic` in 4.0.0. Import `astroServeDocsFiles` instead (subpath export: `starlight-cannoli-plugins/astro-serve-docs-files`).
+Serves every file in the docs directory (`src/content/docs/`) at its path there, so a PDF or image next to a doc, or a doc's raw Markdown, can be linked to. `reference/paper.pdf` is served at `/reference/paper.pdf`, and `reference/List Syntax.md` at `/reference/List Syntax.md`, byte-for-byte with its frontmatter.
 
-Syncs `src/content/docs/` to `public/` so local files (e.g., PDFs, images) referenced in markdown are served by the dev server and included in builds. In dev mode, it watches for file changes and re-syncs automatically — no restart needed.
+It does this through one prerendered `/[...path]` route that it adds to the site. In `astro dev` each file is read from its source on every request, so a saved edit shows up straight away. In `astro build` Astro writes each one into the build output like any other page. Nothing is copied into `public/` or deleted from it, so `public/` only holds the files you put there.
 
-**Features:**
+**What's served:**
 
-- Syncs once at build start and once at dev server start; an error in either stops the build or the server from starting
-- Watches for changes in dev mode and re-syncs automatically (debounced)
-- Preserves specified child directories in `public/` during sync (e.g., `static/`)
-- Supports glob patterns to exclude files from syncing
-- Never copies drafts (`draft: true`), or any file or directory whose name starts with `_` or `.` (like `_partial.md`, `_assets/` or `.obsidian/`), along with everything under one. Files next to a draft, and docs with `sidebar.hidden`, are still copied.
-- Fails `astro dev` and `astro build` at startup when an md/mdx file's frontmatter can't be parsed, since it can't tell whether the file is a draft. In dev, a re-sync after a save only logs the error.
+- Every file under the docs directory, with a content type from its extension (`.md` and `.mdx` as `text/markdown`, unknown ones as `application/octet-stream`)
+- Except drafts (`draft: true`), any file or directory whose name starts with `_` or `.` (like `_partial.md`, `_assets/` or `.obsidian/`) along with everything under one, and files matching `ignorePatterns`. Files next to a draft, and docs with `sidebar.hidden`, are still served.
+- `astro dev` and `astro build` fail at startup when an md/mdx file's frontmatter can't be parsed, since the plugin can't tell whether the file is a draft.
+- The docs directory is read from Astro's `srcDir`, so a custom `srcDir` works.
 
 **Usage:**
 
@@ -438,28 +436,33 @@ import starlight from "@astrojs/starlight";
 import { astroServeDocsFiles } from "starlight-cannoli-plugins";
 
 export default defineConfig({
-  integrations: [
-    astroServeDocsFiles({ preserveDirs: ["static"] }),
-    starlight({ title: "My Docs" }),
-  ],
+  integrations: [astroServeDocsFiles(), starlight({ title: "My Docs" })],
 });
 ```
 
 **Options:**
 
-- `preserveDirs` (required): Names of child directories inside `public/` to preserve during sync. These will not be deleted when re-syncing.
-- `ignorePatterns` (optional): Glob patterns for files to exclude from syncing. Patterns are matched against paths relative to `src/content/docs/`. A pattern that matches a directory excludes everything under it.
+- `ignorePatterns` (optional): Glob patterns for files not to serve. Patterns are matched against paths relative to `src/content/docs/`. A pattern that matches a directory leaves out everything under it.
 - `exposePageSrcButton` (optional, default: `false`): Injects a client-side script on every page that adds a `⋮` dropdown next to the page's `<h1>` with "Copy Page", "Copy raw URL", and "View raw" actions for the page's raw markdown source.
 - `enableAskAiOption` (optional, default: `false`): Adds "Ask ChatGPT", "Ask Claude", and "Ask Gemini" entries to the same `⋮` dropdown, each opening the respective chat app in a new tab with a prompt pre-filled to read the page's raw markdown URL. Independent of `exposePageSrcButton` — enabling this on its own still injects the dropdown button, containing only the "Ask" entries.
 
+Both page-action options need raw docs to be served, so while either is on, an `ignorePatterns` value that matches `.md` or `.mdx` files fails at startup.
+
 ```ts
 astroServeDocsFiles({
-  preserveDirs: ["static"],
   ignorePatterns: ["**/*.txt", "**/drafts/**"],
   exposePageSrcButton: true,
   enableAskAiOption: true,
 });
 ```
+
+**Served-file rule:** the integration object has a `servedFileRule(relativePath)` field that says whether a path relative to the docs directory is served, by the rules above. It throws on unparseable frontmatter. Other integrations can find this one by name (`astro-serve-docs-files`) in `config.integrations` and call it once `astro:config:setup` has run.
+
+**Upgrading to 4.0.0:**
+
+- `syncDocsToPublic` is renamed `astroServeDocsFiles` (subpath export: `starlight-cannoli-plugins/astro-serve-docs-files`).
+- `preserveDirs` is removed, since the plugin no longer deletes anything from `public/`. Drop it from your config.
+- Delete the copies the old plugin left in `public/` (everything it synced from `src/content/docs/`), and any `.gitignore` rules you added for them.
 
 ### Starlight DOM Patches
 
