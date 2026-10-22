@@ -485,6 +485,25 @@ export function resolveSourceDoc(
   throw createPagePathCollisionError(pagePath, sourceDocFilePaths);
 }
 
+/**
+ * The error for a page at URL `pathname` that `routePattern` served, when that's a source
+ * doc's page path, so the doc route didn't serve it. Null when no source doc has it.
+ */
+export function formatShadowedDocError(
+  pathname: string,
+  routePattern: string,
+  sourceDocIndex: TSourceDocIndex,
+): string | null {
+  const pagePath = toDocsRelativePagePath(pathname) ?? pathname;
+  const sourceDocFilePaths = sourceDocIndex.get(pagePath);
+  if (!sourceDocFilePaths) return null;
+  return (
+    `[astro-local-links] ${pathname} is the page path of ${sourceDocFilePaths.join(", ")}, ` +
+    `but ${routePattern} served it, not Starlight's doc route (${STARLIGHT_DOCS_ROUTE}). ` +
+    `Either a page in src/pages shadows the source doc, or Starlight's doc route changed.`
+  );
+}
+
 /** One error message listing every broken local link, grouped by source doc. */
 export function formatBrokenLinksError(
   pagesBrokenLinks: TPageBrokenLinks[],

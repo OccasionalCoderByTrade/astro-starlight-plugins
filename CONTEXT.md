@@ -64,6 +64,14 @@ _Avoid_: slug, route, URL
 A page path that more than one source doc has, such as `Foo.md` and `foo.md`, or `x.md` and `x/index.md`. It fails the build, and in dev the pages it affects.
 _Avoid_: ambiguous source docs, duplicate page
 
+**Doc route**:
+The single route Starlight serves every source doc's page from.
+_Avoid_: docs route, slug route, catch-all
+
+**Shadowed doc**:
+A source doc whose page path is served by a route other than the doc route, such as a `src/pages` page at the same path, so the source doc's page can't be reached.
+_Avoid_: overridden doc, route conflict
+
 **Non-slug path**:
 A source doc path that differs from its page path, such as `reference/List Syntax.md` served at `/reference/list-syntax/`.
 _Avoid_: unslugified path, raw path

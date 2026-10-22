@@ -99,6 +99,19 @@ describe("dev middleware", () => {
     expect(await request("/no-such-doc/", body, { status: 404 })).toBe(body);
   });
 
+  it("throws on a shadowed doc, naming the source doc and the route that served it", async () => {
+    const files = { "src/content/docs/My Guide/Intro.md": "" };
+
+    await expect(
+      request("/my-guide/intro/", pageHtml(""), {
+        files,
+        routePattern: "/my-guide/intro",
+      }),
+    ).rejects.toThrow(
+      /\/my-guide\/intro\/[\s\S]*My Guide\/Intro\.md[\s\S]*\/my-guide\/intro\b[\s\S]*doc route \(\/\[\.\.\.slug\]\)/,
+    );
+  });
+
   it("throws, listing the broken links, so dev shows an error page", async () => {
     await expect(
       request("/guide/intro/", pageHtml(`<a href="./missing">x</a>`)),

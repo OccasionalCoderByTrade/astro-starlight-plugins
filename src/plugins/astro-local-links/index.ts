@@ -105,7 +105,22 @@ export function astroLocalLinks(
         if (pagePathCollisionsError) throw new Error(pagePathCollisionsError);
 
         const pagesBrokenLinks: TPageBrokenLinks[] = [];
-        const htmlFileUrls = assets.get(STARLIGHT_DOCS_ROUTE) ?? [];
+        const htmlFileUrls = assets.get(STARLIGHT_DOCS_ROUTE);
+        if (!htmlFileUrls) {
+          throw new Error(
+            `[astro-local-links] Starlight's doc route (${STARLIGHT_DOCS_ROUTE}) was not found ` +
+              `among the built routes (${[...assets.keys()].join(", ")}). ` +
+              `Is Starlight in \`integrations\`?`,
+          );
+        }
+        // Starlight with `prerender: false` keeps the route but writes no HTML to check
+        if (htmlFileUrls.length === 0 && sourceDocIndex.size > 0) {
+          throw new Error(
+            `[astro-local-links] Starlight wrote no doc pages, but ${settings.site.docsDirPath} has ` +
+              `${sourceDocIndex.size} source docs. Server-rendered Starlight (\`prerender: false\`) ` +
+              `isn't supported. If every source doc is a draft, this error is a false alarm.`,
+          );
+        }
         await Promise.all(
           htmlFileUrls.map(async (htmlFileUrl) => {
             const htmlFilePath = fileURLToPath(htmlFileUrl);

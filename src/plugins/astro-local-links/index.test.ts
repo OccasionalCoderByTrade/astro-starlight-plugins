@@ -60,17 +60,30 @@ async function runBuildDone(
       !otherRouteDistRelativeFilePaths.includes(distRelativeFilePath),
   );
 
-  const buildDone = integration.hooks["astro:build:done"]!;
-  await buildDone({
-    dir: pathToFileURL(`${distDirPath}/`),
-    assets: new Map([
+  await runBuildDoneWithAssets(
+    integration,
+    rootDirPath,
+    new Map([
       ["/[...slug]", toUrls(starlightDistRelativeFilePaths)],
       ["/grade-calculator", toUrls(otherRouteDistRelativeFilePaths)],
     ]),
-  } as unknown as Parameters<typeof buildDone>[0]);
+  );
 
   return (distRelativeFilePath: string) =>
     readFileSync(join(distDirPath, distRelativeFilePath), "utf-8");
+}
+
+/** Runs `astro:build:done` with `assets` as given, mapping each route pattern to the files it wrote. */
+async function runBuildDoneWithAssets(
+  integration: ReturnType<typeof astroLocalLinks>,
+  rootDirPath: string,
+  assets: Map<string, URL[]>,
+) {
+  const buildDone = integration.hooks["astro:build:done"]!;
+  await buildDone({
+    dir: pathToFileURL(`${join(rootDirPath, "dist")}/`),
+    assets,
+  } as unknown as Parameters<typeof buildDone>[0]);
 }
 
 describe("astroLocalLinks", () => {
@@ -195,5 +208,49 @@ describe("astroLocalLinks", () => {
         "utf-8",
       ),
     ).toBe(introHtml);
+  });
+
+  it("fails build:done when Starlight's doc route is missing, listing the routes it found", async () => {
+    const site = makeSite({ "src/content/docs/guide/intro.md": "" });
+    const { integration } = await runSetup(site.rootDirPath, "build");
+
+    const buildDone = runBuildDoneWithAssets(
+      integration,
+      site.rootDirPath,
+      new Map([
+        ["/404", []],
+        ["/grade-calculator", []],
+      ]),
+    );
+
+    await expect(buildDone).rejects.toThrow(
+      /\/\[\.\.\.slug\][\s\S]*not found[\s\S]*\/404, \/grade-calculator/,
+    );
+  });
+
+  it("fails build:done when Starlight wrote no doc pages though source docs exist, as with prerender off", async () => {
+    const site = makeSite({ "src/content/docs/guide/intro.md": "" });
+    const { integration } = await runSetup(site.rootDirPath, "build");
+
+    const buildDone = runBuildDoneWithAssets(
+      integration,
+      site.rootDirPath,
+      new Map([["/[...slug]", []]]),
+    );
+
+    await expect(buildDone).rejects.toThrow(/no doc pages[\s\S]*prerender/);
+  });
+
+  it("passes build:done on a site with no source docs", async () => {
+    const site = makeSite();
+    const { integration } = await runSetup(site.rootDirPath, "build");
+
+    const buildDone = runBuildDoneWithAssets(
+      integration,
+      site.rootDirPath,
+      new Map([["/[...slug]", []]]),
+    );
+
+    await expect(buildDone).resolves.toBeUndefined();
   });
 });

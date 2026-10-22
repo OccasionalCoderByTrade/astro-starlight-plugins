@@ -385,6 +385,8 @@ These only skip link validation. The link still gets normalized.
 **Limitations:**
 
 - Astro's `base` option isn't supported yet. Setting it makes the integration throw at startup.
+- Server-rendered Starlight (`prerender: false`) isn't supported, since there's no built HTML to check. `astro build` fails if Starlight wrote no doc pages while `src/content/docs/` has source docs. A site whose source docs are all drafts hits this error too, as a false alarm. The build also fails if Starlight's doc route is missing entirely, such as when Starlight isn't in `integrations`.
+- A page in `src/pages` at a source doc's page path shadows that source doc: Astro serves the page, and the source doc can't be reached. `astro dev` errors on that page. `astro build` doesn't catch it yet.
 - A frontmatter `slug` and a custom `docsLoader({ generateId })` aren't supported. See [Non-slug filenames](#non-slug-filenames).
 
 **Migrating from `rehypeValidateLinks` and `astroNormalizePaths`:**
