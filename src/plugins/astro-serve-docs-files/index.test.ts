@@ -108,6 +108,12 @@ describe("astroServeDocsFiles config setup", () => {
       ),
     ).rejects.toThrow(/"\*\*\/\*\.md"/);
     await expect(
+      runConfigSetup(
+        {},
+        { exposePageSrcButton: true, ignorePatterns: ["**/*.markdown"] },
+      ),
+    ).rejects.toThrow(/"\*\*\/\*\.markdown"/);
+    await expect(
       runConfigSetup({}, { ignorePatterns: ["**/*.md"] }),
     ).resolves.toBeDefined();
   });
@@ -179,7 +185,7 @@ describe("astroServeDocsFiles dev setup and build start", () => {
   );
 });
 
-describe("astroServeDocsFiles public/ collisions at startup", () => {
+describe("astroServeDocsFiles served path collisions with public/ at startup", () => {
   it.each(["astro:server:setup", "astro:build:start"] as const)(
     "fails listing every clash with both files and the stale 3.x note (%s)",
     async (hookName) => {
@@ -312,7 +318,7 @@ function requestDevServer(devMiddlewares: TDevMiddleware[], url: string) {
   return { response, reachedNext };
 }
 
-describe("astroServeDocsFiles public/ collisions mid-session in dev", () => {
+describe("astroServeDocsFiles served path collisions with public/ mid-session in dev", () => {
   it("answers an error at the clashing URL and keeps serving other URLs", async () => {
     const { rootDirPath, integration } = await runConfigSetup({
       "public/favicon.svg": "<svg/>",
@@ -394,6 +400,19 @@ describe("astroServeDocsFiles servedFileRule", () => {
     expect(servedFileRule("guide/notes.txt")).toBe(false);
     expect(servedFileRule("scratch/figure.png")).toBe(false);
   });
+
+  it.each([".markdown", ".mdown", ".mkdn", ".mkd", ".mdwn"])(
+    "leaves out a draft with any source doc extension Starlight reads (%s)",
+    async (extension) => {
+      const { integration } = await runConfigSetup({
+        [`src/content/docs/draft${extension}`]: "---\ndraft: true\n---\n",
+        [`src/content/docs/page${extension}`]: "---\ntitle: Page\n---\n",
+      });
+
+      expect(integration.servedFileRule(`draft${extension}`)).toBe(false);
+      expect(integration.servedFileRule(`page${extension}`)).toBe(true);
+    },
+  );
 
   it("reads drafts from the docs dir under Astro's srcDir", async () => {
     const { integration } = await runConfigSetup(

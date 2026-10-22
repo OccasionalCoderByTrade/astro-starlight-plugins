@@ -5,9 +5,10 @@
 import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { AstroIntegrationLogger } from "astro";
-
-/** The pattern of the route that serves docs files. */
-export const DOCS_FILE_ROUTE_PATTERN = "/[...path]";
+import {
+  DOCS_FILE_ROUTE_PATTERN,
+  SERVE_DOCS_FILES_INTEGRATION_NAME,
+} from "../utils/serve-docs-files-integration.js";
 
 /** A route and the output files it wrote, as `astro:build:done` reports them. */
 type TBuildAssets = Map<string, URL[]>;
@@ -135,7 +136,7 @@ export function formatRouteCollisionsError(options: {
 
   collisions.sort();
   return (
-    `[astro-serve-docs-files] ${collisions.length} served path collision` +
+    `[${SERVE_DOCS_FILES_INTEGRATION_NAME}] ${collisions.length} served path collision` +
     `${collisions.length === 1 ? "" : "s"} with other routes, ` +
     `so one route's output is lost:\n` +
     collisions.map((collision) => `  - ${collision}`).join("\n") +

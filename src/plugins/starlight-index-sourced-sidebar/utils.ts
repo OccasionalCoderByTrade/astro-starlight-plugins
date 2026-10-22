@@ -3,7 +3,7 @@ import * as path from "path";
 import remarkParse from "remark-parse";
 import { unified } from "unified";
 import { visit } from "unist-util-visit";
-import { parseFrontmatter } from "../utils/workspace-utils";
+import { isFile, parseFrontmatter } from "../utils/workspace-utils";
 import type { TIndexMarker, TSidebarItem } from "./types";
 
 const SITE_DOCS_ROOT = "./src/content/docs";
@@ -21,11 +21,6 @@ function pathSegmentToLabel(segment: string): string {
   }
 
   return label;
-}
-
-/** False when nothing is at `filePath`; throws on any other stat error, such as EACCES. */
-function isFile(filePath: string): boolean {
-  return fs.statSync(filePath, { throwIfNoEntry: false })?.isFile() ?? false;
 }
 
 function findIndexMd(dirPath: string): string | null {

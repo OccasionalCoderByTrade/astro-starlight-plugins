@@ -556,9 +556,9 @@ describe("astroLocalLinks", () => {
       const content =
         '<a href="./slides.pdf">a</a><a href="./notes.md">b</a>' +
         '<a href="./logo.png">c</a>';
-      await expect(
-        handleRequest("/guide/intro/", content),
-      ).resolves.toContain("/guide/slides.pdf");
+      await expect(handleRequest("/guide/intro/", content)).resolves.toContain(
+        "/guide/slides.pdf",
+      );
     });
 
     it.each([

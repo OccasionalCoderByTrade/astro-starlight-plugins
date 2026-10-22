@@ -13,14 +13,19 @@ import {
   createServedFileRule,
   type ServedFileRule,
 } from "../utils/served-file-rule.js";
-import type { TDocsFileRouteSettings } from "./docs-file-route.js";
-import {
-  createPublicCollisionMiddleware,
-  findPublicCollisions,
-  formatPublicCollisionsMessage,
-} from "./public-collisions.js";
 import {
   DOCS_FILE_ROUTE_PATTERN,
+  SERVE_DOCS_FILES_INTEGRATION_NAME,
+  SERVED_FILE_RULE_HOOK_NAME,
+} from "../utils/serve-docs-files-integration.js";
+import { SOURCE_DOC_EXTENSIONS } from "../utils/workspace-utils.js";
+import type { TDocsFileRouteSettings } from "./docs-file-route.js";
+import {
+  createPublicServedPathCollisionMiddleware,
+  findPublicServedPathCollisions,
+  formatPublicServedPathCollisionsMessage,
+} from "./public-served-path-collisions.js";
+import {
   formatRouteCollisionsError,
   listenForRouteConflicts,
 } from "./route-collisions.js";
@@ -203,17 +208,21 @@ export type AstroServeDocsFilesIntegration = AstroIntegration & {
   servedFileRule: ServedFileRule;
 };
 
-const SERVE_DOCS_FILES_INTEGRATION_NAME = "astro-serve-docs-files";
 const SETTINGS_MODULE_ID = "virtual:astro-serve-docs-files/settings";
 
 function validateOptions(options: AstroServeDocsFilesOptions): void {
-  const mdProbePaths = ["test.md", "test.mdx", "foo/test.md", "foo/test.mdx"];
+  const sourceDocProbePaths = SOURCE_DOC_EXTENSIONS.flatMap((extension) => [
+    `test${extension}`,
+    `foo/test${extension}`,
+  ]);
 
   const needsRawMd = options.exposePageSrcButton || options.enableAskAiOption;
   if (!needsRawMd) return;
 
   const offendingMdPatterns = (options.ignorePatterns ?? []).filter((pattern) =>
-    mdProbePaths.some((probe) => minimatch(probe, pattern, { dot: true })),
+    sourceDocProbePaths.some((probe) =>
+      minimatch(probe, pattern, { dot: true }),
+    ),
   );
 
   const offendingMdPatternsList = offendingMdPatterns
@@ -223,7 +232,7 @@ function validateOptions(options: AstroServeDocsFilesOptions): void {
   if (offendingMdPatterns.length > 0) {
     throw new Error(
       `The 'exposePageSrcButton'/'enableAskAiOption' option is enabled but the following 'ignorePatterns' values conflict with it: \n${offendingMdPatternsList}\n\n` +
-        `Since these ignore patterns match md/mdx files, the page action button would break. Either disable these options or remove these patterns.`,
+        `Since these ignore patterns match source docs, the page action button would break. Either disable these options or remove these patterns.`,
     );
   }
 }
@@ -275,29 +284,27 @@ export function astroServeDocsFiles(
   let routeConflictListener:
     ReturnType<typeof listenForRouteConflicts> | undefined;
 
-  const servedFileRule: ServedFileRule = (relativePath) => {
+  const servedFileRule: ServedFileRule = (docsRelativeEntryPath) => {
     if (!resolvedServedFileRule) {
       throw new Error(
         `[${SERVE_DOCS_FILES_INTEGRATION_NAME}] servedFileRule was called before astro:config:setup ran.`,
       );
     }
-    return resolvedServedFileRule(relativePath);
+    return resolvedServedFileRule(docsRelativeEntryPath);
   };
 
-  // Fails dev and build at startup on unparseable frontmatter or a public/ collision,
+  // Fails dev and build at startup on unparseable frontmatter or a served path collision with
+  // public/,
   // rather than on a request (ADR 0008)
   const checkServedFiles = () => {
     if (!routeSettings || !publicDirPath) return;
-    const publicCollisions = findPublicCollisions(
+    const publicServedPathCollisions = findPublicServedPathCollisions(
       { docsDirPath: routeSettings.docsDirPath, publicDirPath },
       servedFileRule,
     );
-    if (publicCollisions.length > 0) {
+    if (publicServedPathCollisions.length > 0) {
       throw new Error(
-        formatPublicCollisionsMessage(
-          SERVE_DOCS_FILES_INTEGRATION_NAME,
-          publicCollisions,
-        ),
+        formatPublicServedPathCollisionsMessage(publicServedPathCollisions),
       );
     }
   };
@@ -320,7 +327,7 @@ export function astroServeDocsFiles(
     hooks: {
       // Astro's config validation keeps only `name` and `hooks` of each integration in
       // `config.integrations`, so other integrations read the rule from here
-      "astro-serve-docs-files:served-file-rule": servedFileRule,
+      [SERVED_FILE_RULE_HOOK_NAME]: servedFileRule,
       "astro:config:setup": ({
         config,
         injectRoute,
@@ -395,8 +402,7 @@ export function astroServeDocsFiles(
         const { docsDirPath } = routeSettings;
 
         server.middlewares.use(
-          createPublicCollisionMiddleware(
-            SERVE_DOCS_FILES_INTEGRATION_NAME,
+          createPublicServedPathCollisionMiddleware(
             { docsDirPath, publicDirPath },
             servedFileRule,
           ),

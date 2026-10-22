@@ -5,6 +5,7 @@ import {
   createServedFileRule,
   type ServedFileRule,
 } from "../utils/served-file-rule.js";
+import { SOURCE_DOC_EXTENSIONS } from "../utils/workspace-utils.js";
 
 /** What the route module needs from the integration, passed as JSON through a virtual module. */
 export type TDocsFileRouteSettings = {
@@ -16,8 +17,12 @@ const UTF8 = "; charset=utf-8";
 
 /** Content types by lowercase extension. Anything else is served as `application/octet-stream`. */
 const CONTENT_TYPES: Record<string, string> = {
-  ".md": `text/markdown${UTF8}`,
-  ".mdx": `text/markdown${UTF8}`,
+  ...Object.fromEntries(
+    SOURCE_DOC_EXTENSIONS.map((extension) => [
+      extension,
+      `text/markdown${UTF8}`,
+    ]),
+  ),
   ".txt": `text/plain${UTF8}`,
   ".csv": `text/csv${UTF8}`,
   ".html": `text/html${UTF8}`,

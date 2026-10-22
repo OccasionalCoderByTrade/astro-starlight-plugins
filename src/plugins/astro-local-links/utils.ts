@@ -17,7 +17,10 @@ import {
   serialize,
   type DefaultTreeAdapterTypes,
 } from "parse5";
+import type { ServedFileRule } from "../utils/served-file-rule.js";
+import { SERVE_DOCS_FILES_INTEGRATION_NAME } from "../utils/serve-docs-files-integration.js";
 import { STARLIGHT_CONTENT_CLASS } from "../utils/starlight-selectors.js";
+import { isFile, SOURCE_DOC_EXTENSIONS } from "../utils/workspace-utils.js";
 
 type TElement = DefaultTreeAdapterTypes.Element;
 type TParentNode = DefaultTreeAdapterTypes.ParentNode;
@@ -52,7 +55,7 @@ export type TProcessPageOptions = {
    * In dev, the serve integration's served-file rule, if it's installed: a link to a file
    * under the docs dir also counts when the rule accepts its docs-relative path.
    */
-  servedDocsFileRule?: (docsRelativeFilePath: string) => boolean;
+  servedDocsFileRule?: ServedFileRule;
 };
 
 export type TBrokenLink = {
@@ -82,40 +85,29 @@ export type TLocalLinksDevSettings = Omit<
   "servedDocsFileRule"
 > & { servedFileRuleId?: string };
 
-/** The name `astroServeDocsFiles` gives its integration, which this one finds it by. */
-export const SERVE_DOCS_FILES_INTEGRATION_NAME = "astro-serve-docs-files";
-
-/** The route `astroServeDocsFiles` injects to serve docs files. */
-export const SERVE_DOCS_FILES_ROUTE_PATTERN = "/[...path]";
-
-/** The custom hook `astroServeDocsFiles` exposes its served-file rule as. */
-export const SERVED_FILE_RULE_HOOK_NAME = `${SERVE_DOCS_FILES_INTEGRATION_NAME}:served-file-rule`;
-
-type TServedFileRule = (docsRelativeFilePath: string) => boolean;
-
 /**
  * The served-file rules `registerServedFileRule` holds, by id. It lives on `globalThis`
  * because the integration and the dev middleware each load their own copy of this module:
  * one through Node, the other through Vite's module runner, in the same process.
  */
-function servedFileRules(): Map<string, TServedFileRule> {
+function servedFileRules(): Map<string, ServedFileRule> {
   const registryKey = Symbol.for("astro-local-links/served-file-rules");
-  const registryHolder = globalThis as { [registryKey]?: Map<string, TServedFileRule> };
+  const registryHolder = globalThis as {
+    [registryKey]?: Map<string, ServedFileRule>;
+  };
   registryHolder[registryKey] ??= new Map();
   return registryHolder[registryKey];
 }
 
 /** Keeps `servedFileRule` for the dev middleware to find by the id this returns. */
-export function registerServedFileRule(servedFileRule: TServedFileRule): string {
+export function registerServedFileRule(servedFileRule: ServedFileRule): string {
   const servedFileRuleId = randomUUID();
   servedFileRules().set(servedFileRuleId, servedFileRule);
   return servedFileRuleId;
 }
 
 /** The rule `registerServedFileRule` kept under `servedFileRuleId`. */
-export function findServedFileRule(
-  servedFileRuleId: string,
-): TServedFileRule {
+export function findServedFileRule(servedFileRuleId: string): ServedFileRule {
   const servedFileRule = servedFileRules().get(servedFileRuleId);
   if (!servedFileRule) {
     throw new Error(
@@ -137,17 +129,6 @@ export const STARLIGHT_404_PAGE_PATH = "404";
 
 /** Virtual module the dev middleware reads the integration's settings from. */
 export const SETTINGS_MODULE_ID = "virtual:astro-local-links/settings";
-
-/** The extensions Starlight's docs loader reads source docs from. */
-const SOURCE_DOC_EXTENSIONS = [
-  ".md",
-  ".mdx",
-  ".markdown",
-  ".mdown",
-  ".mkdn",
-  ".mkd",
-  ".mdwn",
-];
 
 /** The attribute that holds the link value, per link-bearing element. */
 const LINK_ATTRIBUTE_BY_TAG_NAME = { a: "href", img: "src" } as const;
@@ -595,10 +576,6 @@ function toDocsRelativePagePath(sitePath: string): string | null {
   } catch {
     return null;
   }
-}
-
-function isFile(filePath: string): boolean {
-  return existsSync(filePath) && statSync(filePath).isFile();
 }
 
 /**

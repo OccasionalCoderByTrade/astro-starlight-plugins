@@ -2,6 +2,12 @@ import type { AstroIntegration } from "astro";
 import { readFile, writeFile } from "node:fs/promises";
 import { relative } from "node:path";
 import { fileURLToPath } from "node:url";
+import type { ServedFileRule } from "../utils/served-file-rule.js";
+import {
+  DOCS_FILE_ROUTE_PATTERN,
+  SERVE_DOCS_FILES_INTEGRATION_NAME,
+  SERVED_FILE_RULE_HOOK_NAME,
+} from "../utils/serve-docs-files-integration.js";
 import {
   buildSourceDocIndex,
   formatBrokenLinksError,
@@ -9,9 +15,6 @@ import {
   formatShadowedDocsError,
   processDocPage,
   registerServedFileRule,
-  SERVE_DOCS_FILES_INTEGRATION_NAME,
-  SERVE_DOCS_FILES_ROUTE_PATTERN,
-  SERVED_FILE_RULE_HOOK_NAME,
   STARLIGHT_DOC_ROUTE,
   SETTINGS_MODULE_ID,
   STARLIGHT_404_PAGE_PATH,
@@ -84,7 +87,7 @@ export function astroLocalLinks(
         docsFileRoutePattern = config.integrations.some(
           ({ name }) => name === SERVE_DOCS_FILES_INTEGRATION_NAME,
         )
-          ? SERVE_DOCS_FILES_ROUTE_PATTERN
+          ? DOCS_FILE_ROUTE_PATTERN
           : undefined;
 
         if (command !== "dev" || (!settings.validate && !settings.normalize)) {
@@ -94,10 +97,9 @@ export function astroLocalLinks(
         // is only kept here: it can't be called before that integration's own config:setup.
         // Astro keeps only `name` and `hooks` in `config.integrations`, so the rule is a hook
         const servedFileRule = config.integrations.find(
-          (integration) => integration.name === SERVE_DOCS_FILES_INTEGRATION_NAME,
-        )?.hooks[SERVED_FILE_RULE_HOOK_NAME] as
-          | ((relativePath: string) => boolean)
-          | undefined;
+          (integration) =>
+            integration.name === SERVE_DOCS_FILES_INTEGRATION_NAME,
+        )?.hooks[SERVED_FILE_RULE_HOOK_NAME] as ServedFileRule | undefined;
         const devSettings: TLocalLinksDevSettings = {
           ...settings,
           servedFileRuleId: servedFileRule

@@ -24,3 +24,25 @@ export function parseFrontmatter(filePath: string): TFrontmatter {
     );
   }
 }
+
+/**
+ * The extensions Starlight's docs loader reads source docs from. Matched case-sensitively,
+ * like the loader's glob.
+ */
+export const SOURCE_DOC_EXTENSIONS = [
+  ".md",
+  ".mdx",
+  ".markdown",
+  ".mdown",
+  ".mkdn",
+  ".mkd",
+  ".mdwn",
+];
+
+/**
+ * Whether `filePath` is a regular file. False when nothing is at it (or a parent isn't a
+ * dir); throws on any other stat error, such as EACCES.
+ */
+export function isFile(filePath: string): boolean {
+  return fs.statSync(filePath, { throwIfNoEntry: false })?.isFile() ?? false;
+}

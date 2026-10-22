@@ -1,22 +1,15 @@
-import { statSync } from "node:fs";
-import { resolve, sep } from "node:path";
+import { extname, resolve, sep } from "node:path";
 import { minimatch } from "minimatch";
-import { parseFrontmatter } from "./workspace-utils.js";
+import {
+  isFile,
+  parseFrontmatter,
+  SOURCE_DOC_EXTENSIONS,
+} from "./workspace-utils.js";
 
-/** Decides whether a path relative to the docs directory is served. */
-export type ServedFileRule = (relativePath: string) => boolean;
-
-function isSourceDoc(filePath: string): boolean {
-  return filePath.endsWith(".md") || filePath.endsWith(".mdx");
-}
-
-function isFile(filePath: string): boolean {
-  try {
-    return statSync(filePath).isFile();
-  } catch {
-    return false;
-  }
-}
+/**
+ * Decides whether a file or dir is served, given its path relative to the docs directory.
+ */
+export type ServedFileRule = (docsRelativeEntryPath: string) => boolean;
 
 /**
  * The served-file rule for a docs directory. A path relative to it isn't served when any
@@ -31,21 +24,28 @@ export function createServedFileRule(options: {
 }): ServedFileRule {
   const { docsDirPath, ignorePatterns } = options;
 
-  return (relativePath) => {
-    const segments = relativePath.split(sep).join("/").split("/").filter(Boolean);
+  return (docsRelativeEntryPath) => {
+    const segments = docsRelativeEntryPath
+      .split(sep)
+      .join("/")
+      .split("/")
+      .filter(Boolean);
     if (segments.some((segment) => /^[_.]/.test(segment))) return false;
 
     const isIgnored = segments.some((_, i) => {
-      const relativeAncestorPath = segments.slice(0, i + 1).join("/");
+      const docsRelativeAncestorPath = segments.slice(0, i + 1).join("/");
       return ignorePatterns.some((pattern) =>
-        minimatch(relativeAncestorPath, pattern, { dot: true }),
+        minimatch(docsRelativeAncestorPath, pattern, { dot: true }),
       );
     });
     if (isIgnored) return false;
 
-    const filePath = resolve(docsDirPath, relativePath);
-    if (isSourceDoc(filePath) && isFile(filePath)) {
-      return parseFrontmatter(filePath).draft !== true;
+    const entryPath = resolve(docsDirPath, docsRelativeEntryPath);
+    if (
+      SOURCE_DOC_EXTENSIONS.includes(extname(entryPath)) &&
+      isFile(entryPath)
+    ) {
+      return parseFrontmatter(entryPath).draft !== true;
     }
     return true;
   };
