@@ -418,13 +418,13 @@ Page paths are worked out the way Starlight's docs loader does it by default. A 
 
 Serves every file in the docs directory (`src/content/docs/`) at its path there, so a PDF or image next to a doc, or a doc's raw Markdown, can be linked to. `reference/paper.pdf` is served at `/reference/paper.pdf`, and `reference/List Syntax.md` at `/reference/List Syntax.md`, byte-for-byte with its frontmatter.
 
-It does this through one prerendered `/[...path]` route that it adds to the site. In `astro dev` each file is read from its source on every request, so a saved edit shows up straight away. In `astro build` Astro writes each one into the build output like any other page. Nothing is copied into `public/` or deleted from it, so `public/` only holds the files you put there.
+It does this through one prerendered `/[...path]` route that it adds to the site. In `astro dev` each file is read from its source on every request, so a saved edit shows up straight away. A file added during the session is served, and a deleted one 404s, without restarting the dev server. In `astro build` Astro writes each one into the build output like any other page. Nothing is copied into `public/` or deleted from it, so `public/` only holds the files you put there.
 
 **What's served:**
 
 - Every file under the docs directory, with a content type from its extension (`.md` and `.mdx` as `text/markdown`, unknown ones as `application/octet-stream`)
 - Except drafts (`draft: true`), any file or directory whose name starts with `_` or `.` (like `_partial.md`, `_assets/` or `.obsidian/`) along with everything under one, and files matching `ignorePatterns`. Files next to a draft, and docs with `sidebar.hidden`, are still served.
-- `astro dev` and `astro build` fail at startup when an md/mdx file's frontmatter can't be parsed, since the plugin can't tell whether the file is a draft.
+- `astro dev` and `astro build` fail at startup when an md/mdx file's frontmatter can't be parsed, since the plugin can't tell whether the file is a draft. Once `astro dev` is running, saving such a file only logs an error, so the dev server keeps running.
 - The docs directory is read from Astro's `srcDir`, so a custom `srcDir` works.
 
 **Usage:**
@@ -462,7 +462,9 @@ astroServeDocsFiles({
 
 - `syncDocsToPublic` is renamed `astroServeDocsFiles` (subpath export: `starlight-cannoli-plugins/astro-serve-docs-files`).
 - `preserveDirs` is removed, since the plugin no longer deletes anything from `public/`. Drop it from your config.
-- Delete the copies the old plugin left in `public/` (everything it synced from `src/content/docs/`), and any `.gitignore` rules you added for them.
+- Delete the copies the old plugin left in `public/` (everything it synced from `src/content/docs/`), and any `.gitignore` rules you added for them. Until you do, `astro dev` and `astro build` fail at startup with a served path collision error (below) that lists each one.
+
+**Served path collisions with `public/`:** a served docs file and a file in `public/` with the same path, like `src/content/docs/reference/notes.pdf` and `public/reference/notes.pdf`, can't both be served. `astro dev` and `astro build` fail at startup with one error listing every clash and both files of each. Files the plugin doesn't serve (drafts, `_`/`.`-prefixed, `ignorePatterns` matches) never clash. A clash created while `astro dev` is running shows the error at that URL only, and the dev server keeps running.
 
 ### Starlight DOM Patches
 
