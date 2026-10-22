@@ -422,11 +422,11 @@ It does this through one prerendered `/[...path]` route that it adds to the site
 
 **What's served:**
 
-- Every file under the docs directory, with a content type from its extension (`.md` and `.mdx` as `text/markdown`, unknown ones as `application/octet-stream`)
+- Every file under the docs directory, with a content type from its extension (source docs, whether `.md`, `.mdx`, `.markdown`, `.mdown`, `.mkdn`, `.mkd` or `.mdwn`, as `text/markdown`, unknown ones as `application/octet-stream`)
 - Except drafts (`draft: true`), any file or directory whose name starts with `_` or `.` (like `_partial.md`, `_assets/` or `.obsidian/`) along with everything under one, and files matching `ignorePatterns`. Files next to a draft, and docs with `sidebar.hidden`, are still served.
-- `astro dev` and `astro build` fail at startup when an md/mdx file's frontmatter can't be parsed, since the plugin can't tell whether the file is a draft. Once `astro dev` is running, saving such a file only logs an error, so the dev server keeps running.
+- `astro dev` and `astro build` fail at startup when a source doc's frontmatter can't be parsed, since the plugin can't tell whether the file is a draft. Once `astro dev` is running, saving such a file only logs an error, so the dev server keeps running. That file isn't served until its frontmatter is fixed, and a link to it fails [Local Links](#local-links)' dev check.
 - The docs directory is read from Astro's `srcDir`, so a custom `srcDir` works.
-- `astro build` fails when a docs file and another route (a Starlight page, a `src/pages` route, another integration's route) write the same output file or render the same URL, such as an extensionless `reference/bar` next to `reference/bar.md`, a `reference/index.html` next to `reference/index.md`, or a docs `zap/index.html` next to `src/pages/zap.astro`. Astro on its own only warns about some of these, dropping one page, and silently overwrites a file in the rest. The error lists every clash and both routes, whatever `build.format` is. `astro dev` doesn't check for these.
+- `astro build` fails when a docs file and another route (a Starlight page, a `src/pages` route, another integration's route) write the same output file or render the same URL, such as an extensionless `reference/bar` next to `reference/bar.md`, a `reference/index.html` next to `reference/index.md`, or a docs `zap/index.html` next to `src/pages/zap.astro`. Astro on its own only warns about some of these, dropping one page, and silently overwrites a file in the rest. The error lists every clash and both routes, whatever `build.format` is. `astro dev` doesn't check for these. Clashes at the same URL are found from Astro's own warning, so with `prerenderConflictBehavior: 'ignore'` Astro logs nothing and they go unreported. The build then warns at startup that it can't detect them.
 
 **Usage:**
 
@@ -447,7 +447,7 @@ export default defineConfig({
 - `exposePageSrcButton` (optional, default: `false`): Injects a client-side script on every page that adds a `⋮` dropdown next to the page's `<h1>` with "Copy Page", "Copy raw URL", and "View raw" actions for the page's raw markdown source.
 - `enableAskAiOption` (optional, default: `false`): Adds "Ask ChatGPT", "Ask Claude", and "Ask Gemini" entries to the same `⋮` dropdown, each opening the respective chat app in a new tab with a prompt pre-filled to read the page's raw markdown URL. Independent of `exposePageSrcButton` — enabling this on its own still injects the dropdown button, containing only the "Ask" entries.
 
-Both page-action options need raw docs to be served, so while either is on, an `ignorePatterns` value that matches `.md` or `.mdx` files fails at startup.
+Both page-action options need raw docs to be served, so while either is on, an `ignorePatterns` value that matches source docs (any of the extensions above) fails at startup.
 
 ```ts
 astroServeDocsFiles({
@@ -457,7 +457,7 @@ astroServeDocsFiles({
 });
 ```
 
-**Served-file rule:** the integration object has a `servedFileRule(relativePath)` field that says whether a path relative to the docs directory is served, by the rules above. It throws on unparseable frontmatter. Astro keeps only `name` and `hooks` of each integration in `config.integrations`, so the same function is also the `astro-serve-docs-files:served-file-rule` hook. Other integrations can find this one by name (`astro-serve-docs-files`) in `config.integrations`, read that hook, and call it once `astro:config:setup` has run.
+**Served-file rule:** the integration object has a `servedFileRule(docsRelativeEntryPath)` field that says whether a file or directory, given its path relative to the docs directory, is served, by the rules above. It throws on unparseable frontmatter. Astro keeps only `name` and `hooks` of each integration in `config.integrations`, so the same function is also the `astro-serve-docs-files:served-file-rule` hook. Other integrations can find this one by name (`astro-serve-docs-files`) in `config.integrations`, read that hook, and call it once `astro:config:setup` has run.
 
 **Upgrading to 4.0.0:**
 

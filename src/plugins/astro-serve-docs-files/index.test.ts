@@ -36,6 +36,7 @@ async function runConfigSetup(
   files: Record<string, string>,
   options: AstroServeDocsFilesOptions = {},
   dirs: { srcDir?: string; publicDir?: string } = {},
+  otherConfig: Record<string, unknown> = {},
 ) {
   const rootDirPath = makeFileTree(files);
   const rootUrl = pathToFileURL(rootDirPath + "/");
@@ -51,6 +52,7 @@ async function runConfigSetup(
       root: rootUrl,
       srcDir: new URL(dirs.srcDir ?? "src/", rootUrl),
       publicDir: new URL(dirs.publicDir ?? "public/", rootUrl),
+      ...otherConfig,
     },
     injectRoute: (route: TInjectedRoute) => injectedRoutes.push(route),
     injectScript: () => {},
@@ -721,6 +723,38 @@ describe("astroServeDocsFiles collisions with other routes", () => {
     expect(writtenMessages).toEqual([]);
     expect(logOptions.level).toBe("silent");
   });
+
+  it.each([
+    ["ignore", 1],
+    ["warn", 0],
+    [undefined, 0],
+  ] as const)(
+    "warns at build start that URL clashes go unreported only when prerenderConflictBehavior is %s",
+    async (prerenderConflictBehavior, expectedWarningCount) => {
+      const { integration } = await runConfigSetup(
+        EMPTY_DOCS_DIR,
+        {},
+        {},
+        { prerenderConflictBehavior },
+      );
+      const loggedWarnings: string[] = [];
+      const buildStartHook = integration.hooks["astro:build:start"] as (
+        params: unknown,
+      ) => unknown;
+
+      await buildStartHook({
+        logger: {
+          options: makeLogOptions().logOptions,
+          warn: (message: string) => loggedWarnings.push(message),
+        },
+      });
+
+      expect(loggedWarnings).toHaveLength(expectedWarningCount);
+      if (expectedWarningCount > 0) {
+        expect(loggedWarnings[0]).toMatch(/prerenderConflictBehavior/);
+      }
+    },
+  );
 
   it("ignores URL clashes between other routes, and stops listening once the build is done", async () => {
     const { rootDirPath, integration } = await runConfigSetup(EMPTY_DOCS_DIR);

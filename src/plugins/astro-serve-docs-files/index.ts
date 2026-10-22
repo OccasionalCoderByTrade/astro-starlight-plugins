@@ -281,6 +281,7 @@ export function astroServeDocsFiles(
   let routeSettings: TDocsFileRouteSettings | undefined;
   let resolvedServedFileRule: ServedFileRule | undefined;
   let publicDirPath: string | undefined;
+  let ignoresPrerenderConflicts = false;
   let routeConflictListener:
     ReturnType<typeof listenForRouteConflicts> | undefined;
 
@@ -341,6 +342,8 @@ export function astroServeDocsFiles(
         ).replace(/[\\/]+$/, "");
         routeSettings = { docsDirPath, ignorePatterns };
         publicDirPath = fileURLToPath(config.publicDir);
+        ignoresPrerenderConflicts =
+          config.prerenderConflictBehavior === "ignore";
         resolvedServedFileRule = createServedFileRule(routeSettings);
 
         const resolvedSettingsModuleId = `\0${SETTINGS_MODULE_ID}`;
@@ -393,6 +396,14 @@ export function astroServeDocsFiles(
 
       "astro:build:start": ({ logger }) => {
         checkServedFiles();
+        // Astro logs nothing for a URL clash then, so there's no warning to collect
+        if (ignoresPrerenderConflicts) {
+          logger.warn(
+            `prerenderConflictBehavior is "ignore", so a URL that the docs file endpoint ` +
+              `and another route both render can't be detected: Astro keeps one route's ` +
+              `output there without logging it. Set it to "warn" or "error" to catch these.`,
+          );
+        }
         routeConflictListener = listenForRouteConflicts(logger.options);
       },
 
