@@ -84,8 +84,8 @@ const NO_LINK_CHECK_ATTRIBUTE = "data-no-link-check";
 
 /**
  * Resolves, validates and normalizes every local link in one page's final HTML.
- * Returns the rewritten HTML and every broken link found. Throws on a link to a page path
- * collision.
+ * Returns the rewritten HTML and every broken link found. Throws on a link in the content to
+ * a page path collision.
  */
 export function processPage(html: string, options: TProcessPageOptions) {
   const document = parse(html);
@@ -133,8 +133,13 @@ export function processPage(html: string, options: TProcessPageOptions) {
       : posix.normalize(pathPart);
     const docLinkTarget =
       sitePath === null ? null : findDocLinkTarget(sitePath, options);
-    // a collision is an error whether or not link validation looks at this link
-    if (docLinkTarget && docLinkTarget.sourceDocFilePaths.length > 1) {
+    // a collision in the content is an error whether or not link validation looks at the
+    // link; outside it (the sidebar), it would error every page, not only the affected ones
+    if (
+      isInContent &&
+      docLinkTarget &&
+      docLinkTarget.sourceDocFilePaths.length > 1
+    ) {
       throw createPagePathCollisionError(
         docLinkTarget.pagePath,
         docLinkTarget.sourceDocFilePaths,

@@ -357,4 +357,20 @@ describe("dev middleware", () => {
       }),
     ).rejects.toThrow(collisionPattern);
   });
+
+  it("doesn't throw on a link to a colliding page path outside the content, like the sidebar", async () => {
+    const files = {
+      "src/content/docs/guide/intro.md": "",
+      "src/content/docs/reference.md": "",
+      "src/content/docs/reference/index.md": "",
+    };
+
+    const html = await request(
+      "/guide/intro/",
+      pageHtml("", `<a href="/reference/">x</a>`),
+      { files },
+    );
+
+    expect(html).toContain(`<a href="/reference/">x</a>`);
+  });
 });
