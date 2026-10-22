@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -210,5 +210,117 @@ describe("astroServeDocsFiles servedFileRule", () => {
     });
 
     expect(() => integration.servedFileRule("broken.md")).toThrow(/broken\.md/);
+  });
+});
+
+type TWatcherHandler = (event: string, filePath: string) => void;
+
+/**
+ * Runs `astro:server:setup` with a fake watcher, logger and Vite environments. `fire` sends
+ * a watcher event for a path relative to the project root; `sentEvents` records each hot
+ * event an environment was sent.
+ */
+async function runDevServerSetup(files: Record<string, string>) {
+  const { rootDirPath, integration } = await runConfigSetup(files);
+  const watcherHandlers: TWatcherHandler[] = [];
+  const sentEvents: { environmentName: string; eventName: string }[] = [];
+  const loggedErrors: string[] = [];
+  const makeEnvironment = (environmentName: string) => ({
+    name: environmentName,
+    hot: {
+      send: (eventName: string) =>
+        sentEvents.push({ environmentName, eventName }),
+    },
+  });
+  const serverSetupHook = integration.hooks["astro:server:setup"] as (
+    params: unknown,
+  ) => unknown;
+  await serverSetupHook({
+    server: {
+      watcher: {
+        add: () => {},
+        on: (eventName: string, handler: TWatcherHandler) => {
+          if (eventName === "all") watcherHandlers.push(handler);
+        },
+      },
+      environments: {
+        client: makeEnvironment("client"),
+        ssr: makeEnvironment("ssr"),
+        prerender: makeEnvironment("prerender"),
+      },
+    },
+    logger: {
+      info: () => {},
+      warn: () => {},
+      error: (message: string) => loggedErrors.push(message),
+    },
+  });
+  const fire = (event: string, relativeFilePath: string) => {
+    for (const handler of watcherHandlers) {
+      handler(event, join(rootDirPath, relativeFilePath));
+    }
+  };
+  return { rootDirPath, fire, sentEvents, loggedErrors };
+}
+
+describe("astroServeDocsFiles live dev changes", () => {
+  it.each(["add", "unlink"])(
+    "clears the route cache in every non-client environment on %s under the docs dir",
+    async (event) => {
+      const { fire, sentEvents } = await runDevServerSetup({
+        "src/content/docs/guide/page.md": "---\ntitle: Page\n---\n",
+      });
+
+      fire(event, "src/content/docs/guide/diagram.pdf");
+
+      expect(sentEvents).toEqual([
+        { environmentName: "ssr", eventName: "astro:content-changed" },
+        { environmentName: "prerender", eventName: "astro:content-changed" },
+      ]);
+    },
+  );
+
+  it("doesn't clear the route cache for edits, or for changes outside the docs dir", async () => {
+    const { fire, sentEvents } = await runDevServerSetup({
+      "src/content/docs/guide/page.md": "---\ntitle: Page\n---\n",
+      "src/content/docs-other/page.md": "",
+    });
+
+    fire("change", "src/content/docs/guide/page.md");
+    fire("add", "src/components/Widget.astro");
+    fire("unlink", "public/favicon.svg");
+    fire("add", "src/content/docs-other/page.md");
+
+    expect(sentEvents).toEqual([]);
+  });
+
+  it.each(["add", "change"])(
+    "logs, naming the file, when a doc saved mid-session has unparseable frontmatter (%s)",
+    async (event) => {
+      const { rootDirPath, fire, loggedErrors } = await runDevServerSetup({
+        "src/content/docs/guide/page.md": "---\ntitle: Page\n---\n",
+      });
+      writeFileSync(
+        join(rootDirPath, "src/content/docs/guide/page.md"),
+        "---\ntitle: [unclosed\n---\n",
+      );
+
+      expect(() => fire(event, "src/content/docs/guide/page.md")).not.toThrow();
+
+      expect(loggedErrors).toHaveLength(1);
+      expect(loggedErrors[0]).toMatch(/page\.md/);
+    },
+  );
+
+  it("logs nothing for a valid save", async () => {
+    const { fire, loggedErrors } = await runDevServerSetup({
+      "src/content/docs/guide/page.md": "---\ntitle: Page\n---\n",
+      "src/content/docs/guide/diagram.pdf": "pdf",
+    });
+
+    fire("change", "src/content/docs/guide/page.md");
+    fire("add", "src/content/docs/guide/diagram.pdf");
+
+    expect(loggedErrors).toEqual([]);
   });
 });
