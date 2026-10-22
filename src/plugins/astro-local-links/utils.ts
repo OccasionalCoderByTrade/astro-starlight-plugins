@@ -500,15 +500,61 @@ export function formatShadowedDocError(
   routePattern: string,
   sourceDocIndex: TSourceDocIndex,
 ): string | null {
+  const shadowedDoc = formatShadowedDoc(pathname, routePattern, sourceDocIndex);
+  if (!shadowedDoc) return null;
+  return (
+    `[astro-local-links] ${shadowedDoc}, not Starlight's doc route (${STARLIGHT_DOC_ROUTE}). ` +
+    SHADOWED_DOC_CAUSES
+  );
+}
+
+/** A page at URL `pathname` and the route pattern that served it. */
+export type TServedPage = { pathname: string; routePattern: string };
+
+/**
+ * One error message listing each source doc whose page path a route other than the doc
+ * route served, or null if there are none.
+ */
+export function formatShadowedDocsError(
+  servedPages: TServedPage[],
+  sourceDocIndex: TSourceDocIndex,
+): string | null {
+  const shadowedDocs = servedPages
+    .filter(({ routePattern }) => routePattern !== STARLIGHT_DOC_ROUTE)
+    .sort((firstServedPage, secondServedPage) =>
+      firstServedPage.pathname.localeCompare(secondServedPage.pathname),
+    )
+    .map(({ pathname, routePattern }) =>
+      formatShadowedDoc(pathname, routePattern, sourceDocIndex),
+    )
+    .filter((shadowedDoc) => shadowedDoc !== null);
+  if (shadowedDocs.length === 0) return null;
+  return (
+    `[astro-local-links] ${shadowedDocs.length} shadowed doc` +
+    `${shadowedDocs.length === 1 ? "" : "s"}, served by a route other than Starlight's ` +
+    `doc route (${STARLIGHT_DOC_ROUTE}):\n` +
+    shadowedDocs.map((shadowedDoc) => `  - ${shadowedDoc}`).join("\n") +
+    `\n${SHADOWED_DOC_CAUSES}`
+  );
+}
+
+const SHADOWED_DOC_CAUSES =
+  `Either another page or route (such as one in src/pages) shadows the source doc, ` +
+  `or Starlight's doc route changed.`;
+
+/** Names the source doc whose page path `routePattern` served, or null when there is none. */
+function formatShadowedDoc(
+  pathname: string,
+  routePattern: string,
+  sourceDocIndex: TSourceDocIndex,
+): string | null {
   if (routePattern === STARLIGHT_404_ROUTE) return null;
   const pagePath = toDocsRelativePagePath(pathname) ?? pathname;
   const sourceDocFilePaths = sourceDocIndex.get(pagePath);
   if (!sourceDocFilePaths) return null;
   return (
-    `[astro-local-links] ${pathname} is the page path of ${sourceDocFilePaths.join(", ")}, ` +
-    `but ${routePattern} served it, not Starlight's doc route (${STARLIGHT_DOC_ROUTE}). ` +
-    `Either another page or route (such as one in src/pages) shadows the source doc, ` +
-    `or Starlight's doc route changed.`
+    `${pathname} is the page path of ${sourceDocFilePaths.join(", ")}, ` +
+    `but ${routePattern} served it`
   );
 }
 

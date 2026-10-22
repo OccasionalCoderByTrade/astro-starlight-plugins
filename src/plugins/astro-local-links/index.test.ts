@@ -210,6 +210,86 @@ describe("astroLocalLinks", () => {
     ).toBe(introHtml);
   });
 
+  it("fails build:done before processing any page, listing every shadowed doc and the route that served it", async () => {
+    const site = makeSite({
+      "src/content/docs/guide/intro.md": "",
+      "src/content/docs/My Guide/Intro.md": "",
+      "src/content/docs/reference.md": "",
+    });
+    const { integration } = await runSetup(site.rootDirPath, "build");
+    const distDirPath = join(site.rootDirPath, "dist");
+    const introHtml = pageHtml(`<a href="./next">x</a>`);
+    mkdirSync(join(distDirPath, "guide/intro"), { recursive: true });
+    writeFileSync(join(distDirPath, "guide/intro/index.html"), introHtml);
+    const toUrl = (distRelativeFilePath: string) =>
+      pathToFileURL(join(distDirPath, distRelativeFilePath));
+
+    const buildDone = runBuildDoneWithAssets(
+      integration,
+      distDirPath,
+      new Map([
+        ["/[...slug]", [toUrl("guide/intro/index.html")]],
+        ["/my-guide/intro", [toUrl("my-guide/intro/index.html")]],
+        ["/reference", [toUrl("reference")]],
+        ["/grade-calculator", [toUrl("grade-calculator/index.html")]],
+      ]),
+    );
+
+    await expect(buildDone).rejects.toThrow(
+      /2 shadowed docs[\s\S]*\/my-guide\/intro\/[\s\S]*My Guide\/Intro\.md[\s\S]*\/my-guide\/intro\b[\s\S]*\/reference[\s\S]*reference\.md[\s\S]*served it/,
+    );
+    expect(
+      readFileSync(join(distDirPath, "guide/intro/index.html"), "utf-8"),
+    ).toBe(introHtml);
+  });
+
+  it("fails build:done on a shadowed draft, though Starlight wrote no page for it", async () => {
+    const site = makeSite({
+      "src/content/docs/guide/intro.md": "",
+      "src/content/docs/guide/wip.md": "---\ndraft: true\n---\n",
+    });
+    const { integration } = await runSetup(site.rootDirPath, "build");
+
+    const buildDone = runBuildDone(
+      integration,
+      site.rootDirPath,
+      {
+        "guide/intro/index.html": pageHtml(""),
+        "guide/wip/index.html": pageHtml(""),
+      },
+      ["guide/wip/index.html"],
+    );
+
+    await expect(buildDone).rejects.toThrow(
+      /1 shadowed doc,[\s\S]*\/guide\/wip\/[\s\S]*guide\/wip\.md/,
+    );
+  });
+
+  it("leaves a custom 404 source doc to Starlight's 404 route on build:done", async () => {
+    const site = makeSite({
+      "src/content/docs/guide/intro.md": "",
+      "src/content/docs/404.md": "",
+    });
+    const { integration } = await runSetup(site.rootDirPath, "build");
+    const distDirPath = join(site.rootDirPath, "dist");
+    mkdirSync(join(distDirPath, "guide/intro"), { recursive: true });
+    writeFileSync(join(distDirPath, "guide/intro/index.html"), pageHtml(""));
+
+    const buildDone = runBuildDoneWithAssets(
+      integration,
+      distDirPath,
+      new Map([
+        [
+          "/[...slug]",
+          [pathToFileURL(join(distDirPath, "guide/intro/index.html"))],
+        ],
+        ["/404", [pathToFileURL(join(distDirPath, "404.html"))]],
+      ]),
+    );
+
+    await expect(buildDone).resolves.toBeUndefined();
+  });
+
   it("fails build:done when Starlight's doc route is missing, listing the routes it found", async () => {
     const site = makeSite({ "src/content/docs/guide/intro.md": "" });
     const { integration } = await runSetup(site.rootDirPath, "build");

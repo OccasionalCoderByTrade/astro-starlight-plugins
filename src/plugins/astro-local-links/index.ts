@@ -6,6 +6,7 @@ import {
   buildSourceDocIndex,
   formatBrokenLinksError,
   formatPagePathCollisionsError,
+  formatShadowedDocsError,
   processDocPage,
   STARLIGHT_DOC_ROUTE,
   SETTINGS_MODULE_ID,
@@ -105,6 +106,22 @@ export function astroLocalLinks(
           formatPagePathCollisionsError(sourceDocIndex);
         if (pagePathCollisionsError) throw new Error(pagePathCollisionsError);
 
+        // Astro only warns when another route takes a source doc's page path, unless
+        // `prerenderConflictBehavior` is "error"
+        const distDirPath = fileURLToPath(dir);
+        const shadowedDocsError = formatShadowedDocsError(
+          [...assets].flatMap(([routePattern, fileUrls]) =>
+            fileUrls.map((fileUrl) => ({
+              pathname: toPagePathname(
+                relative(distDirPath, fileURLToPath(fileUrl)),
+              ),
+              routePattern,
+            })),
+          ),
+          sourceDocIndex,
+        );
+        if (shadowedDocsError) throw new Error(shadowedDocsError);
+
         const pagesBrokenLinks: TPageBrokenLinks[] = [];
         const htmlFileUrls = assets.get(STARLIGHT_DOC_ROUTE);
         if (!htmlFileUrls) {
@@ -130,7 +147,7 @@ export function astroLocalLinks(
             const htmlFilePath = fileURLToPath(htmlFileUrl);
             const html = await readFile(htmlFilePath, "utf-8");
             const processedPage = processDocPage(
-              toPagePathname(relative(fileURLToPath(dir), htmlFilePath)),
+              toPagePathname(relative(distDirPath, htmlFilePath)),
               html,
               settings,
               sourceDocIndex,

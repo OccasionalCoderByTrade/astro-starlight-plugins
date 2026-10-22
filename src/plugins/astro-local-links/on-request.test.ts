@@ -112,6 +112,29 @@ describe("dev middleware", () => {
     );
   });
 
+  it("throws on a doc shadowed by a redirect or an endpoint, but not by an error response", async () => {
+    const files = { "src/content/docs/guide/intro.md": "" };
+    const routePattern = "/guide/intro";
+
+    await expect(
+      request("/guide/intro/", "", { files, routePattern, status: 301 }),
+    ).rejects.toThrow(/\/guide\/intro\/[\s\S]*guide\/intro\.md/);
+    await expect(
+      request("/guide/intro", "{}", {
+        files,
+        routePattern,
+        contentType: "application/json",
+      }),
+    ).rejects.toThrow(/\/guide\/intro[\s\S]*guide\/intro\.md/);
+    expect(
+      await request("/guide/intro/", "oops", {
+        files,
+        routePattern,
+        status: 500,
+      }),
+    ).toBe("oops");
+  });
+
   it("leaves a custom 404 source doc to Starlight's 404 route", async () => {
     const files = { "src/content/docs/404.md": "" };
     const body = pageHtml("not found");
