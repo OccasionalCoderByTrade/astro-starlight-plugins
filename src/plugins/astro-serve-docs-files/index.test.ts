@@ -1,4 +1,10 @@
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
 import { join, relative } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -96,7 +102,10 @@ describe("astroServeDocsFiles config setup", () => {
 
   it("rejects ignorePatterns that hide raw docs while the page-action bar is on", async () => {
     await expect(
-      runConfigSetup({}, { enableAskAiOption: true, ignorePatterns: ["**/*.md"] }),
+      runConfigSetup(
+        {},
+        { enableAskAiOption: true, ignorePatterns: ["**/*.md"] },
+      ),
     ).rejects.toThrow(/"\*\*\/\*\.md"/);
     await expect(
       runConfigSetup({}, { ignorePatterns: ["**/*.md"] }),
@@ -110,7 +119,12 @@ async function runHook(
   hookName: "astro:server:setup" | "astro:build:start",
 ) {
   const hook = integration.hooks[hookName] as (params: unknown) => unknown;
-  await hook({ server: { watcher: { add: () => {}, on: () => {} } } });
+  await hook({
+    server: {
+      watcher: { add: () => {}, on: () => {} },
+      middlewares: { use: () => {} },
+    },
+  });
 }
 
 /** Every file under `dirPath` (relative path → bytes as hex). */
@@ -136,7 +150,7 @@ describe("astroServeDocsFiles dev setup and build start", () => {
         "public/favicon.svg": "<svg/>",
         "public/images/logo.png": "png",
         "public/fonts/": "",
-        "public/guide/page.md": "a stale copy",
+        "public/guide/old-page.md": "a user file",
         "src/content/docs/guide/page.md": "---\ntitle: Page\n---\n",
         "src/content/docs/guide/diagram.pdf": "pdf",
         "src/content/docs/images/other.png": "png",
@@ -162,6 +176,192 @@ describe("astroServeDocsFiles dev setup and build start", () => {
       );
     },
   );
+});
+
+describe("astroServeDocsFiles public/ collisions at startup", () => {
+  it.each(["astro:server:setup", "astro:build:start"] as const)(
+    "fails listing every clash with both files and the stale 3.x note (%s)",
+    async (hookName) => {
+      const { rootDirPath, integration } = await runConfigSetup({
+        "public/guide/page.md": "a stale copy",
+        "public/reference/notes.pdf": "stale pdf",
+        "public/favicon.svg": "<svg/>",
+        "src/content/docs/guide/page.md": "---\ntitle: Page\n---\n",
+        "src/content/docs/reference/notes.pdf": "pdf",
+        "src/content/docs/reference/other.pdf": "pdf",
+      });
+
+      const error = await runHook(integration, hookName).then(
+        () => undefined,
+        (thrown: Error) => thrown,
+      );
+
+      expect(error?.message).toContain(
+        join(rootDirPath, "public/guide/page.md"),
+      );
+      expect(error?.message).toContain(
+        join(rootDirPath, "src/content/docs/guide/page.md"),
+      );
+      expect(error?.message).toContain(
+        join(rootDirPath, "public/reference/notes.pdf"),
+      );
+      expect(error?.message).toContain(
+        join(rootDirPath, "src/content/docs/reference/notes.pdf"),
+      );
+      expect(error?.message).not.toContain("other.pdf");
+      expect(error?.message).not.toContain("favicon.svg");
+      expect(error?.message).toContain(
+        "Alternatively, it may be a stale holdover from a previous version of starlight-cannoli-plugins's syncDocsToPublic 3.0.0 plugin.",
+      );
+    },
+  );
+
+  it.each(["astro:server:setup", "astro:build:start"] as const)(
+    "ignores public/ files whose docs twin isn't served (%s)",
+    async (hookName) => {
+      const { integration } = await runConfigSetup(
+        {
+          "public/guide/draft.md": "x",
+          "public/guide/_partial.md": "x",
+          "public/_assets/logo.png": "x",
+          "public/.obsidian/workspace.json": "x",
+          "public/scratch/figure.png": "x",
+          "src/content/docs/guide/draft.md": "---\ndraft: true\n---\n",
+          "src/content/docs/guide/_partial.md": "---\ntitle: P\n---\n",
+          "src/content/docs/_assets/logo.png": "png",
+          "src/content/docs/.obsidian/workspace.json": "{}",
+          "src/content/docs/scratch/figure.png": "png",
+        },
+        { ignorePatterns: ["scratch"] },
+      );
+
+      await expect(runHook(integration, hookName)).resolves.toBeUndefined();
+    },
+  );
+
+  it("reads public/ from Astro's publicDir", async () => {
+    const { integration } = await runConfigSetup(
+      {
+        "static/notes.pdf": "stale",
+        "src/content/docs/notes.pdf": "pdf",
+      },
+      {},
+      { publicDir: "static/" },
+    );
+
+    await expect(runHook(integration, "astro:build:start")).rejects.toThrow(
+      /static\/notes\.pdf/,
+    );
+  });
+});
+
+type TDevMiddleware = (
+  request: { url?: string },
+  response: TFakeResponse,
+  next: () => void,
+) => void;
+type TFakeResponse = {
+  statusCode: number;
+  headers: Record<string, string>;
+  body?: string;
+  setHeader: (name: string, value: string) => void;
+  end: (body?: string) => void;
+};
+
+/** Runs `astro:server:setup` with a fake dev server. Returns the middlewares it added. */
+async function runDevServerSetup(
+  integration: ReturnType<typeof astroServeDocsFiles>,
+) {
+  const devMiddlewares: TDevMiddleware[] = [];
+  const hook = integration.hooks["astro:server:setup"] as (
+    params: unknown,
+  ) => unknown;
+  await hook({
+    server: {
+      watcher: { add: () => {}, on: () => {} },
+      middlewares: {
+        use: (middleware: TDevMiddleware) => devMiddlewares.push(middleware),
+      },
+    },
+  });
+  return devMiddlewares;
+}
+
+/** Sends a request for `url` through `devMiddlewares` in order, like Connect does. */
+function requestDevServer(devMiddlewares: TDevMiddleware[], url: string) {
+  const response: TFakeResponse = {
+    statusCode: 200,
+    headers: {},
+    setHeader(name, value) {
+      response.headers[name.toLowerCase()] = value;
+    },
+    end(body) {
+      response.body = body;
+    },
+  };
+  let reachedNext = false;
+  const runFrom = (i: number) => {
+    if (i >= devMiddlewares.length) {
+      reachedNext = true;
+      return;
+    }
+    devMiddlewares[i]({ url }, response, () => runFrom(i + 1));
+  };
+  runFrom(0);
+  return { response, reachedNext };
+}
+
+describe("astroServeDocsFiles public/ collisions mid-session in dev", () => {
+  it("answers an error at the clashing URL and keeps serving other URLs", async () => {
+    const { rootDirPath, integration } = await runConfigSetup({
+      "public/favicon.svg": "<svg/>",
+      "src/content/docs/reference/List Syntax.md": "---\ntitle: L\n---\n",
+      "src/content/docs/reference/notes.pdf": "pdf",
+    });
+    const devMiddlewares = await runDevServerSetup(integration);
+    mkdirSync(join(rootDirPath, "public/reference"), { recursive: true });
+    writeFileSync(
+      join(rootDirPath, "public/reference/List Syntax.md"),
+      "stale",
+    );
+
+    const clash = requestDevServer(
+      devMiddlewares,
+      "/reference/List%20Syntax.md",
+    );
+
+    expect(clash.reachedNext).toBe(false);
+    expect(clash.response.statusCode).toBe(500);
+    expect(clash.response.body).toContain(
+      join(rootDirPath, "public/reference/List Syntax.md"),
+    );
+    expect(clash.response.body).toContain(
+      join(rootDirPath, "src/content/docs/reference/List Syntax.md"),
+    );
+    expect(clash.response.body).toContain("syncDocsToPublic 3.0.0");
+    expect(
+      requestDevServer(devMiddlewares, "/reference/notes.pdf").reachedNext,
+    ).toBe(true);
+    expect(requestDevServer(devMiddlewares, "/favicon.svg").reachedNext).toBe(
+      true,
+    );
+    expect(requestDevServer(devMiddlewares, "/guide/?x=1").reachedNext).toBe(
+      true,
+    );
+  });
+
+  it("lets a public/ file through when its docs twin isn't served", async () => {
+    const { rootDirPath, integration } = await runConfigSetup({
+      "src/content/docs/guide/draft.md": "---\ndraft: true\n---\n",
+    });
+    const devMiddlewares = await runDevServerSetup(integration);
+    mkdirSync(join(rootDirPath, "public/guide"), { recursive: true });
+    writeFileSync(join(rootDirPath, "public/guide/draft.md"), "mine");
+
+    expect(
+      requestDevServer(devMiddlewares, "/guide/draft.md").reachedNext,
+    ).toBe(true);
+  });
 });
 
 describe("astroServeDocsFiles servedFileRule", () => {

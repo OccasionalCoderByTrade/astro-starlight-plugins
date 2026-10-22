@@ -11,10 +11,12 @@ import {
   createServedFileRule,
   type ServedFileRule,
 } from "../utils/served-file-rule.js";
+import type { TDocsFileRouteSettings } from "./docs-file-route.js";
 import {
-  listServedFilePaths,
-  type TDocsFileRouteSettings,
-} from "./docs-file-route.js";
+  createPublicCollisionMiddleware,
+  findPublicCollisions,
+  formatPublicCollisionsMessage,
+} from "./public-collisions.js";
 
 export type { ServedFileRule };
 
@@ -156,7 +158,6 @@ const pageSrcStyles = css`
   }
 `;
 
-
 export interface AstroServeDocsFilesOptions {
   /**
    * Glob patterns for files not to serve.
@@ -249,6 +250,7 @@ export function astroServeDocsFiles(
   } = options;
   let routeSettings: TDocsFileRouteSettings | undefined;
   let resolvedServedFileRule: ServedFileRule | undefined;
+  let publicDirPath: string | undefined;
 
   const servedFileRule: ServedFileRule = (relativePath) => {
     if (!resolvedServedFileRule) {
@@ -259,10 +261,22 @@ export function astroServeDocsFiles(
     return resolvedServedFileRule(relativePath);
   };
 
-  // Fails dev and build at startup on unparseable frontmatter, rather than on a request
+  // Fails dev and build at startup on unparseable frontmatter or a public/ collision,
+  // rather than on a request (ADR 0008)
   const checkServedFiles = () => {
-    if (!routeSettings) return;
-    listServedFilePaths(routeSettings.docsDirPath, servedFileRule);
+    if (!routeSettings || !publicDirPath) return;
+    const publicCollisions = findPublicCollisions(
+      { docsDirPath: routeSettings.docsDirPath, publicDirPath },
+      servedFileRule,
+    );
+    if (publicCollisions.length > 0) {
+      throw new Error(
+        formatPublicCollisionsMessage(
+          SERVE_DOCS_FILES_INTEGRATION_NAME,
+          publicCollisions,
+        ),
+      );
+    }
   };
 
   return {
@@ -281,6 +295,7 @@ export function astroServeDocsFiles(
           new URL("content/docs/", config.srcDir),
         ).replace(/[\\/]+$/, "");
         routeSettings = { docsDirPath, ignorePatterns };
+        publicDirPath = fileURLToPath(config.publicDir);
         resolvedServedFileRule = createServedFileRule(routeSettings);
 
         const resolvedSettingsModuleId = `\0${SETTINGS_MODULE_ID}`;
@@ -335,8 +350,17 @@ export function astroServeDocsFiles(
         checkServedFiles();
       },
 
-      "astro:server:setup": () => {
+      "astro:server:setup": ({ server }) => {
         checkServedFiles();
+        if (routeSettings && publicDirPath) {
+          server.middlewares.use(
+            createPublicCollisionMiddleware(
+              SERVE_DOCS_FILES_INTEGRATION_NAME,
+              { docsDirPath: routeSettings.docsDirPath, publicDirPath },
+              servedFileRule,
+            ),
+          );
+        }
       },
     },
   };

@@ -462,7 +462,9 @@ astroServeDocsFiles({
 
 - `syncDocsToPublic` is renamed `astroServeDocsFiles` (subpath export: `starlight-cannoli-plugins/astro-serve-docs-files`).
 - `preserveDirs` is removed, since the plugin no longer deletes anything from `public/`. Drop it from your config.
-- Delete the copies the old plugin left in `public/` (everything it synced from `src/content/docs/`), and any `.gitignore` rules you added for them.
+- Delete the copies the old plugin left in `public/` (everything it synced from `src/content/docs/`), and any `.gitignore` rules you added for them. Until you do, `astro dev` and `astro build` fail at startup with a served path collision error (below) that lists each one.
+
+**Served path collisions with `public/`:** a served docs file and a file in `public/` with the same path, like `src/content/docs/reference/notes.pdf` and `public/reference/notes.pdf`, can't both be served. `astro dev` and `astro build` fail at startup with one error listing every clash and both files of each. Files the plugin doesn't serve (drafts, `_`/`.`-prefixed, `ignorePatterns` matches) never clash. A clash created while `astro dev` is running shows the error at that URL only, and the dev server keeps running.
 
 ### Starlight DOM Patches
 
