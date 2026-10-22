@@ -8,7 +8,6 @@ import { relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { AstroIntegration, AstroIntegrationLogger } from "astro";
 import type { ViteDevServer } from "vite";
-import { minimatch } from "minimatch";
 import {
   createServedFileRule,
   type ServedFileRule,
@@ -18,13 +17,13 @@ import {
   SERVE_DOCS_FILES_INTEGRATION_NAME,
   SERVED_FILE_RULE_HOOK_NAME,
 } from "../utils/serve-docs-files-integration.js";
-import { SOURCE_DOC_EXTENSIONS } from "../utils/workspace-utils.js";
 import type { TDocsFileRouteSettings } from "./docs-file-route.js";
 import {
   createPublicServedPathCollisionMiddleware,
   findPublicServedPathCollisions,
   formatPublicServedPathCollisionsMessage,
 } from "./public-served-path-collisions.js";
+import type { TRawDocLinkSettings } from "./raw-doc-link.js";
 import {
   formatRouteCollisionsError,
   listenForRouteConflicts,
@@ -212,33 +211,6 @@ export type AstroServeDocsFilesIntegration = AstroIntegration & {
 
 const SETTINGS_MODULE_ID = "virtual:astro-serve-docs-files/settings";
 
-function validateOptions(options: AstroServeDocsFilesOptions): void {
-  const sourceDocProbePaths = SOURCE_DOC_EXTENSIONS.flatMap((extension) => [
-    `test${extension}`,
-    `foo/test${extension}`,
-  ]);
-
-  const needsRawMd = options.exposePageSrcButton || options.enableAskAiOption;
-  if (!needsRawMd) return;
-
-  const offendingMdPatterns = (options.ignorePatterns ?? []).filter((pattern) =>
-    sourceDocProbePaths.some((probe) =>
-      minimatch(probe, pattern, { dot: true }),
-    ),
-  );
-
-  const offendingMdPatternsList = offendingMdPatterns
-    .map((pattern) => `    - "${pattern}"`)
-    .join("\n");
-
-  if (offendingMdPatterns.length > 0) {
-    throw new Error(
-      `The 'exposePageSrcButton'/'enableAskAiOption' option is enabled but the following 'ignorePatterns' values conflict with it: \n${offendingMdPatternsList}\n\n` +
-        `Since these ignore patterns match source docs, the page action button would break. Either disable these options or remove these patterns.`,
-    );
-  }
-}
-
 /**
  * Where a module shipped next to this file lives: `.ts` in this repo, or a separate build
  * entry in `dist/` reached from either this plugin's own entry or the root entry's chunk.
@@ -334,12 +306,11 @@ export function astroServeDocsFiles(
       "astro:config:setup": ({
         command,
         config,
+        addMiddleware,
         injectRoute,
         injectScript,
         updateConfig,
       }) => {
-        validateOptions(options);
-
         const docsDirPath = fileURLToPath(
           new URL("content/docs/", config.srcDir),
         ).replace(/[\\/]+$/, "");
@@ -355,7 +326,12 @@ export function astroServeDocsFiles(
         resolvedServedFileRule = createServedFileRule(routeSettings);
 
         const resolvedSettingsModuleId = `\0${SETTINGS_MODULE_ID}`;
-        const settingsModuleSource = `export default ${JSON.stringify(routeSettings)};`;
+        // The route and the raw doc link middleware both read this module
+        const rawDocLinkSettings: TRawDocLinkSettings = {
+          rootDirPath: fileURLToPath(config.root).replace(/[\\/]+$/, ""),
+          ...routeSettings,
+        };
+        const settingsModuleSource = `export default ${JSON.stringify(rawDocLinkSettings)};`;
         updateConfig({
           vite: {
             plugins: [
@@ -377,6 +353,11 @@ export function astroServeDocsFiles(
           pattern: DOCS_FILE_ROUTE_PATTERN,
           entrypoint: siblingModuleUrl("route"),
           prerender: true,
+        });
+        // On every doc page, whether or not the page-action bar is on (ADR 0012)
+        addMiddleware({
+          entrypoint: siblingModuleUrl("raw-doc-link-middleware"),
+          order: "post",
         });
 
         if (exposePageSrcButton || enableAskAiOption) {

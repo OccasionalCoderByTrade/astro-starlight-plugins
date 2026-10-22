@@ -23,6 +23,10 @@ type TInjectedRoute = {
   entrypoint: string | URL;
   prerender?: boolean;
 };
+type TAddedMiddleware = {
+  entrypoint: string | URL;
+  order: "pre" | "post";
+};
 type TVitePlugin = {
   resolveId: (id: string) => string | undefined;
   load: (id: string) => string | undefined;
@@ -45,6 +49,7 @@ async function runConfigSetup(
   const rootUrl = pathToFileURL(rootDirPath + "/");
   const integration = astroServeDocsFiles(options);
   const injectedRoutes: TInjectedRoute[] = [];
+  const addedMiddlewares: TAddedMiddleware[] = [];
   const vitePlugins: TVitePlugin[] = [];
   const configSetupHook = integration.hooks["astro:config:setup"] as (
     params: unknown,
@@ -58,12 +63,20 @@ async function runConfigSetup(
       ...otherConfig,
     },
     injectRoute: (route: TInjectedRoute) => injectedRoutes.push(route),
+    addMiddleware: (middleware: TAddedMiddleware) =>
+      addedMiddlewares.push(middleware),
     injectScript: () => {},
     updateConfig: (configUpdate: { vite?: { plugins?: TVitePlugin[] } }) => {
       vitePlugins.push(...(configUpdate.vite?.plugins ?? []));
     },
   });
-  return { rootDirPath, integration, injectedRoutes, vitePlugins };
+  return {
+    rootDirPath,
+    integration,
+    injectedRoutes,
+    addedMiddlewares,
+    vitePlugins,
+  };
 }
 
 /** The settings the route module imports, as the integration's Vite plugin serves them. */
@@ -102,6 +115,7 @@ describe("astroServeDocsFiles config setup", () => {
     );
 
     expect(loadRouteSettings(vitePlugins)).toEqual({
+      rootDirPath,
       docsDirPath: join(rootDirPath, "site-src/content/docs"),
       ignorePatterns: ["scratch"],
       serveDrafts: false,
@@ -122,21 +136,30 @@ describe("astroServeDocsFiles config setup", () => {
     },
   );
 
-  it("rejects ignorePatterns that hide raw docs while the page-action bar is on", async () => {
+  it.each(["dev", "build"] as const)(
+    "adds a post middleware whose entrypoint exists, to name each page's raw doc in %s",
+    async (command) => {
+      const { addedMiddlewares } = await runConfigSetup(
+        {},
+        {},
+        {},
+        {},
+        command,
+      );
+
+      expect(addedMiddlewares).toHaveLength(1);
+      expect(addedMiddlewares[0].order).toBe("post");
+      const entrypointUrl = new URL(String(addedMiddlewares[0].entrypoint));
+      expect(existsSync(fileURLToPath(entrypointUrl))).toBe(true);
+    },
+  );
+
+  it("accepts ignorePatterns that hide raw docs while the page-action bar is on", async () => {
     await expect(
       runConfigSetup(
         {},
         { enableAskAiOption: true, ignorePatterns: ["**/*.md"] },
       ),
-    ).rejects.toThrow(/"\*\*\/\*\.md"/);
-    await expect(
-      runConfigSetup(
-        {},
-        { exposePageSrcButton: true, ignorePatterns: ["**/*.markdown"] },
-      ),
-    ).rejects.toThrow(/"\*\*\/\*\.markdown"/);
-    await expect(
-      runConfigSetup({}, { ignorePatterns: ["**/*.md"] }),
     ).resolves.toBeDefined();
   });
 });
@@ -274,9 +297,9 @@ describe("astroServeDocsFiles served path collisions with public/ at startup", (
     const dev = await runConfigSetup(files, {}, {}, {}, "dev");
     const build = await runConfigSetup(files, {}, {}, {}, "build");
 
-    await expect(runHook(dev.integration, "astro:server:setup")).rejects.toThrow(
-      /public\/guide\/draft\.md/,
-    );
+    await expect(
+      runHook(dev.integration, "astro:server:setup"),
+    ).rejects.toThrow(/public\/guide\/draft\.md/);
     await expect(
       runHook(build.integration, "astro:build:start"),
     ).resolves.toBeUndefined();

@@ -18,6 +18,8 @@ export default defineConfig({
       "src/plugins/astro-serve-docs-files/page-script.ts",
     "plugins/astro-serve-docs-files/route":
       "src/plugins/astro-serve-docs-files/route.ts",
+    "plugins/astro-serve-docs-files/raw-doc-link-middleware":
+      "src/plugins/astro-serve-docs-files/raw-doc-link-middleware.ts",
     "plugins/starlight-dom-patches":
       "src/plugins/starlight-dom-patches/index.ts",
     "plugins/starlight-dom-patches/page-script":

@@ -448,7 +448,7 @@ export default defineConfig({
 - `exposePageSrcButton` (optional, default: `false`): Injects a client-side script on every page that adds a `⋮` dropdown next to the page's `<h1>` with "Copy Page", "Copy raw URL", and "View raw" actions for the page's raw markdown source.
 - `enableAskAiOption` (optional, default: `false`): Adds "Ask ChatGPT", "Ask Claude", and "Ask Gemini" entries to the same `⋮` dropdown, each opening the respective chat app in a new tab with a prompt pre-filled to read the page's raw markdown URL. Independent of `exposePageSrcButton` — enabling this on its own still injects the dropdown button, containing only the "Ask" entries.
 
-Both page-action options need raw docs to be served, so while either is on, an `ignorePatterns` value that matches source docs (any of the extensions above) fails at startup.
+**Raw doc link tag:** every Starlight doc page whose raw doc is served gets `<link rel="alternate" type="text/markdown" href="...">` in its `<head>`, in `astro dev` and in the build output, whether or not the page-action options are on. The `href` is the raw doc's source path from the site root, URL-encoded, so `reference/List Syntax.md` (whose page is at `/reference/list-syntax/`) gets `href="/reference/List%20Syntax.md"`. Since the raw doc's URL can't be predicted from the page's URL, the `⋮` dropdown reads this tag, and crawlers and agents that follow link relations can find the raw doc the same way. Pages whose raw doc isn't served get no tag and no `⋮` dropdown: drafts in `astro build`, docs that `_`/`.` prefixes or `ignorePatterns` leave out, a doc whose frontmatter stopped parsing during `astro dev`, the 404 page (a custom `404.md` too) and `src/pages` routes.
 
 ```ts
 astroServeDocsFiles({
@@ -464,6 +464,8 @@ astroServeDocsFiles({
 
 - `syncDocsToPublic` is renamed `astroServeDocsFiles` (subpath export: `starlight-cannoli-plugins/astro-serve-docs-files`).
 - `preserveDirs` is removed, since the plugin no longer deletes anything from `public/`. Drop it from your config.
+- `ignorePatterns` that match source docs no longer fail at startup while `exposePageSrcButton` or `enableAskAiOption` is on. Pages whose raw doc they leave out just don't get the `⋮` dropdown.
+- Needs `@astrojs/starlight` 0.32 or later, since the raw doc link tag reads Starlight's route data.
 - Delete the copies the old plugin left in `public/` (everything it synced from `src/content/docs/`), and any `.gitignore` rules you added for them. Until you do, `astro dev` and `astro build` fail at startup with a served path collision error (below) that lists each one.
 
 **Served path collisions with `public/`:** a served docs file and a file in `public/` with the same path, like `src/content/docs/reference/notes.pdf` and `public/reference/notes.pdf`, can't both be served. `astro dev` and `astro build` fail at startup with one error listing every clash and both files of each. Files the plugin doesn't serve (`_`/`.`-prefixed, `ignorePatterns` matches) never clash. A draft only clashes in `astro dev`, since `astro build` doesn't serve it. A clash created while `astro dev` is running shows the error at that URL only, and the dev server keeps running.
@@ -573,7 +575,7 @@ yarn add starlight-cannoli-plugins
 
 - `astro` ≥ 5.0.0
 - `@astrojs/markdown-remark` ^6 or ^7. Astro 5 already installs it. Astro 7 doesn't, but npm and pnpm install it automatically as a peer. With yarn, run `yarn add @astrojs/markdown-remark`.
-- `@astrojs/starlight` ≥ 0.30.0 (optional, only needed if using `starlightIndexOnlySidebar`)
+- `@astrojs/starlight` ≥ 0.32.0 (optional, only needed if using `starlightIndexOnlySidebar` or `astroServeDocsFiles`)
 
 ## License
 

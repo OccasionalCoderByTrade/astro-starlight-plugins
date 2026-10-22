@@ -86,7 +86,7 @@
   },
   "peerDependencies": {
     "@astrojs/markdown-remark": "^6.0.0 || ^7.0.0",
-    "@astrojs/starlight": ">=0.30.0",
+    "@astrojs/starlight": ">=0.32.0",
     "@expressive-code/core": ">=0.41.7",
     "astro": ">=5.0.0"
   },
