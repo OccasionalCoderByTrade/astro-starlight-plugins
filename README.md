@@ -298,10 +298,12 @@ export default defineConfig({
 
 ### Local Links
 
-An Astro integration for the local links in your docs, meaning every `<a href>` and `<img src>` that points somewhere inside the site. It does two things, each of which you can turn off:
+An Astro integration for the local links in your docs, meaning Markdown links (`[text](./other)`, `![alt](/img/logo.png)`) that to some other local file. It also handles `<a href>` and `<img src>` elements you write directly in your Markdown or MDX. It does two things, each of which you can turn off:
 
 - **Link validation** fails on a local link in a page's content whose target doesn't exist.
 - **Link normalization** rewrites relative links (`./other`, `../ref/page`) to root-absolute ones (`/guide/other`). A relative link in the HTML is resolved against the page's URL, so it can point somewhere different depending on whether your host adds a trailing slash. After normalization, a link means the same thing everywhere, and it matches what your editor opens on ctrl+click. It also rewrites a link to a source doc's file path, like `./List%20Syntax` for `List Syntax.md`, to the page path Starlight serves it at (`/guide/list-syntax`).
+
+**Why write relative links at all?** Starlight's own docs write internal links as root-absolute URLs like `/guide/other/`. Those links work on the site, but if you write them in that manner, your editor and GitHub can't follow them back to the source file, because `/guide/other/` is a URL and not a file path. Relative links have the opposite problem: your editor follows them, but in the built HTML the browser resolves them against the page's URL, not its source file, and there exists no trailing-slash setting that makes it work for every page. With trailing slashes, `guide/intro.md` is served at `/guide/intro/`, so `./other` lands on `/guide/intro/other`. Without them, `guide/index.md` is served at `/guide`, so `./other` lands on `/other`. Link normalization lets you write links the way your editor reads them and still get links that work on the site.
 
 Both run on each page's final HTML, in dev and in build. That means they cover Markdown links, raw HTML in `.md`, JSX in `.mdx` (including `src={...}` expressions) and HTML rendered by components.
 
