@@ -88,6 +88,10 @@ _Avoid_: source link, source-file link, file-form link (with extension)
 A source doc served as-is at its source path, such as `/reference/auto-list-syntax.md`, rather than rendered into a page.
 _Avoid_: raw Markdown, source copy, public copy
 
+**Page-action bar**:
+The menu on a page that offers its raw doc (copy it, copy its URL, view it) and asks an AI chat app about it. A page whose raw doc isn't served has no page-action bar.
+_Avoid_: action menu, page src button, dropdown
+
 **Docs asset**:
 A file under the docs directory that isn't a source doc, such as a PDF or image, served at its path relative to that directory.
 _Avoid_: public file, synced file, static file, attachment

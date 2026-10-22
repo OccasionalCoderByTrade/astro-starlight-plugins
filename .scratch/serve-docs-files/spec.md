@@ -1,4 +1,4 @@
-Status: resolved
+Status: ready-for-agent
 
 # astroServeDocsFiles: serve docs files without touching `public/`
 
@@ -36,13 +36,13 @@ Drafts, `_`- or `.`-prefixed files and directories, and `ignorePatterns` matches
 7. As a docs author, I want a raw doc served byte-for-byte, frontmatter included, so that what readers get is the file I wrote.
 8. As a docs author, I want docs assets and raw docs served with a content type matching their extension, so that browsers open PDFs and show Markdown as text.
 9. As a docs author, I want an `.mdx` source doc served as a raw doc the same way as `.md`, so that both formats behave the same.
-10. As a docs author, I want a draft source doc not to be served as a raw doc, so that unpublished writing isn't reachable.
+10. As a docs author, I want a draft source doc not to be served as a raw doc in a build, and served in dev like Starlight renders its page, so that unpublished writing isn't reachable on the site but I can still preview it. (Revised: ticket 09.)
 11. As a docs author, I want `_`-prefixed files and everything under `_`-prefixed directories left out, so that the plugin follows Astro's and Starlight's convention for private files.
 12. As a docs author, I want `.`-prefixed files and directories (`.DS_Store`, `.obsidian/`) left out, so that editor and OS clutter in a notes vault isn't published.
 13. As a docs author, I want a docs asset next to a draft doc still served, so that only the draft itself is held back.
 14. As a docs author, I want a source doc with `sidebar.hidden` still served as a raw doc, so that hiding a page from the sidebar doesn't change what's reachable.
 15. As a site author, I want `ignorePatterns` to leave out matching files, so that I can keep scratch files out of the site.
-16. As a site author, I want the existing error when `ignorePatterns` would hide raw docs the page-action bar needs, so that I don't ship a broken "View raw" button.
+16. ~~As a site author, I want the existing error when `ignorePatterns` would hide raw docs the page-action bar needs, so that I don't ship a broken "View raw" button.~~ Replaced by ticket 10: a page whose raw doc isn't served has no page-action bar, so the error is removed.
 17. As a docs author in dev, I want an edited docs asset or raw doc served with its new contents on the next request, so that I don't need to restart.
 18. As a docs author in dev, I want a newly added docs asset served without restarting the dev server, so that adding a PDF just works.
 19. As a docs author in dev, I want a deleted docs asset to 404 without restarting the dev server, so that dev matches what a build would do.
@@ -127,7 +127,7 @@ Drafts, `_`- or `.`-prefixed files and directories, and `ignorePatterns` matches
 
 ## Out of Scope
 
-- The page-action bar guessing the raw doc URL from the page URL, which fails for non-slug paths. It's a separate fix for later.
+- ~~The page-action bar guessing the raw doc URL from the page URL, which fails for non-slug paths. It's a separate fix for later.~~ Now ticket 10 (ADR 0012).
 - Automatically deleting stale `syncDocsToPublic` 3.x copies from `public/`. The plugin never deletes from `public/`, so the collision error and the upgrade note cover it.
 - A compatibility mode or alias that keeps the old copy-into-`public/` behaviour.
 - Serving files from any directory other than the docs directory.
@@ -146,3 +146,8 @@ Resolved on branch `serve-docs-files` (`git log db93e0d..serve-docs-files`). Dev
 - **Exposing the rule.** Astro's config validation strips every integration field except `name` and `hooks` from `config.integrations`, so a `servedFileRule` field never reaches `astroLocalLinks`. The rule is also exposed as the custom hook `astro-serve-docs-files:served-file-rule`, which is what `astroLocalLinks` reads (ticket 08).
 - **Route collisions.** The `assets` map misses same-URL clashes, since Astro drops the losing route before rendering. The plugin also collects Astro's prerender route conflict warnings from the logger (internal API, one function). With `prerenderConflictBehavior: "ignore"` Astro logs nothing, so the plugin warns at build start instead (ticket 07, review fixes).
 - **Mid-session bad frontmatter.** In dev, a docs file whose frontmatter can't be parsed is left out of the endpoint and logged, and a link to it fails validation naming the parse error. Startup still throws.
+
+Follow-ups from a later grilling session (2026-10-22), as tickets 09 and 10. See ADR 0012 and the term page-action bar in `CONTEXT.md`:
+
+- **Drafts in dev (ticket 09).** The served-file rule serves drafts in dev and leaves them out of builds, matching Starlight. This revises story 10.
+- **Page-action bar finds its raw doc from the page (ticket 10).** Each doc route page with a served raw doc carries a `<link rel="alternate" type="text/markdown">` naming it, and the bar reads that instead of guessing. Pages without one have no bar. The `ignorePatterns` check (story 16) is removed, and the Starlight peer dependency rises to `>=0.32.0`.
