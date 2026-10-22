@@ -211,4 +211,12 @@ describe("astroServeDocsFiles servedFileRule", () => {
 
     expect(() => integration.servedFileRule("broken.md")).toThrow(/broken\.md/);
   });
+
+  it("also exposes it as a custom hook, since Astro drops other fields from config.integrations", () => {
+    const integration = astroServeDocsFiles();
+
+    expect(integration.hooks["astro-serve-docs-files:served-file-rule"]).toBe(
+      integration.servedFileRule,
+    );
+  });
 });

@@ -188,7 +188,9 @@ export type AstroServeDocsFilesIntegration = AstroIntegration & {
    * It leaves out drafts, any file or dir whose name starts with `_` or `.` (and everything
    * under one) and `ignorePatterns` matches, and throws on unparseable frontmatter. Callable
    * once `astro:config:setup` has run, since the docs directory comes from Astro's config.
-   * Other integrations find this one by name in `config.integrations` to read it.
+   * Astro keeps only `name` and `hooks` in `config.integrations`, so other integrations
+   * find this one there by name and read the same rule from its
+   * `astro-serve-docs-files:served-file-rule` hook.
    */
   servedFileRule: ServedFileRule;
 };
@@ -269,6 +271,9 @@ export function astroServeDocsFiles(
     name: SERVE_DOCS_FILES_INTEGRATION_NAME,
     servedFileRule,
     hooks: {
+      // Astro's config validation keeps only `name` and `hooks` of each integration in
+      // `config.integrations`, so other integrations read the rule from here
+      "astro-serve-docs-files:served-file-rule": servedFileRule,
       "astro:config:setup": ({
         config,
         injectRoute,
