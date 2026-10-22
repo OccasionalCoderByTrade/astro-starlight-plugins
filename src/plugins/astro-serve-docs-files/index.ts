@@ -23,11 +23,14 @@ import {
   findPublicServedPathCollisions,
   formatPublicServedPathCollisionsMessage,
 } from "./public-served-path-collisions.js";
-import type { TRawDocLinkSettings } from "./raw-doc-link.js";
 import {
   formatRouteCollisionsError,
   listenForRouteConflicts,
 } from "./route-collisions.js";
+import {
+  SETTINGS_MODULE_ID,
+  type TServeDocsFilesModuleSettings,
+} from "./utils.js";
 
 export type { ServedFileRule };
 
@@ -184,11 +187,11 @@ export interface AstroServeDocsFilesOptions {
   exposePageSrcButton?: boolean;
   /**
    * When true, adds "Ask ChatGPT", "Ask Claude", and "Ask Gemini" entries to
-   * the page action dropdown menu, each opening the respective chat app with
+   * the page-action bar, each opening the respective chat app with
    * a prompt pre-filled to read the current page's raw markdown URL.
    *
    * Independent of `exposePageSrcButton` — enabling this on its own still
-   * injects the dropdown button, containing only the "Ask" entries.
+   * adds the page-action bar, with only the "Ask" entries.
    */
   enableAskAiOption?: boolean;
 }
@@ -209,7 +212,10 @@ export type AstroServeDocsFilesIntegration = AstroIntegration & {
   servedFileRule: ServedFileRule;
 };
 
-const SETTINGS_MODULE_ID = "virtual:astro-serve-docs-files/settings";
+/** A dir URL from Astro's config as a file path, without a trailing separator. */
+function toDirPath(dirUrl: URL): string {
+  return fileURLToPath(dirUrl).replace(/[\\/]+$/, "");
+}
 
 /**
  * Where a module shipped next to this file lives: `.ts` in this repo, or a separate build
@@ -311,9 +317,7 @@ export function astroServeDocsFiles(
         injectScript,
         updateConfig,
       }) => {
-        const docsDirPath = fileURLToPath(
-          new URL("content/docs/", config.srcDir),
-        ).replace(/[\\/]+$/, "");
+        const docsDirPath = toDirPath(new URL("content/docs/", config.srcDir));
         // Like Starlight, which renders draft pages in dev and drops them from builds
         routeSettings = {
           docsDirPath,
@@ -326,12 +330,14 @@ export function astroServeDocsFiles(
         resolvedServedFileRule = createServedFileRule(routeSettings);
 
         const resolvedSettingsModuleId = `\0${SETTINGS_MODULE_ID}`;
-        // The route and the raw doc link middleware both read this module
-        const rawDocLinkSettings: TRawDocLinkSettings = {
-          rootDirPath: fileURLToPath(config.root).replace(/[\\/]+$/, ""),
+        // The route and the raw doc alternate link middleware both read this module
+        const moduleSettings: TServeDocsFilesModuleSettings = {
+          rootDirPath: toDirPath(config.root),
+          // The injected route is served under `base` too
+          baseUrlPath: config.base.replace(/\/+$/, ""),
           ...routeSettings,
         };
-        const settingsModuleSource = `export default ${JSON.stringify(rawDocLinkSettings)};`;
+        const settingsModuleSource = `export default ${JSON.stringify(moduleSettings)};`;
         updateConfig({
           vite: {
             plugins: [
@@ -356,7 +362,7 @@ export function astroServeDocsFiles(
         });
         // On every doc page, whether or not the page-action bar is on (ADR 0012)
         addMiddleware({
-          entrypoint: siblingModuleUrl("raw-doc-link-middleware"),
+          entrypoint: siblingModuleUrl("raw-doc-alternate-link-middleware"),
           order: "post",
         });
 

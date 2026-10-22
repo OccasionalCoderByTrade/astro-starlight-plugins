@@ -19,10 +19,8 @@ import {
 } from "parse5";
 import type { ServedFileRule } from "../utils/served-file-rule.js";
 import { SERVE_DOCS_FILES_INTEGRATION_NAME } from "../utils/serve-docs-files-integration.js";
-import {
-  STARLIGHT_CONTENT_CLASS,
-  STARLIGHT_DOC_ROUTE,
-} from "../utils/starlight-selectors.js";
+import { STARLIGHT_CONTENT_CLASS } from "../utils/starlight-selectors.js";
+import { STARLIGHT_DOC_ROUTE } from "../utils/starlight-routes.js";
 import { isFile, SOURCE_DOC_EXTENSIONS } from "../utils/workspace-utils.js";
 
 type TElement = DefaultTreeAdapterTypes.Element;
@@ -120,8 +118,6 @@ export function findServedFileRule(servedFileRuleId: string): ServedFileRule {
   }
   return servedFileRule;
 }
-
-export { STARLIGHT_DOC_ROUTE };
 
 /** The route Starlight renders `404.md` through, so it doesn't shadow that source doc. */
 const STARLIGHT_404_ROUTE = "/404";

@@ -31,3 +31,12 @@ Done on branch `ticket-10-page-names-its-raw-doc` (off `dev`).
 - The middleware is `raw-doc-link.ts` (tested through `createRawDocLinkMiddleware`), shipped as the `plugins/astro-serve-docs-files/raw-doc-link-middleware` tsup entry. Like the existing `route`, `page-script` and `astro-local-links/dev-middleware` entries, it's reached by file URL, not a `package.json` export. It reads the same settings virtual module as the route, which now also carries `rootDirPath`, since `entry.filePath` is relative to the project root.
 - `STARLIGHT_DOC_ROUTE` moved into `utils/starlight-selectors.ts`, since two plugins now use it.
 - Browser check: the `.markdown` case is covered by unit tests only. This demo's Astro has no content entry type for `.markdown` ("No entry type found for reference/ext-test.markdown"), so Starlight renders no page for it.
+
+Review fixes on branch `review-fixes-10`:
+
+- New `CONTEXT.md` term **raw doc alternate link**, so *raw doc link* keeps meaning an `<a>`. The middleware is now `raw-doc-alternate-link.ts` (`createRawDocAlternateLinkMiddleware`), shipped as the `raw-doc-alternate-link-middleware` tsup entry. README says "page-action bar" instead of "`⋮` dropdown".
+- The middleware reads `locals.starlightRoute` in a try/catch with optional chaining, so a user `src/pages/[...slug].astro` or a site without Starlight gets no link and no throw.
+- The `href` is prefixed with Astro's `base` (`baseUrlPath` in the settings module, now typed `TServeDocsFilesModuleSettings` in the plugin's `utils.ts`). Checked in dev and preview with `base: "/docs"`.
+- `?` and `#` in a name: Astro's `decodeURI` leaves `%3F`/`%23` encoded in `params.path`, so the route read `Why%3F %231.md` and failed with ENOENT (500 in dev, and the whole build failed). The served-file rule now leaves out any path segment holding `?` or `#`, so those files get a page but no raw doc and no raw doc alternate link.
+- `.markdown` and the other extra extensions: Starlight 0.42's docs loader globs them, but Astro 7.4's markdown content entry type only registers `.md`, so they get no page. README corrected. Local Links still treats them as having a page path, which is a separate follow-up.
+- Smells: `STARLIGHT_DOC_ROUTE` is in `utils/starlight-routes.ts` and imported directly, `serveDrafts` is required in `createServedFileRule`, `index.ts` dedupes its dir-path conversion, and the page script and middleware share the link's `rel`/`type` through `utils.ts`.

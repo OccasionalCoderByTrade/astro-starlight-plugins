@@ -13,18 +13,21 @@ export type ServedFileRule = (docsRelativeEntryPath: string) => boolean;
 
 /**
  * The served-file rule for a docs directory. A path relative to it isn't served when any
- * of its segments starts with `_` or `.`, when it or a parent dir matches one of
+ * of its segments starts with `_` or `.` or holds `?` or `#`, when it or a parent dir matches one of
  * `ignorePatterns`, or when it's a source doc with `draft: true` and `serveDrafts` is off.
  * Applies to dirs too, so a walk can skip a whole dir. Throws, naming the file, when a
  * source doc's frontmatter can't be parsed, since it can't tell whether that doc is a draft.
  * `serveDrafts` matches Starlight, which renders drafts in dev and drops them from builds.
+ * Astro decodes a request path with `decodeURI`, which leaves `%3F` and `%23` encoded, so a
+ * route param can't hold `?` or `#`: the docs file route couldn't read such a file in dev,
+ * and a build would write it under a name no request reaches.
  */
 export function createServedFileRule(options: {
   docsDirPath: string;
   ignorePatterns: string[];
-  serveDrafts?: boolean;
+  serveDrafts: boolean;
 }): ServedFileRule {
-  const { docsDirPath, ignorePatterns, serveDrafts = false } = options;
+  const { docsDirPath, ignorePatterns, serveDrafts } = options;
 
   return (docsRelativeEntryPath) => {
     const segments = docsRelativeEntryPath
@@ -32,7 +35,7 @@ export function createServedFileRule(options: {
       .join("/")
       .split("/")
       .filter(Boolean);
-    if (segments.some((segment) => /^[_.]/.test(segment))) return false;
+    if (segments.some((segment) => /^[_.]|[?#]/.test(segment))) return false;
 
     const isIgnored = segments.some((_, i) => {
       const docsRelativeAncestorPath = segments.slice(0, i + 1).join("/");

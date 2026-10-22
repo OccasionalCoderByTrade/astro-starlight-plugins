@@ -1,3 +1,5 @@
+import { RAW_DOC_ALTERNATE_LINK_SELECTOR } from "./utils.js";
+
 function showBanner(message: string, variant: "success" | "error"): void {
   const banner = document.createElement("div");
   banner.className = `page-src-banner page-src-banner--${variant}`;
@@ -17,14 +19,13 @@ function showBanner(message: string, variant: "success" | "error"): void {
 }
 
 /**
- * The page's raw doc URL, from the link tag `astroServeDocsFiles` adds to each doc page whose
- * raw doc is served (ADR 0012), or undefined when the page has none.
+ * The page's raw doc URL, from the raw doc alternate link `astroServeDocsFiles` adds to each
+ * doc page whose raw doc is served (ADR 0012), or undefined when the page has none. Its
+ * `href` already includes Astro's `base`.
  */
 function findRawDocUrl(): string | undefined {
   const rawDocHref = document
-    .querySelector<HTMLLinkElement>(
-      'link[rel="alternate"][type="text/markdown"]',
-    )
+    .querySelector<HTMLLinkElement>(RAW_DOC_ALTERNATE_LINK_SELECTOR)
     ?.getAttribute("href");
   if (!rawDocHref) return undefined;
   return new URL(rawDocHref, window.location.origin).toString();
@@ -171,7 +172,7 @@ function createActionBar(
 }
 
 export function initPageActionBar(options: ActionBarOptions) {
-  // No tag: not a doc page, or its raw doc isn't served
+  // No raw doc alternate link: not a doc page, or its raw doc isn't served
   const rawDocUrl = findRawDocUrl();
   if (rawDocUrl === undefined) return;
   const h1 = document.querySelector<HTMLHeadingElement>(".sl-container > h1");

@@ -1,11 +1,11 @@
 import type { MiddlewareHandler } from "astro";
+import { STARLIGHT_DOC_ROUTE } from "../utils/starlight-routes.js";
 import {
   buildSourceDocIndex,
   formatBrokenLinksError,
   formatShadowedDocError,
   processDocPage,
   findServedFileRule,
-  STARLIGHT_DOC_ROUTE,
   type TLocalLinksDevSettings,
   type TLocalLinksSettings,
 } from "./utils.js";

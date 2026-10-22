@@ -60,6 +60,7 @@ async function runConfigSetup(
       root: rootUrl,
       srcDir: new URL(dirs.srcDir ?? "src/", rootUrl),
       publicDir: new URL(dirs.publicDir ?? "public/", rootUrl),
+      base: "/",
       ...otherConfig,
     },
     injectRoute: (route: TInjectedRoute) => injectedRoutes.push(route),
@@ -79,7 +80,10 @@ async function runConfigSetup(
   };
 }
 
-/** The settings the route module imports, as the integration's Vite plugin serves them. */
+/**
+ * The settings the route and the raw doc alternate link middleware import, as the
+ * integration's Vite plugin serves them.
+ */
 function loadRouteSettings(vitePlugins: TVitePlugin[]) {
   for (const vitePlugin of vitePlugins) {
     const resolvedId = vitePlugin.resolveId(
@@ -119,8 +123,24 @@ describe("astroServeDocsFiles config setup", () => {
       docsDirPath: join(rootDirPath, "site-src/content/docs"),
       ignorePatterns: ["scratch"],
       serveDrafts: false,
+      baseUrlPath: "",
     });
   });
+
+  it.each([
+    ["/docs", "/docs"],
+    ["/docs/", "/docs"],
+    ["/", ""],
+  ])(
+    "passes Astro's base %s on without a trailing slash, since the route is served under it",
+    async (base, expectedBaseUrlPath) => {
+      const { vitePlugins } = await runConfigSetup({}, {}, {}, { base });
+
+      expect(loadRouteSettings(vitePlugins).baseUrlPath).toBe(
+        expectedBaseUrlPath,
+      );
+    },
+  );
 
   it.each([
     ["dev", true],
@@ -136,12 +156,16 @@ describe("astroServeDocsFiles config setup", () => {
     },
   );
 
-  it.each(["dev", "build"] as const)(
-    "adds a post middleware whose entrypoint exists, to name each page's raw doc in %s",
-    async (command) => {
+  it.each([
+    ["dev", { exposePageSrcButton: false, enableAskAiOption: false }],
+    ["build", { exposePageSrcButton: false, enableAskAiOption: false }],
+    ["build", { exposePageSrcButton: true, enableAskAiOption: true }],
+  ] as const)(
+    "adds a post middleware whose entrypoint exists, to add each page's raw doc alternate link in %s, with %o",
+    async (command, options) => {
       const { addedMiddlewares } = await runConfigSetup(
         {},
-        {},
+        options,
         {},
         {},
         command,
@@ -468,6 +492,19 @@ describe("astroServeDocsFiles servedFileRule", () => {
       expect(servedFileRule(".obsidian/workspace.json")).toBe(false);
       expect(servedFileRule("guide/notes.txt")).toBe(false);
       expect(servedFileRule("scratch/figure.png")).toBe(false);
+    },
+  );
+
+  it.each([
+    ["guide/Why?.md", "src/content/docs/guide/Why?.md"],
+    ["guide/#1.png", "src/content/docs/guide/#1.png"],
+    ["Q&A?/notes.txt", "src/content/docs/Q&A?/notes.txt"],
+  ])(
+    "leaves out %s, since Astro keeps ? and # encoded in route params and can't serve it",
+    async (docsRelativeFilePath, filePath) => {
+      const { integration } = await runConfigSetup({ [filePath]: "" });
+
+      expect(integration.servedFileRule(docsRelativeFilePath)).toBe(false);
     },
   );
 

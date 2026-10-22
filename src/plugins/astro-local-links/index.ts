@@ -8,6 +8,7 @@ import {
   SERVE_DOCS_FILES_INTEGRATION_NAME,
   SERVED_FILE_RULE_HOOK_NAME,
 } from "../utils/serve-docs-files-integration.js";
+import { STARLIGHT_DOC_ROUTE } from "../utils/starlight-routes.js";
 import {
   buildSourceDocIndex,
   formatBrokenLinksError,
@@ -15,7 +16,6 @@ import {
   formatShadowedDocsError,
   processDocPage,
   registerServedFileRule,
-  STARLIGHT_DOC_ROUTE,
   SETTINGS_MODULE_ID,
   STARLIGHT_404_PAGE_PATH,
   type TLocalLinksDevSettings,
