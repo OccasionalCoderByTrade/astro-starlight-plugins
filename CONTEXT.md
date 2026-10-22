@@ -65,11 +65,11 @@ A page path that more than one source doc has, such as `Foo.md` and `foo.md`, or
 _Avoid_: ambiguous source docs, duplicate page
 
 **Doc route**:
-The single route Starlight serves every source doc's page from.
+The single route Starlight serves every source doc's page from, except a custom `404.md`.
 _Avoid_: docs route, slug route, catch-all
 
 **Shadowed doc**:
-A source doc whose page path is served by a route other than the doc route, such as a `src/pages` page at the same path, so the source doc's page can't be reached.
+A source doc whose page path another route serves in place of the route Starlight renders it through, such as a `src/pages` page at the same path, so the source doc's page can't be reached. Starlight renders a custom `404.md` through its 404 route, so that one isn't shadowed.
 _Avoid_: overridden doc, route conflict
 
 **Non-slug path**:
