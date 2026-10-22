@@ -62,7 +62,7 @@ async function runBuildDone(
 
   await runBuildDoneWithAssets(
     integration,
-    rootDirPath,
+    distDirPath,
     new Map([
       ["/[...slug]", toUrls(starlightDistRelativeFilePaths)],
       ["/grade-calculator", toUrls(otherRouteDistRelativeFilePaths)],
@@ -76,12 +76,12 @@ async function runBuildDone(
 /** Runs `astro:build:done` with `assets` as given, mapping each route pattern to the files it wrote. */
 async function runBuildDoneWithAssets(
   integration: ReturnType<typeof astroLocalLinks>,
-  rootDirPath: string,
+  distDirPath: string,
   assets: Map<string, URL[]>,
 ) {
   const buildDone = integration.hooks["astro:build:done"]!;
   await buildDone({
-    dir: pathToFileURL(`${join(rootDirPath, "dist")}/`),
+    dir: pathToFileURL(`${distDirPath}/`),
     assets,
   } as unknown as Parameters<typeof buildDone>[0]);
 }
@@ -216,7 +216,7 @@ describe("astroLocalLinks", () => {
 
     const buildDone = runBuildDoneWithAssets(
       integration,
-      site.rootDirPath,
+      join(site.rootDirPath, "dist"),
       new Map([
         ["/404", []],
         ["/grade-calculator", []],
@@ -234,20 +234,20 @@ describe("astroLocalLinks", () => {
 
     const buildDone = runBuildDoneWithAssets(
       integration,
-      site.rootDirPath,
+      join(site.rootDirPath, "dist"),
       new Map([["/[...slug]", []]]),
     );
 
     await expect(buildDone).rejects.toThrow(/no doc pages[\s\S]*prerender/);
   });
 
-  it("passes build:done on a site with no source docs", async () => {
-    const site = makeSite();
+  it("passes build:done on a site with no source docs but a custom 404", async () => {
+    const site = makeSite({ "src/content/docs/404.md": "" });
     const { integration } = await runSetup(site.rootDirPath, "build");
 
     const buildDone = runBuildDoneWithAssets(
       integration,
-      site.rootDirPath,
+      join(site.rootDirPath, "dist"),
       new Map([["/[...slug]", []]]),
     );
 

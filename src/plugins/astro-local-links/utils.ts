@@ -59,8 +59,14 @@ export type TLocalLinksSettings = Omit<
   "sourceDocFilePath" | "sourceDocIndex"
 >;
 
-/** The route Starlight renders every source doc through. */
-export const STARLIGHT_DOCS_ROUTE = "/[...slug]";
+/** The route Starlight renders every source doc through, except a custom `404.md`. */
+export const STARLIGHT_DOC_ROUTE = "/[...slug]";
+
+/** The route Starlight renders `404.md` through, so it doesn't shadow that source doc. */
+const STARLIGHT_404_ROUTE = "/404";
+
+/** The page path of a custom `404.md`, which the 404 route renders instead of the doc route. */
+export const STARLIGHT_404_PAGE_PATH = "404";
 
 /** Virtual module the dev middleware reads the integration's settings from. */
 export const SETTINGS_MODULE_ID = "virtual:astro-local-links/settings";
@@ -494,13 +500,15 @@ export function formatShadowedDocError(
   routePattern: string,
   sourceDocIndex: TSourceDocIndex,
 ): string | null {
+  if (routePattern === STARLIGHT_404_ROUTE) return null;
   const pagePath = toDocsRelativePagePath(pathname) ?? pathname;
   const sourceDocFilePaths = sourceDocIndex.get(pagePath);
   if (!sourceDocFilePaths) return null;
   return (
     `[astro-local-links] ${pathname} is the page path of ${sourceDocFilePaths.join(", ")}, ` +
-    `but ${routePattern} served it, not Starlight's doc route (${STARLIGHT_DOCS_ROUTE}). ` +
-    `Either a page in src/pages shadows the source doc, or Starlight's doc route changed.`
+    `but ${routePattern} served it, not Starlight's doc route (${STARLIGHT_DOC_ROUTE}). ` +
+    `Either another page or route (such as one in src/pages) shadows the source doc, ` +
+    `or Starlight's doc route changed.`
   );
 }
 

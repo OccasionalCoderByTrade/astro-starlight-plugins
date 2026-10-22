@@ -108,8 +108,17 @@ describe("dev middleware", () => {
         routePattern: "/my-guide/intro",
       }),
     ).rejects.toThrow(
-      /\/my-guide\/intro\/[\s\S]*My Guide\/Intro\.md[\s\S]*\/my-guide\/intro\b[\s\S]*doc route \(\/\[\.\.\.slug\]\)/,
+      /\/my-guide\/intro\/[\s\S]*My Guide\/Intro\.md[\s\S]*\/my-guide\/intro\b[\s\S]*doc route \(\/\[\.\.\.slug\]\)[\s\S]*src\/pages[\s\S]*doc route changed/,
     );
+  });
+
+  it("leaves a custom 404 source doc to Starlight's 404 route", async () => {
+    const files = { "src/content/docs/404.md": "" };
+    const body = pageHtml("not found");
+
+    expect(
+      await request("/404/", body, { files, routePattern: "/404" }),
+    ).toBe(body);
   });
 
   it("throws, listing the broken links, so dev shows an error page", async () => {
