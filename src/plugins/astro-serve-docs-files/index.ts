@@ -161,7 +161,7 @@ const pageSrcStyles = css`
   }
 `;
 
-export interface SyncDocsToPublicOptions {
+export interface AstroServeDocsFilesOptions {
   /**
    * Names of child directories inside public/ to preserve during sync.
    * These directories will not be modified during re-syncing.
@@ -192,7 +192,7 @@ export interface SyncDocsToPublicOptions {
 const DEFAULT_SRC_DIR = "src/content/docs";
 const DEFAULT_PUBLIC_DIR = "public";
 
-function validateOptions(options: SyncDocsToPublicOptions): void {
+function validateOptions(options: AstroServeDocsFilesOptions): void {
   const mdProbePaths = ["test.md", "test.mdx", "foo/test.md", "foo/test.mdx"];
 
   const needsRawMd = options.exposePageSrcButton || options.enableAskAiOption;
@@ -237,7 +237,7 @@ async function fullSync(
 
   await copyAll(srcDir, srcDir, publicDir, isServed);
   console.log(
-    `[starlight-sync-docs-to-public] Synced ${DEFAULT_SRC_DIR}/ → ${DEFAULT_PUBLIC_DIR}/ (full sync)`,
+    `[astro-serve-docs-files] Synced ${DEFAULT_SRC_DIR}/ → ${DEFAULT_PUBLIC_DIR}/ (full sync)`,
   );
 }
 
@@ -314,7 +314,7 @@ async function incrementalSync(
     await writeFile(destPath, content);
   }
 
-  console.log(`[starlight-sync-docs-to-public] Synced ${relativePath}`);
+  console.log(`[astro-serve-docs-files] Synced ${relativePath}`);
 }
 
 /**
@@ -348,8 +348,8 @@ async function copyAll(
   );
 }
 
-export function syncDocsToPublic(
-  options: SyncDocsToPublicOptions,
+export function astroServeDocsFiles(
+  options: AstroServeDocsFilesOptions,
 ): AstroIntegration {
   const srcDir = resolve(DEFAULT_SRC_DIR);
   const publicDir = resolve(DEFAULT_PUBLIC_DIR);
@@ -365,7 +365,7 @@ export function syncDocsToPublic(
   const isServed = createServedFileRule({ docsDirPath: srcDir, ignorePatterns });
 
   return {
-    name: "astro-sync-docs-to-public",
+    name: "astro-serve-docs-files",
     hooks: {
       "astro:config:setup": ({ injectScript }) => {
         validateOptions(options);
@@ -380,20 +380,20 @@ export function syncDocsToPublic(
           );
           // Three contexts require three different paths to page-script.js:
           // 1. Local dev (.ts source): page-script.ts lives alongside index.ts
-          // 2. Dist, own entry (dist/plugins/astro-sync-docs-to-public.js): page-script is one level deeper
+          // 2. Dist, own entry (dist/plugins/astro-serve-docs-files.js): page-script is one level deeper
           // 3. Dist, bundled into another entry (e.g. dist/index.js via re-export): must prefix with plugins/
           const currentFile = fileURLToPath(import.meta.url);
           let pageScriptUrl: URL;
           if (currentFile.endsWith(".ts")) {
             pageScriptUrl = new URL("./page-script.ts", import.meta.url);
-          } else if (currentFile.endsWith("astro-sync-docs-to-public.js")) {
+          } else if (currentFile.endsWith("astro-serve-docs-files.js")) {
             pageScriptUrl = new URL(
-              "./astro-sync-docs-to-public/page-script.js",
+              "./astro-serve-docs-files/page-script.js",
               import.meta.url,
             );
           } else {
             pageScriptUrl = new URL(
-              "./plugins/astro-sync-docs-to-public/page-script.js",
+              "./plugins/astro-serve-docs-files/page-script.js",
               import.meta.url,
             );
           }
@@ -434,7 +434,7 @@ export function syncDocsToPublic(
                     isServed,
                   ).catch((err) => {
                     console.error(
-                      `[starlight-sync-docs-to-public] Error syncing ${changedPath}:`,
+                      `[astro-serve-docs-files] Error syncing ${changedPath}:`,
                       err,
                     );
                   }),

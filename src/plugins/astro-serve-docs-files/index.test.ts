@@ -2,7 +2,10 @@ import { existsSync, writeFileSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { makeFileTree } from "../tests/file-tree.js";
-import { syncDocsToPublic, type SyncDocsToPublicOptions } from "./index.js";
+import {
+  astroServeDocsFiles,
+  type AstroServeDocsFilesOptions,
+} from "./index.js";
 
 const originalCwd = process.cwd();
 
@@ -19,11 +22,11 @@ type WatcherHandler = (event: string, filePath: string) => void;
  */
 async function runDevSetup(
   files: Record<string, string>,
-  options: Partial<SyncDocsToPublicOptions> = {},
+  options: Partial<AstroServeDocsFilesOptions> = {},
 ) {
   const rootDirPath = makeFileTree(files);
   process.chdir(rootDirPath);
-  const integration = syncDocsToPublic({ preserveDirs: [], ...options });
+  const integration = astroServeDocsFiles({ preserveDirs: [], ...options });
   const watcherHandlers: WatcherHandler[] = [];
   const fakeServer = {
     watcher: {
@@ -52,7 +55,7 @@ async function runDevSetup(
 const waitForIncrementalSync = () =>
   new Promise((resolveWait) => setTimeout(resolveWait, 300));
 
-describe("syncDocsToPublic in dev", () => {
+describe("astroServeDocsFiles in dev", () => {
   it("finishes the initial sync before the server starts", async () => {
     const { rootDirPath } = await runDevSetup({
       "src/content/docs/guide/page.md": "---\ntitle: Page\n---\n",

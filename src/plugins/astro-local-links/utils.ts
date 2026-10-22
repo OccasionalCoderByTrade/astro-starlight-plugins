@@ -653,7 +653,7 @@ const RAW_DOC_LINK_EXPLANATION =
   `A link to a source doc with its extension (like ./auto-list-syntax.md) is a raw doc link: ` +
   `it sends readers to the raw Markdown source, not to the page built from it. If that's ` +
   `what you want, the source doc must also exist in public/. Copy it there, or let ` +
-  `syncDocsToPublic mirror src/content/docs/ into public/. To link to the page instead, ` +
+  `astroServeDocsFiles mirror src/content/docs/ into public/. To link to the page instead, ` +
   `drop the extension or use the page path.`;
 
 /**

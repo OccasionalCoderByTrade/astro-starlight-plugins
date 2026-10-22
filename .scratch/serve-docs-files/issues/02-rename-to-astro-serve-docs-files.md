@@ -6,6 +6,6 @@
 
 **Status:** ready-for-agent
 
-- [ ] No remaining references to `syncDocsToPublic` or `astro-sync-docs-to-public` outside ADRs, the spec and changelog-style notes
-- [ ] The page-action bar's script path logic still resolves in this repo, in the plugin's own build entry and when bundled into the root entry
-- [ ] `npm run lib:build` and `npm test` pass, and `npm pack --dry-run` shows the renamed entry
+- [x] No remaining references to `syncDocsToPublic` or `astro-sync-docs-to-public` outside ADRs, the spec and changelog-style notes
+- [x] The page-action bar's script path logic still resolves in this repo, in the plugin's own build entry and when bundled into the root entry
+- [x] `npm run lib:build` and `npm test` pass, and `npm pack --dry-run` shows the renamed entry

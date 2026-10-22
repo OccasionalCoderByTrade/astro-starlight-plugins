@@ -31,9 +31,9 @@
       "import": "./dist/plugins/astro-latex-compile.js",
       "types": "./dist/plugins/astro-latex-compile.d.ts"
     },
-    "./astro-sync-docs-to-public": {
-      "import": "./dist/plugins/astro-sync-docs-to-public.js",
-      "types": "./dist/plugins/astro-sync-docs-to-public.d.ts"
+    "./astro-serve-docs-files": {
+      "import": "./dist/plugins/astro-serve-docs-files.js",
+      "types": "./dist/plugins/astro-serve-docs-files.d.ts"
     },
     "./starlight-dom-patches": {
       "import": "./dist/plugins/starlight-dom-patches.js",

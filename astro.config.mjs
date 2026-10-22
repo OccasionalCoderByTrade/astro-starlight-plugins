@@ -13,7 +13,7 @@ import {
   remarkGfmSlug,
   starlightDomPatches,
   starlightIndexSourcedSidebar,
-  syncDocsToPublic,
+  astroServeDocsFiles,
 } from "./src";
 
 // Common Config Items
@@ -61,7 +61,7 @@ export default defineConfig({
       // texInputDirs: [],
       debug: true,
     }),
-    syncDocsToPublic({
+    astroServeDocsFiles({
       preserveDirs: ["static"],
       exposePageSrcButton: false,
       enableAskAiOption: true,
