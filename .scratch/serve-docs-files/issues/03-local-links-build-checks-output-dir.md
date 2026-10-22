@@ -4,7 +4,7 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] A link to a file that's in the output dir passes; one that isn't fails, whether or not a copy exists in `public/`
 - [x] Generated paths (`/_image`, `/_astro/`) are still left alone
@@ -12,3 +12,7 @@
 - [x] Dev validation is unchanged by this ticket (it's handled in 08)
 - [x] Existing `build:done` tests updated and new ones added, using the existing site helpers
 - [x] README Local Links section updated where it says files must be in `public/`
+
+## Comments
+
+Resolved on branch `serve-docs-files`. See `git log db93e0d..serve-docs-files`.

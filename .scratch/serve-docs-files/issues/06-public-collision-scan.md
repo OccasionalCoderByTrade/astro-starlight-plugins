@@ -4,10 +4,14 @@
 
 **Blocked by:** 04
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] Startup scan at dev server setup and at build start; one error listing every clash
 - [x] Files the served-file rule leaves out (drafts, ignored, `_`/`.`-prefixed) never count as clashes
 - [x] A collision created mid-session in dev gives an error response at that URL, and the server keeps running
 - [x] Tests through the integration hooks for dev setup and build start
 - [x] README mentions the error alongside the upgrade note
+
+## Comments
+
+Resolved on branch `serve-docs-files`. See `git log db93e0d..serve-docs-files`.

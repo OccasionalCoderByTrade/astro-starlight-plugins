@@ -4,10 +4,14 @@
 
 **Blocked by:** 04
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] With the serve integration present: a link to a served docs asset or raw doc passes; one to an ignored, draft or `_`-prefixed file fails
 - [x] Without it: only `public/` files pass, as before
 - [x] Files the user put in `public/` still pass either way
 - [x] Tests through the dev request handler and `astro:config:setup`, using the existing helpers
 - [x] README Local Links section says how dev validation finds served docs files
+
+## Comments
+
+Resolved on branch `serve-docs-files`. See `git log db93e0d..serve-docs-files`.

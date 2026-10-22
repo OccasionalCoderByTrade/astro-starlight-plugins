@@ -4,7 +4,7 @@
 
 **Blocked by:** 01, 02
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] The route module ships as its own build entry, so the injected entrypoint resolves both in this repo and in the published package
 - [x] `getStaticPaths` lists exactly the files the served-file rule accepts; `GET` returns the source bytes unchanged, with a content type from the extension (`text/markdown; charset=utf-8` for `.md`/`.mdx`, `application/octet-stream` as the fallback)
@@ -17,3 +17,7 @@
 - [x] Demo `astro.config.mjs` uses the new options; the demo's stale synced copies in `public/` are deleted (only `static/` and `favicon.svg` are user-owned)
 - [x] README section rewritten, with a short 4.0.0 upgrade note: rename, `preserveDirs` removed, delete old synced copies from `public/`
 - [x] Checked in a real dev server and build per CLAUDE.md: assets, raw docs, pages, 404s, outputs byte-identical
+
+## Comments
+
+Resolved on branch `serve-docs-files`. See `git log db93e0d..serve-docs-files`.

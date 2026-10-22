@@ -17,8 +17,12 @@ server.watcher.on("all", (event, filePath) => {
 
 **Blocked by:** 04
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] Add and delete under the docs dir send the event to every non-client environment; changes outside it, and edits, don't (test with a fake watcher and environments)
 - [x] Checked in a real dev server: a new file serves without a restart, and a deleted one 404s
 - [x] A comment where the event is sent says it's internal Astro API
+
+## Comments
+
+Resolved on branch `serve-docs-files`. See `git log db93e0d..serve-docs-files`.

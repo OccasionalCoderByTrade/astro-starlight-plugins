@@ -1,4 +1,4 @@
-Status: ready-for-agent
+Status: resolved
 
 # astroServeDocsFiles: serve docs files without touching `public/`
 
@@ -138,3 +138,11 @@ Drafts, `_`- or `.`-prefixed files and directories, and `ignorePatterns` matches
 - The prototype showed that Astro, left to itself, keeps the `public/` file in a collision and only warns during the build. The startup scan makes that an error in both modes. Astro's handling of clashes between routes is covered under Served path collisions with other routes.
 - The prototype also showed that a URL with `%26` in the path 404s while a literal `&` works. Browsers send a literal `&`, so this doesn't need handling.
 - Once this lands, the demo site's `public/` still holds copies the old sync left there, which the startup scan will report. Delete them as part of switching the demo config over.
+
+## Comments
+
+Resolved on branch `serve-docs-files` (`git log db93e0d..serve-docs-files`). Deviations found during implementation:
+
+- **Exposing the rule.** Astro's config validation strips every integration field except `name` and `hooks` from `config.integrations`, so a `servedFileRule` field never reaches `astroLocalLinks`. The rule is also exposed as the custom hook `astro-serve-docs-files:served-file-rule`, which is what `astroLocalLinks` reads (ticket 08).
+- **Route collisions.** The `assets` map misses same-URL clashes, since Astro drops the losing route before rendering. The plugin also collects Astro's prerender route conflict warnings from the logger (internal API, one function). With `prerenderConflictBehavior: "ignore"` Astro logs nothing, so the plugin warns at build start instead (ticket 07, review fixes).
+- **Mid-session bad frontmatter.** In dev, a docs file whose frontmatter can't be parsed is left out of the endpoint and logged, and a link to it fails validation naming the parse error. Startup still throws.
