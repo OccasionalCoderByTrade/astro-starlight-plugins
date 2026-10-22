@@ -220,7 +220,7 @@ describe("astroServeDocsFiles served path collisions with public/ at startup", (
       expect(error?.message).not.toContain("other.pdf");
       expect(error?.message).not.toContain("favicon.svg");
       expect(error?.message).toContain(
-        "Alternatively, it may be a stale holdover from a previous version of starlight-cannoli-plugins's syncDocsToPublic 3.0.0 plugin.",
+        "One possible cause is a stale copy left in public/ by starlight-cannoli-plugins's syncDocsToPublic 3.x, in which case delete the public/ copy.",
       );
     },
   );
@@ -347,7 +347,7 @@ describe("astroServeDocsFiles served path collisions with public/ mid-session in
     expect(clash.response.body).toContain(
       join(rootDirPath, "src/content/docs/reference/List Syntax.md"),
     );
-    expect(clash.response.body).toContain("syncDocsToPublic 3.0.0");
+    expect(clash.response.body).toContain("syncDocsToPublic 3.x");
     expect(
       requestDevServer(devMiddlewares, "/reference/notes.pdf").reachedNext,
     ).toBe(true);

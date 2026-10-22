@@ -18,7 +18,7 @@ export type TServedDirPaths = {
 };
 
 const STALE_COPY_NOTE =
-  "Alternatively, it may be a stale holdover from a previous version of starlight-cannoli-plugins's syncDocsToPublic 3.0.0 plugin.";
+  "One possible cause is a stale copy left in public/ by starlight-cannoli-plugins's syncDocsToPublic 3.x, in which case delete the public/ copy.";
 
 /** The served path collision with `public/` at one path relative to the docs dir, if any. */
 export function findPublicServedPathCollision(
