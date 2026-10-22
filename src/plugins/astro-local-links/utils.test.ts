@@ -390,7 +390,7 @@ describe("formatBrokenLinksError", () => {
     expect(error).toMatch(
       /- \.\/missing: no source doc or public file\n\nA link /,
     );
-    expect(error).toContain("syncDocsToPublic");
+    expect(error).toContain("astroServeDocsFiles");
   });
 
   it("leaves out the raw doc link explanation when no broken link is one", () => {

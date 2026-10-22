@@ -5,9 +5,9 @@ export {
   type DomPatchesOptions,
 } from "./plugins/starlight-dom-patches/index.js";
 export {
-  syncDocsToPublic,
-  type SyncDocsToPublicOptions,
-} from "./plugins/astro-sync-docs-to-public/index.js";
+  astroServeDocsFiles,
+  type AstroServeDocsFilesOptions,
+} from "./plugins/astro-serve-docs-files/index.js";
 export { rehypeValidateLinks } from "./plugins/rehype-validate-links.js";
 export { default as remarkGfmSlug } from "./plugins/remark-gfm-slug.js";
 export { astroNormalizePaths } from "./plugins/astro-normalize-paths/index.js";
