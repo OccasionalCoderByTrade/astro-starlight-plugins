@@ -335,11 +335,11 @@ import { astroLocalLinks } from "starlight-cannoli-plugins/astro-local-links";
 
 - A source doc. `/reference/schemas` matches `reference/schemas.md(x)` or `reference/schemas/index.md(x)`, or any other extension Starlight loads (`.markdown`, `.mdown`...). `/reference/schemas/index` matches the latter too, as a file-form link (see [Non-slug filenames](#non-slug-filenames)), so link normalization rewrites it to `/reference/schemas`.
 - A source doc by its file path, when its filename isn't a slug. See [Non-slug filenames](#non-slug-filenames) below.
-- A file in `public/`, like `/static/img/logo.png`.
+- A file the site serves, like `/static/img/logo.png`. In `astro build` that's any file in the build output: files from `public/`, docs files that [Sync Docs to Public](#sync-docs-to-public) serves, and whatever other integrations write. In `astro dev` it's a file in `public/`.
 
-A file that sits next to your docs in `src/content/docs/` (a PDF, an image) only counts once it's in `public/`, because until then its URL would 404. [Sync Docs to Public](#sync-docs-to-public) does that copying for you.
+A file that sits next to your docs in `src/content/docs/` (a PDF, an image) only counts if the site serves it, because otherwise its URL would 404. [Sync Docs to Public](#sync-docs-to-public) does that for you.
 
-That includes source docs themselves. A link with the doc's extension, like `./auto-list-syntax.md`, is a **raw doc link**: it sends readers to the raw Markdown, not to the page built from it. It's never rewritten to the page path, so it only passes once the `.md` file is in `public/`, copied there by hand or by Sync Docs to Public. If it's missing, the error names the link to use for the page instead. To link to the page, drop the extension.
+That includes source docs themselves. A link with the doc's extension, like `./auto-list-syntax.md`, is a **raw doc link**: it sends readers to the raw Markdown, not to the page built from it. It's never rewritten to the page path, so it only passes if the raw doc is served (a draft, for instance, isn't). If it isn't, the error says so and names the link to use for the page instead. To link to the page, drop the extension.
 
 Pages that aren't rendered from a source doc, like `src/pages/*.astro` routes, can't be checked. Link to them with one of the skips below.
 

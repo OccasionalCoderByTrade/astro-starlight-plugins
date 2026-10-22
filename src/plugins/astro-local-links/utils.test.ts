@@ -239,7 +239,7 @@ describe("processPage link validation", () => {
     expect(brokenHrefs(files, ["./my%20notes.pdf", "./caf%C3%A9"])).toEqual([]);
   });
 
-  it("reports a raw doc link with no copy in public/, naming the page link to use instead", () => {
+  it("reports a raw doc link to a raw doc that isn't served, naming the page link to use instead", () => {
     const site = makeSite({
       "src/content/docs/guide/intro.md": "",
       "src/content/docs/guide/auto-list-syntax.md": "",
@@ -259,7 +259,7 @@ describe("processPage link validation", () => {
       {
         href: "./auto-list-syntax.md#usage",
         reason:
-          "raw doc link, but public/guide/auto-list-syntax.md doesn't exist. " +
+          "raw doc link, but /guide/auto-list-syntax.md isn't served. " +
           "To link to the page, use ./auto-list-syntax#usage.",
         isRawDocLink: true,
       },
@@ -290,11 +290,11 @@ describe("processPage link validation", () => {
     });
 
     expect(result.brokenLinks.map((brokenLink) => brokenLink.reason)).toEqual([
-      "raw doc link, but public/guide/List Syntax.md doesn't exist. " +
+      "raw doc link, but /guide/List Syntax.md isn't served. " +
         "To link to the page, use /guide/list-syntax.",
-      "raw doc link, but public/guide/auto-list-syntax.md doesn't exist. " +
+      "raw doc link, but /guide/auto-list-syntax.md isn't served. " +
         "To link to the page, use ./auto-list-syntax.",
-      "raw doc link, but public/reference/index.md doesn't exist. " +
+      "raw doc link, but /reference/index.md isn't served. " +
         "To link to the page, use /reference.",
     ]);
   });
@@ -368,7 +368,7 @@ describe("processPage link validation", () => {
 describe("formatBrokenLinksError", () => {
   it("explains raw doc links once, after every broken link", () => {
     const rawDocLinkFields = {
-      reason: "raw doc link, but public/guide/a.md doesn't exist.",
+      reason: "raw doc link, but /guide/a.md isn't served.",
       isRawDocLink: true,
     };
 
@@ -390,7 +390,8 @@ describe("formatBrokenLinksError", () => {
     expect(error).toMatch(
       /- \.\/missing: no source doc or public file\n\nA link /,
     );
-    expect(error).toContain("syncDocsToPublic");
+    expect(error).toContain("isn't served");
+    expect(error).toContain("astroServeDocsFiles");
   });
 
   it("leaves out the raw doc link explanation when no broken link is one", () => {

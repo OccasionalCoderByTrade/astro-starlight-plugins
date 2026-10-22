@@ -42,6 +42,11 @@ export type TProcessPageOptions = {
   site: TLocalLinksSite;
   validate: false | { skipPatterns: string[] };
   normalize: boolean;
+  /**
+   * Where a link to a file must find it: the build output dir in a build, since everything
+   * served ends up there. Default: `site.publicDirPath`.
+   */
+  servedFilesDirPath?: string;
 };
 
 export type TBrokenLink = {
@@ -348,8 +353,11 @@ function findBrokenLinkDetails(
   const docsRelativeLinkPath = toDocsRelativePagePath(sitePath);
   if (docsRelativeLinkPath === null)
     return { reason: `malformed URL encoding in ${sitePath}` };
-  const publicFilePath = join(site.publicDirPath, docsRelativeLinkPath);
-  if (isFile(publicFilePath)) return null;
+  const servedFilePath = join(
+    options.servedFilesDirPath ?? site.publicDirPath,
+    docsRelativeLinkPath,
+  );
+  if (isFile(servedFilePath)) return null;
 
   const rawDocLinkPagePath = findRawDocLinkPagePath(
     docsRelativeLinkPath,
@@ -364,15 +372,9 @@ function findBrokenLinkDetails(
     const pageHref = isExtensionlessLinkBroken
       ? toPageSitePath(rawDocLinkPagePath, false)
       : removeExtension(writtenHref.pathPart);
-    const rootRelativePublicFilePath = relative(
-      site.rootDirPath,
-      publicFilePath,
-    )
-      .split(sep)
-      .join("/");
     return {
       reason:
-        `raw doc link, but ${rootRelativePublicFilePath} doesn't exist. ` +
+        `raw doc link, but /${docsRelativeLinkPath} isn't served. ` +
         `To link to the page, use ${pageHref}${writtenHref.suffix}.`,
       isRawDocLink: true,
     };
@@ -652,9 +654,9 @@ export function formatBrokenLinksError(
 const RAW_DOC_LINK_EXPLANATION =
   `A link to a source doc with its extension (like ./auto-list-syntax.md) is a raw doc link: ` +
   `it sends readers to the raw Markdown source, not to the page built from it. If that's ` +
-  `what you want, the source doc must also exist in public/. Copy it there, or let ` +
-  `syncDocsToPublic mirror src/content/docs/ into public/. To link to the page instead, ` +
-  `drop the extension or use the page path.`;
+  `what you want, the raw doc must be served: let astroServeDocsFiles serve it (it skips ` +
+  `drafts and ignored or _-prefixed files), or put a copy in public/. To link to the page ` +
+  `instead, drop the extension or use the page path.`;
 
 /**
  * Runs `processPage` on the HTML of the Starlight doc page at URL `pathname`, after finding

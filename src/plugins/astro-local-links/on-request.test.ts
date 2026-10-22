@@ -249,11 +249,11 @@ describe("dev middleware", () => {
     );
   });
 
-  it("throws on a raw doc link with no copy in public/, explaining what it links to", async () => {
+  it("throws on a raw doc link to a raw doc that isn't served, explaining what it links to", async () => {
     await expect(
       request("/guide/intro/", pageHtml(`<a href="./next.md">x</a>`)),
     ).rejects.toThrow(
-      /\.\/next\.md: raw doc link, but public\/guide\/next\.md doesn't exist\. To link to the page, use \.\/next\.[\s\S]*is a raw doc link/,
+      /\.\/next\.md: raw doc link, but \/guide\/next\.md isn't served\. To link to the page, use \.\/next\.[\s\S]*is a raw doc link/,
     );
   });
 
