@@ -19,6 +19,6 @@ server.watcher.on("all", (event, filePath) => {
 
 **Status:** ready-for-agent
 
-- [ ] Add and delete under the docs dir send the event to every non-client environment; changes outside it, and edits, don't (test with a fake watcher and environments)
-- [ ] Checked in a real dev server: a new file serves without a restart, and a deleted one 404s
-- [ ] A comment where the event is sent says it's internal Astro API
+- [x] Add and delete under the docs dir send the event to every non-client environment; changes outside it, and edits, don't (test with a fake watcher and environments)
+- [x] Checked in a real dev server: a new file serves without a restart, and a deleted one 404s
+- [x] A comment where the event is sent says it's internal Astro API

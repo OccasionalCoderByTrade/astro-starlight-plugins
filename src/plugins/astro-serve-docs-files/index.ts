@@ -4,8 +4,10 @@
  * each file from source on request; in a build Astro writes each one into the output
  * directory. Nothing is written to or deleted from `public/`.
  */
+import { relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { AstroIntegration } from "astro";
+import type { AstroIntegration, AstroIntegrationLogger } from "astro";
+import type { ViteDevServer } from "vite";
 import { minimatch } from "minimatch";
 import {
   createServedFileRule,
@@ -240,6 +242,18 @@ function siblingModuleUrl(moduleName: string): URL {
   );
 }
 
+/**
+ * Clears Astro's dev route cache, so the endpoint's `getStaticPaths` reruns and picks up an
+ * added or deleted docs file. `astro:content-changed` is internal Astro API, not public, so
+ * this is the only place that sends it; an Astro upgrade that breaks it breaks it here.
+ */
+function clearRouteCache(server: ViteDevServer): void {
+  for (const environment of Object.values(server.environments)) {
+    if (environment.name === "client") continue;
+    environment.hot.send("astro:content-changed", {});
+  }
+}
+
 export function astroServeDocsFiles(
   options: AstroServeDocsFilesOptions = {},
 ): AstroServeDocsFilesIntegration {
@@ -276,6 +290,18 @@ export function astroServeDocsFiles(
           publicCollisions,
         ),
       );
+    }
+  };
+
+  // Mid-session, a bad save only logs, so it doesn't stop the dev server
+  const logUnparseableFrontmatter = (
+    relativeFilePath: string,
+    logger: AstroIntegrationLogger,
+  ) => {
+    try {
+      servedFileRule(relativeFilePath);
+    } catch (error) {
+      logger.error(error instanceof Error ? error.message : String(error));
     }
   };
 
@@ -350,17 +376,26 @@ export function astroServeDocsFiles(
         checkServedFiles();
       },
 
-      "astro:server:setup": ({ server }) => {
+      "astro:server:setup": ({ server, logger }) => {
         checkServedFiles();
-        if (routeSettings && publicDirPath) {
-          server.middlewares.use(
-            createPublicCollisionMiddleware(
-              SERVE_DOCS_FILES_INTEGRATION_NAME,
-              { docsDirPath: routeSettings.docsDirPath, publicDirPath },
-              servedFileRule,
-            ),
-          );
-        }
+        if (!routeSettings || !publicDirPath) return;
+        const { docsDirPath } = routeSettings;
+
+        server.middlewares.use(
+          createPublicCollisionMiddleware(
+            SERVE_DOCS_FILES_INTEGRATION_NAME,
+            { docsDirPath, publicDirPath },
+            servedFileRule,
+          ),
+        );
+
+        server.watcher.on("all", (event, filePath) => {
+          if (!filePath.startsWith(docsDirPath + sep)) return;
+          if (event === "add" || event === "unlink") clearRouteCache(server);
+          if (event === "add" || event === "change") {
+            logUnparseableFrontmatter(relative(docsDirPath, filePath), logger);
+          }
+        });
       },
     },
   };
