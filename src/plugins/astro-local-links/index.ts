@@ -150,7 +150,9 @@ export function astroLocalLinks(
             const processedPage = processDocPage(
               toPagePathname(relative(distDirPath, htmlFilePath)),
               html,
-              settings,
+              // a file target counts if it's in the output dir, which holds public/ files,
+              // served docs files and whatever other integrations wrote
+              { ...settings, servedFilesDirPath: distDirPath },
               sourceDocIndex,
             );
 

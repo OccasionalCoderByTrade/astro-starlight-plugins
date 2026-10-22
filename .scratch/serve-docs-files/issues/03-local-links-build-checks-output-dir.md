@@ -6,9 +6,9 @@
 
 **Status:** ready-for-agent
 
-- [ ] A link to a file that's in the output dir passes; one that isn't fails, whether or not a copy exists in `public/`
-- [ ] Generated paths (`/_image`, `/_astro/`) are still left alone
-- [ ] Raw doc link error wording updated; per ADR 0010 raw doc links are still never rewritten
-- [ ] Dev validation is unchanged by this ticket (it's handled in 08)
-- [ ] Existing `build:done` tests updated and new ones added, using the existing site helpers
-- [ ] README Local Links section updated where it says files must be in `public/`
+- [x] A link to a file that's in the output dir passes; one that isn't fails, whether or not a copy exists in `public/`
+- [x] Generated paths (`/_image`, `/_astro/`) are still left alone
+- [x] Raw doc link error wording updated; per ADR 0010 raw doc links are still never rewritten
+- [x] Dev validation is unchanged by this ticket (it's handled in 08)
+- [x] Existing `build:done` tests updated and new ones added, using the existing site helpers
+- [x] README Local Links section updated where it says files must be in `public/`

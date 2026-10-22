@@ -147,21 +147,81 @@ describe("astroLocalLinks", () => {
     );
   });
 
-  it("fails build:done on a raw doc link with no copy in public/, naming the copy's path from the project root", async () => {
+  it("fails build:done on a raw doc link to a draft, saying it isn't served and naming the page link", async () => {
     const site = makeSite({
       "src/content/docs/reference/index.md": "",
-      "src/content/docs/reference/auto-list-syntax.md": "",
+      "src/content/docs/reference/auto-list-syntax.md": "---\ndraft: true\n---\n",
+      "public/reference/auto-list-syntax.md": "",
     });
     const { integration } = await runSetup(site.rootDirPath, "build");
 
     const buildDone = runBuildDone(integration, site.rootDirPath, {
       "reference/index.html": pageHtml(`<a href="./auto-list-syntax.md">x</a>`),
-      "reference/auto-list-syntax/index.html": pageHtml(""),
     });
 
     await expect(buildDone).rejects.toThrow(
-      /\.\/auto-list-syntax\.md: raw doc link, but public\/reference\/auto-list-syntax\.md doesn't exist/,
+      /\.\/auto-list-syntax\.md: raw doc link, but \/reference\/auto-list-syntax\.md isn't served\. To link to the page, use \.\/auto-list-syntax\.[\s\S]*is a raw doc link/,
     );
+  });
+
+  it("passes build:done on a raw doc link to a raw doc in the output dir, leaving its extension", async () => {
+    const site = makeSite({
+      "src/content/docs/reference/index.md": "",
+      "src/content/docs/reference/auto-list-syntax.md": "",
+      "dist/reference/auto-list-syntax.md": "",
+    });
+    const { integration } = await runSetup(site.rootDirPath, "build");
+
+    const readDist = await runBuildDone(integration, site.rootDirPath, {
+      "reference/index.html": pageHtml(`<a href="./auto-list-syntax.md">x</a>`),
+      "reference/auto-list-syntax/index.html": pageHtml(""),
+    });
+
+    expect(readDist("reference/index.html")).toContain(
+      `<a href="/reference/auto-list-syntax.md">x</a>`,
+    );
+  });
+
+  it("leaves generated paths alone on build:done, though nothing is at them", async () => {
+    const site = makeSite({ "src/content/docs/guide/intro.md": "" });
+    const { integration } = await runSetup(site.rootDirPath, "build");
+
+    const buildDone = runBuildDone(integration, site.rootDirPath, {
+      "guide/intro/index.html": pageHtml(
+        `<img src="/_image?href=x.png"><img src="/_astro/logo.abc.png">`,
+      ),
+    });
+
+    await expect(buildDone).resolves.toBeDefined();
+  });
+
+  it("passes build:done on a link to a file in the output dir, though it isn't in public/", async () => {
+    const site = makeSite({
+      "src/content/docs/guide/intro.md": "",
+      "src/content/docs/guide/notes.pdf": "",
+      "dist/guide/notes.pdf": "",
+    });
+    const { integration } = await runSetup(site.rootDirPath, "build");
+
+    const buildDone = runBuildDone(integration, site.rootDirPath, {
+      "guide/intro/index.html": pageHtml(`<a href="./notes.pdf">x</a>`),
+    });
+
+    await expect(buildDone).resolves.toBeDefined();
+  });
+
+  it("fails build:done on a link to a file missing from the output dir, though it's in public/", async () => {
+    const site = makeSite({
+      "src/content/docs/guide/intro.md": "",
+      "public/guide/notes.pdf": "",
+    });
+    const { integration } = await runSetup(site.rootDirPath, "build");
+
+    const buildDone = runBuildDone(integration, site.rootDirPath, {
+      "guide/intro/index.html": pageHtml(`<a href="./notes.pdf">x</a>`),
+    });
+
+    await expect(buildDone).rejects.toThrow(/1 broken local link[\s\S]*\.\/notes\.pdf/);
   });
 
   it("does nothing on build:done with validation and normalization off", async () => {
