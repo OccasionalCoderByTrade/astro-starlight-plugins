@@ -6,7 +6,6 @@ import {
   type ServedFileRule,
 } from "../utils/served-file-rule.js";
 import { SERVE_DOCS_FILES_INTEGRATION_NAME } from "../utils/serve-docs-files-integration.js";
-import { SOURCE_DOC_EXTENSIONS } from "../utils/workspace-utils.js";
 
 /** What the route module needs from the integration, passed as JSON through a virtual module. */
 export type TDocsFileRouteSettings = {
@@ -14,17 +13,28 @@ export type TDocsFileRouteSettings = {
   ignorePatterns: string[];
   /** True in dev, where Starlight renders drafts too. */
   serveDrafts: boolean;
+  /** `.md` and `.mdx`, plus `.mdoc` with Markdoc. */
+  sourceDocExtensions: string[];
 };
 
 const UTF8 = "; charset=utf-8";
 
+/** Served as `text/markdown`, whether or not Starlight renders a page from the file. */
+const MARKDOWN_EXTENSIONS = [
+  ".md",
+  ".mdx",
+  ".mdoc",
+  ".markdown",
+  ".mdown",
+  ".mkdn",
+  ".mkd",
+  ".mdwn",
+];
+
 /** Content types by lowercase extension. Anything else is served as `application/octet-stream`. */
 const CONTENT_TYPES: Record<string, string> = {
   ...Object.fromEntries(
-    SOURCE_DOC_EXTENSIONS.map((extension) => [
-      extension,
-      `text/markdown${UTF8}`,
-    ]),
+    MARKDOWN_EXTENSIONS.map((extension) => [extension, `text/markdown${UTF8}`]),
   ),
   ".txt": `text/plain${UTF8}`,
   ".csv": `text/csv${UTF8}`,

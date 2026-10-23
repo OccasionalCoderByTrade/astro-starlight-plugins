@@ -1,10 +1,6 @@
 import { extname, resolve, sep } from "node:path";
 import { minimatch } from "minimatch";
-import {
-  isFile,
-  parseFrontmatter,
-  SOURCE_DOC_EXTENSIONS,
-} from "./workspace-utils.js";
+import { isFile, parseFrontmatter } from "./workspace-utils.js";
 
 /**
  * Decides whether a file or dir is served, given its path relative to the docs directory.
@@ -14,7 +10,8 @@ export type ServedFileRule = (docsRelativeEntryPath: string) => boolean;
 /**
  * The served-file rule for a docs directory. A path relative to it isn't served when any
  * of its segments starts with `_` or `.` or holds `?` or `#`, when it or a parent dir matches one of
- * `ignorePatterns`, or when it's a source doc with `draft: true` and `serveDrafts` is off.
+ * `ignorePatterns`, or when it's a source doc (a file with one of `sourceDocExtensions`) with
+ * `draft: true` and `serveDrafts` is off.
  * Applies to dirs too, so a walk can skip a whole dir. Throws, naming the file, when a
  * source doc's frontmatter can't be parsed, since it can't tell whether that doc is a draft.
  * `serveDrafts` matches Starlight, which renders drafts in dev and drops them from builds.
@@ -26,8 +23,10 @@ export function createServedFileRule(options: {
   docsDirPath: string;
   ignorePatterns: string[];
   serveDrafts: boolean;
+  sourceDocExtensions: string[];
 }): ServedFileRule {
-  const { docsDirPath, ignorePatterns, serveDrafts } = options;
+  const { docsDirPath, ignorePatterns, serveDrafts, sourceDocExtensions } =
+    options;
 
   return (docsRelativeEntryPath) => {
     const segments = docsRelativeEntryPath
@@ -46,10 +45,7 @@ export function createServedFileRule(options: {
     if (isIgnored) return false;
 
     const entryPath = resolve(docsDirPath, docsRelativeEntryPath);
-    if (
-      SOURCE_DOC_EXTENSIONS.includes(extname(entryPath)) &&
-      isFile(entryPath)
-    ) {
+    if (sourceDocExtensions.includes(extname(entryPath)) && isFile(entryPath)) {
       // Parsed even when drafts are served, so unparseable frontmatter fails in both modes
       const isDraft = parseFrontmatter(entryPath).draft === true;
       return serveDrafts || !isDraft;

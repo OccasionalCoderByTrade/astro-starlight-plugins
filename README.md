@@ -333,7 +333,7 @@ import { astroLocalLinks } from "starlight-cannoli-plugins/astro-local-links";
 
 **What counts as an existing target:**
 
-- A source doc. `/reference/schemas` matches `reference/schemas.md(x)` or `reference/schemas/index.md(x)`. Starlight's docs loader also picks up `.markdown`, `.mdown`, `.mkdn`, `.mkd` and `.mdwn` files, and they match too, but Astro 7 only has content entry types for `.md` and `.mdx`. It skips the others ("No entry type found"), so Starlight renders no page for them. `/reference/schemas/index` matches the latter too, as a file-form link (see [Non-slug filenames](#non-slug-filenames)), so link normalization rewrites it to `/reference/schemas`.
+- A source doc. `/reference/schemas` matches `reference/schemas.md(x)` or `reference/schemas/index.md(x)`. Source docs are `.md`, `.mdx`, and `.mdoc` when `@astrojs/markdoc` is in Astro's `integrations`. `/reference/schemas/index` matches the latter too, as a file-form link (see [Non-slug filenames](#non-slug-filenames)), so link normalization rewrites it to `/reference/schemas`.
 - A source doc by its file path, when its filename isn't a slug. See [Non-slug filenames](#non-slug-filenames) below.
 - A file the site serves, like `/static/img/logo.png`. In `astro build` that's any file in the build output: files from `public/`, docs files that [Serve Docs Files](#serve-docs-files) serves, and whatever other integrations write. In `astro dev` it's a file in `public/`, or a file under `src/content/docs/` that Serve Docs Files would serve. Local Links finds Serve Docs Files by its integration name in Astro's `integrations` and uses the same served-file rule, so `_`- or `.`-prefixed files and `ignorePatterns` matches fail in dev just as they would in a build. A raw doc link to a draft passes in dev, where Serve Docs Files serves drafts, and fails in a build. Without Serve Docs Files installed, only `public/` counts in dev.
 
@@ -422,7 +422,7 @@ It does this through one prerendered `/[...path]` route that it adds to the site
 
 **What's served:**
 
-- Every file under the docs directory, with a content type from its extension (source docs, whether `.md`, `.mdx`, `.markdown`, `.mdown`, `.mkdn`, `.mkd` or `.mdwn`, as `text/markdown`, unknown ones as `application/octet-stream`)
+- Every file under the docs directory, with a content type from its extension (source docs and other Markdown files, like `.markdown`, as `text/markdown`, unknown ones as `application/octet-stream`). Source docs are `.md`, `.mdx`, and `.mdoc` when `@astrojs/markdoc` is in Astro's `integrations`.
 - Except any file or directory whose name starts with `_` or `.` (like `_partial.md`, `_assets/` or `.obsidian/`) along with everything under one, and files matching `ignorePatterns`. Docs with `sidebar.hidden` are still served.
 - Files and directories with `?` or `#` in their name aren't served either. Astro decodes request paths with `decodeURI`, which leaves `%3F` and `%23` encoded, so no request reaches such a file. A source doc like `Why? #1.md` still gets its page, just no raw doc.
 - Drafts (`draft: true`) are served in `astro dev` only, the same way Starlight renders a draft's page in dev and leaves it out of the build. `astro build` leaves them out, but files next to a draft are still served.

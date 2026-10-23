@@ -3,7 +3,7 @@
 - Never run `npm publish` or bump a version to the npm package this project implements. I will run those myself when I am ready.
 - You should not merge any changes to main. Changes are made in `dev`, or otherwise in separate local feature branches if needed to then be merged to dev on completion.
 - Run `npm run lib:build` as a sanity check before committing if the code has changed since the previous commit.
-- Be mindful when developing plugins to handle md(x) content files more delicately based on their frontmatter `draft`, `sidebar.hidden`, or filename `**/[^_]*.{md,mdx, markdown,mdown,mkdn,mkd,mdwn}` semantics.
+- Be mindful when developing plugins for Starlight to handle md(x) content files more delicately based on their frontmatter `draft`, `sidebar.hidden`, or filename `**/[^_]*.{md,mdx}` semantics (plus `.mdoc` if Markdoc is installed). The `_` rule only applies to filenames, not folders (eg. `_partials/x.md` still becomes a page).
 - Most plugins will be Astro plugins, but they may not necessarily be intended to work as standalone Astro plugins, since they will assume conventions or implement details that rely on Starlight semantics.
 
 If updating a plugin, or creating a new plugin, make sure to also update README.md in the root of this project to reflect the changes.

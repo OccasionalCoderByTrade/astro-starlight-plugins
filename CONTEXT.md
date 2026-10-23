@@ -53,7 +53,7 @@ Rewriting a relative local link into a root-absolute one, so it means the same t
 _Avoid_: path normalization, link resolution
 
 **Source doc**:
-The Markdown or MDX file a page was rendered from.
+The Markdown, MDX or Markdoc file a page was rendered from. A `.markdown`, `.mdown`, `.mkdn`, `.mkd` or `.mdwn` file never becomes a page, so it's a docs asset.
 _Avoid_: source file, content file
 
 **Page path**:

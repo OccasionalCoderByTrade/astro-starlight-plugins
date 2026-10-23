@@ -36,7 +36,7 @@ export function createOnRequest(
       const shadowedDocError = formatShadowedDocError(
         context.url.pathname,
         context.routePattern,
-        buildSourceDocIndex(settings.site.docsDirPath),
+        buildSourceDocIndex(settings.site),
       );
       if (shadowedDocError) throw new Error(shadowedDocError);
       return response;
@@ -50,7 +50,7 @@ export function createOnRequest(
       context.url.pathname,
       await response.text(),
       settings,
-      buildSourceDocIndex(settings.site.docsDirPath),
+      buildSourceDocIndex(settings.site),
     );
     if (processedPage.pageBrokenLinks) {
       throw new Error(formatBrokenLinksError([processedPage.pageBrokenLinks]));

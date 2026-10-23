@@ -9,6 +9,7 @@ import {
   SERVED_FILE_RULE_HOOK_NAME,
 } from "../utils/serve-docs-files-integration.js";
 import { STARLIGHT_DOC_ROUTE } from "../utils/starlight-routes.js";
+import { getSourceDocExtensions } from "../utils/workspace-utils.js";
 import {
   buildSourceDocIndex,
   formatBrokenLinksError,
@@ -71,6 +72,7 @@ export function astroLocalLinks(
             rootDirPath: fileURLToPath(config.root),
             docsDirPath: fileURLToPath(new URL("content/docs/", config.srcDir)),
             publicDirPath: fileURLToPath(config.publicDir),
+            sourceDocExtensions: getSourceDocExtensions(config.integrations),
             // `/_image` serves optimized images in dev, `/@fs/` and `/@id/` are Vite's
             generatedPathPrefixes: [
               "/_image",
@@ -130,7 +132,7 @@ export function astroLocalLinks(
       "astro:build:done": async ({ dir, assets }) => {
         if (!settings.validate && !settings.normalize) return;
 
-        const sourceDocIndex = buildSourceDocIndex(settings.site.docsDirPath);
+        const sourceDocIndex = buildSourceDocIndex(settings.site);
         const pagePathCollisionsError =
           formatPagePathCollisionsError(sourceDocIndex);
         if (pagePathCollisionsError) throw new Error(pagePathCollisionsError);

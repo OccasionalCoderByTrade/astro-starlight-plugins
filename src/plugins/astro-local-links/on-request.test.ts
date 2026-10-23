@@ -306,16 +306,19 @@ describe("dev middleware", () => {
       "src/content/docs/guide/notes.markdown": "",
       "src/content/docs/guide/draft.md": "---\ndraft: true\n---\n",
       "src/content/docs/guide/upper.MD": "",
-      "src/content/docs/guide/v1.2-notes.mdwn": "",
+      "src/content/docs/guide/v1.2-notes.mdx": "",
       "src/content/docs/guide/_partial.md": "",
       "src/content/docs/guide/.hidden.md": "",
     };
     const body = pageHtml("");
 
     expect(await request("/guide/", body, { files })).toBe(body);
-    expect(await request("/guide/notes/", body, { files })).toBe(body);
     expect(await request("/guide/draft/", body, { files })).toBe(body);
     expect(await request("/guide/v12-notes/", body, { files })).toBe(body);
+    // Astro has no content entry type for .markdown, so Starlight renders no page from it
+    await expect(request("/guide/notes/", body, { files })).rejects.toThrow(
+      /No source doc for \/guide\/notes\//,
+    );
     await expect(request("/guide/_partial/", body, { files })).rejects.toThrow(
       /No source doc for \/guide\/_partial\//,
     );

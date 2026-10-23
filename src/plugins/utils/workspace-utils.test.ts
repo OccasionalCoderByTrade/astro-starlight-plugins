@@ -1,7 +1,25 @@
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { makeFileTree } from "../tests/file-tree.js";
-import { parseFrontmatter } from "./workspace-utils.js";
+import { getSourceDocExtensions, parseFrontmatter } from "./workspace-utils.js";
+
+describe("getSourceDocExtensions", () => {
+  it("is .md and .mdx without Markdoc", () => {
+    expect(getSourceDocExtensions([{ name: "@astrojs/starlight" }])).toEqual([
+      ".md",
+      ".mdx",
+    ]);
+  });
+
+  it("adds .mdoc when the Markdoc integration is in Astro's config", () => {
+    expect(
+      getSourceDocExtensions([
+        { name: "@astrojs/starlight" },
+        { name: "@astrojs/markdoc" },
+      ]),
+    ).toEqual([".md", ".mdx", ".mdoc"]);
+  });
+});
 
 describe("parseFrontmatter", () => {
   it("returns a doc's frontmatter", () => {

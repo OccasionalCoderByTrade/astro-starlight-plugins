@@ -23,7 +23,7 @@ describe("processPage", () => {
 
     const result = processPage(pageHtml(`<a href="./ref/page#usage">x</a>`), {
       sourceDocFilePath: join(site.docsDirPath, "guide/intro.md"),
-      sourceDocIndex: buildSourceDocIndex(site.docsDirPath),
+      sourceDocIndex: buildSourceDocIndex(site),
       site,
       ...VALIDATE_AND_NORMALIZE,
     });
@@ -46,7 +46,7 @@ describe("processPage", () => {
 
     const result = processPage(pageHtml(content), {
       sourceDocFilePath: join(site.docsDirPath, "guide/intro.md"),
-      sourceDocIndex: buildSourceDocIndex(site.docsDirPath),
+      sourceDocIndex: buildSourceDocIndex(site),
       site,
       ...VALIDATE_AND_NORMALIZE,
     });
@@ -64,7 +64,7 @@ describe("processPage", () => {
 
     const result = processPage(html, {
       sourceDocFilePath: join(site.docsDirPath, "guide/intro.md"),
-      sourceDocIndex: buildSourceDocIndex(site.docsDirPath),
+      sourceDocIndex: buildSourceDocIndex(site),
       site,
       ...VALIDATE_AND_NORMALIZE,
     });
@@ -80,7 +80,7 @@ describe("processPage link validation", () => {
     const content = hrefs.map((href) => `<a href="${href}">x</a>`).join("");
     const result = processPage(pageHtml(content), {
       sourceDocFilePath: join(site.docsDirPath, "guide/intro.md"),
-      sourceDocIndex: buildSourceDocIndex(site.docsDirPath),
+      sourceDocIndex: buildSourceDocIndex(site),
       site,
       ...VALIDATE_AND_NORMALIZE,
     });
@@ -136,7 +136,7 @@ describe("processPage link validation", () => {
       pageHtml(`<a href="./missing">x</a>`, `<a href="./chrome-only">y</a>`),
       {
         sourceDocFilePath: join(site.docsDirPath, "guide/intro.md"),
-        sourceDocIndex: buildSourceDocIndex(site.docsDirPath),
+        sourceDocIndex: buildSourceDocIndex(site),
         site,
         ...VALIDATE_AND_NORMALIZE,
       },
@@ -155,7 +155,7 @@ describe("processPage link validation", () => {
       pageHtml(`<template><a href="./missing">x</a></template>`),
       {
         sourceDocFilePath: join(site.docsDirPath, "guide/intro.md"),
-        sourceDocIndex: buildSourceDocIndex(site.docsDirPath),
+        sourceDocIndex: buildSourceDocIndex(site),
         site,
         ...VALIDATE_AND_NORMALIZE,
       },
@@ -170,7 +170,7 @@ describe("processPage link validation", () => {
 
     const result = processPage(pageHtml(`<img src="./assets/gone.png">`), {
       sourceDocFilePath: join(site.docsDirPath, "guide/intro.md"),
-      sourceDocIndex: buildSourceDocIndex(site.docsDirPath),
+      sourceDocIndex: buildSourceDocIndex(site),
       site,
       ...VALIDATE_AND_NORMALIZE,
     });
@@ -179,6 +179,43 @@ describe("processPage link validation", () => {
       "./assets/gone.png",
     ]);
     expect(result.html).toContain(`<img src="/guide/assets/gone.png">`);
+  });
+
+  it("reports a link to a page that only a .markdown file would have, since Starlight renders none", () => {
+    const site = makeSite({
+      "src/content/docs/guide/intro.md": "",
+      "src/content/docs/guide/notes.markdown": "",
+    });
+
+    const result = processPage(pageHtml(`<a href="./notes">x</a>`), {
+      sourceDocFilePath: join(site.docsDirPath, "guide/intro.md"),
+      sourceDocIndex: buildSourceDocIndex(site),
+      site,
+      ...VALIDATE_AND_NORMALIZE,
+    });
+
+    expect(result.brokenLinks.map((brokenLink) => brokenLink.href)).toEqual([
+      "./notes",
+    ]);
+  });
+
+  it("accepts a link to a .mdoc source doc's page when Markdoc is set up", () => {
+    const site = makeSite(
+      {
+        "src/content/docs/guide/intro.md": "",
+        "src/content/docs/guide/notes.mdoc": "",
+      },
+      [".md", ".mdx", ".mdoc"],
+    );
+
+    const result = processPage(pageHtml(`<a href="./notes">x</a>`), {
+      sourceDocFilePath: join(site.docsDirPath, "guide/intro.md"),
+      sourceDocIndex: buildSourceDocIndex(site),
+      site,
+      ...VALIDATE_AND_NORMALIZE,
+    });
+
+    expect(result.brokenLinks).toEqual([]);
   });
 
   it("skips validation for ? links, data-no-link-check and skipPatterns, then strips the markers", () => {
@@ -191,7 +228,7 @@ describe("processPage link validation", () => {
 
     const result = processPage(pageHtml(content), {
       sourceDocFilePath: join(site.docsDirPath, "guide/intro.md"),
-      sourceDocIndex: buildSourceDocIndex(site.docsDirPath),
+      sourceDocIndex: buildSourceDocIndex(site),
       site,
       validate: {
         skipPatterns: ["/csci-320/grade-calculator", "**/draft-*"],
@@ -211,7 +248,7 @@ describe("processPage link validation", () => {
 
     const result = processPage(pageHtml(`<a href="?./draft">a</a>`), {
       sourceDocFilePath: join(site.docsDirPath, "guide/intro.md"),
-      sourceDocIndex: buildSourceDocIndex(site.docsDirPath),
+      sourceDocIndex: buildSourceDocIndex(site),
       site,
       validate: false,
       normalize: false,
@@ -249,7 +286,7 @@ describe("processPage link validation", () => {
       pageHtml(`<a href="./auto-list-syntax.md#usage">x</a>`),
       {
         sourceDocFilePath: join(site.docsDirPath, "guide/intro.md"),
-        sourceDocIndex: buildSourceDocIndex(site.docsDirPath),
+        sourceDocIndex: buildSourceDocIndex(site),
         site,
         ...VALIDATE_AND_NORMALIZE,
       },
@@ -283,7 +320,7 @@ describe("processPage link validation", () => {
 
     const result = processPage(pageHtml(content), {
       sourceDocFilePath: join(site.docsDirPath, "guide/intro.md"),
-      sourceDocIndex: buildSourceDocIndex(site.docsDirPath),
+      sourceDocIndex: buildSourceDocIndex(site),
       site,
       validate: { skipPatterns: [] },
       normalize: false,
@@ -313,7 +350,7 @@ describe("processPage link validation", () => {
       ),
       {
         sourceDocFilePath: join(site.docsDirPath, "guide/intro.md"),
-        sourceDocIndex: buildSourceDocIndex(site.docsDirPath),
+        sourceDocIndex: buildSourceDocIndex(site),
         site,
         ...VALIDATE_AND_NORMALIZE,
       },
@@ -342,7 +379,7 @@ describe("processPage link validation", () => {
       pageHtml(`<a href="./sibling.MD">a</a><a href="/reference.md">b</a>`),
       {
         sourceDocFilePath: join(site.docsDirPath, "guide/intro.md"),
-        sourceDocIndex: buildSourceDocIndex(site.docsDirPath),
+        sourceDocIndex: buildSourceDocIndex(site),
         site,
         ...VALIDATE_AND_NORMALIZE,
       },
@@ -414,7 +451,7 @@ describe("resolveSourceDoc", () => {
       "src/content/docs/reference/index.md": "",
       "src/content/docs/notes/My Notes.md": "",
     });
-    const sourceDocIndex = buildSourceDocIndex(site.docsDirPath);
+    const sourceDocIndex = buildSourceDocIndex(site);
 
     expect(resolveSourceDoc("/", sourceDocIndex)).toBe(
       join(site.docsDirPath, "index.mdx"),
@@ -434,7 +471,7 @@ describe("resolveSourceDoc", () => {
   });
 
   it("throws when a page has no source doc", () => {
-    const sourceDocIndex = buildSourceDocIndex(makeSite({}).docsDirPath);
+    const sourceDocIndex = buildSourceDocIndex(makeSite({}));
 
     expect(() => resolveSourceDoc("/gone/", sourceDocIndex)).toThrow(
       /No source doc for \/gone\//,

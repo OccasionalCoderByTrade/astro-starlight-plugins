@@ -42,6 +42,7 @@ async function request(
     docsDirPath: join(rootDirPath, "src/content/docs"),
     ignorePatterns,
     serveDrafts,
+    sourceDocExtensions: [".md", ".mdx"],
     baseUrlPath,
   });
   const locals = {};
@@ -89,17 +90,17 @@ describe("raw doc alternate link middleware", () => {
     );
   });
 
-  it("keeps the raw doc's source path, URL-encoded, for a non-slug path and any source doc extension", async () => {
+  it("keeps the raw doc's source path, URL-encoded, for a non-slug path", async () => {
     const html = await request(
-      { "src/content/docs/reference/List Syntax cOp&&Y.markdown": "# List" },
+      { "src/content/docs/reference/List Syntax cOp&&Y.mdx": "# List" },
       {
-        entryFilePath: "src/content/docs/reference/List Syntax cOp&&Y.markdown",
+        entryFilePath: "src/content/docs/reference/List Syntax cOp&&Y.mdx",
       },
     );
 
     // Astro decodes a request path with `decodeURI`, so `&` stays raw: `%26` would 404
     expect(rawDocHref(html)).toBe(
-      "/reference/List%20Syntax%20cOp&amp;&amp;Y.markdown",
+      "/reference/List%20Syntax%20cOp&amp;&amp;Y.mdx",
     );
   });
 

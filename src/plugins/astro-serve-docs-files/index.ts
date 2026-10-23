@@ -17,6 +17,7 @@ import {
   SERVE_DOCS_FILES_INTEGRATION_NAME,
   SERVED_FILE_RULE_HOOK_NAME,
 } from "../utils/serve-docs-files-integration.js";
+import { getSourceDocExtensions } from "../utils/workspace-utils.js";
 import type { TDocsFileRouteSettings } from "./docs-file-route.js";
 import {
   createPublicServedPathCollisionMiddleware,
@@ -323,6 +324,7 @@ export function astroServeDocsFiles(
           docsDirPath,
           ignorePatterns,
           serveDrafts: command === "dev",
+          sourceDocExtensions: getSourceDocExtensions(config.integrations),
         };
         publicDirPath = fileURLToPath(config.publicDir);
         ignoresPrerenderConflicts =

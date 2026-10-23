@@ -61,6 +61,7 @@ async function runConfigSetup(
       srcDir: new URL(dirs.srcDir ?? "src/", rootUrl),
       publicDir: new URL(dirs.publicDir ?? "public/", rootUrl),
       base: "/",
+      integrations: [],
       ...otherConfig,
     },
     injectRoute: (route: TInjectedRoute) => injectedRoutes.push(route),
@@ -123,6 +124,7 @@ describe("astroServeDocsFiles config setup", () => {
       docsDirPath: join(rootDirPath, "site-src/content/docs"),
       ignorePatterns: ["scratch"],
       serveDrafts: false,
+      sourceDocExtensions: [".md", ".mdx"],
       baseUrlPath: "",
     });
   });
@@ -509,12 +511,13 @@ describe("astroServeDocsFiles servedFileRule", () => {
   );
 
   it.each([".markdown", ".mdown", ".mkdn", ".mkd", ".mdwn"])(
-    "leaves out a draft with any source doc extension Starlight reads in a build (%s)",
+    "serves a %s file in a build without reading its frontmatter, since it's a docs asset",
     async (extension) => {
       const { integration } = await runConfigSetup(
         {
           [`src/content/docs/draft${extension}`]: "---\ndraft: true\n---\n",
-          [`src/content/docs/page${extension}`]: "---\ntitle: Page\n---\n",
+          [`src/content/docs/broken${extension}`]:
+            "---\ntitle: [unclosed\n---\n",
         },
         {},
         {},
@@ -522,10 +525,34 @@ describe("astroServeDocsFiles servedFileRule", () => {
         "build",
       );
 
-      expect(integration.servedFileRule(`draft${extension}`)).toBe(false);
-      expect(integration.servedFileRule(`page${extension}`)).toBe(true);
+      expect(integration.servedFileRule(`draft${extension}`)).toBe(true);
+      expect(integration.servedFileRule(`broken${extension}`)).toBe(true);
     },
   );
+
+  it("leaves out a .mdoc draft in a build when Markdoc is in the config", async () => {
+    const { integration } = await runConfigSetup(
+      { "src/content/docs/draft.mdoc": "---\ndraft: true\n---\n" },
+      {},
+      {},
+      { integrations: [{ name: "@astrojs/markdoc", hooks: {} }] },
+      "build",
+    );
+
+    expect(integration.servedFileRule("draft.mdoc")).toBe(false);
+  });
+
+  it("serves a .mdoc draft in a build when Markdoc isn't in the config", async () => {
+    const { integration } = await runConfigSetup(
+      { "src/content/docs/draft.mdoc": "---\ndraft: true\n---\n" },
+      {},
+      {},
+      {},
+      "build",
+    );
+
+    expect(integration.servedFileRule("draft.mdoc")).toBe(true);
+  });
 
   it("reads drafts from the docs dir under Astro's srcDir", async () => {
     const { integration } = await runConfigSetup(

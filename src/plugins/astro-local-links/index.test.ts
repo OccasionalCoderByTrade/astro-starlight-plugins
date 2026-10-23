@@ -103,6 +103,7 @@ function fakeServeDocsFilesIntegration(
         docsDirPath,
         ignorePatterns,
         serveDrafts: true,
+        sourceDocExtensions: [".md", ".mdx"],
       }),
     },
   };

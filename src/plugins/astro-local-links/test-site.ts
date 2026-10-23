@@ -4,9 +4,13 @@ import { dirname, join } from "node:path";
 
 /**
  * Test helper: a fresh project root holding `files` (relative path → contents), with the
- * docs and public dirs a Starlight site uses.
+ * docs and public dirs a Starlight site uses. `sourceDocExtensions` defaults to a site
+ * without Markdoc.
  */
-export function makeSite(files: Record<string, string> = {}) {
+export function makeSite(
+  files: Record<string, string> = {},
+  sourceDocExtensions = [".md", ".mdx"],
+) {
   const rootDirPath = mkdtempSync(join(tmpdir(), "local-links-site-"));
   for (const [relativeFilePath, contents] of Object.entries(files)) {
     const filePath = join(rootDirPath, relativeFilePath);
@@ -17,6 +21,7 @@ export function makeSite(files: Record<string, string> = {}) {
     rootDirPath,
     docsDirPath: join(rootDirPath, "src/content/docs"),
     publicDirPath: join(rootDirPath, "public"),
+    sourceDocExtensions,
     generatedPathPrefixes: ["/_image", "/_astro/", "/@"],
   };
 }

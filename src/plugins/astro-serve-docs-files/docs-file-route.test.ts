@@ -25,7 +25,12 @@ function makeRoute(
     writeFileSync(filePath, contents);
   }
   mkdirSync(docsDirPath, { recursive: true });
-  return createDocsFileRoute({ docsDirPath, ignorePatterns, serveDrafts });
+  return createDocsFileRoute({
+    docsDirPath,
+    ignorePatterns,
+    serveDrafts,
+    sourceDocExtensions: [".md", ".mdx"],
+  });
 }
 
 /** Calls the route's `GET` the way Astro does for a request to `relativeFilePath`. */

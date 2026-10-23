@@ -25,19 +25,24 @@ export function parseFrontmatter(filePath: string): TFrontmatter {
   }
 }
 
+const MARKDOC_INTEGRATION_NAME = "@astrojs/markdoc";
+
 /**
- * The extensions Starlight's docs loader reads source docs from. Matched case-sensitively,
- * like the loader's glob.
+ * The extensions source docs have, given Astro's `config.integrations`: `.md` and `.mdx`,
+ * plus `.mdoc` when the Markdoc integration is there, as Starlight's docs loader checks.
+ * Its glob also matches `.markdown`, `.mdown`, `.mkdn`, `.mkd` and `.mdwn`, but Astro has
+ * no content entry type for those and skips them. Match case-sensitively, like the glob.
+ * Called from `astro:config:setup`, so it misses Markdoc added by a later integration's
+ * `updateConfig`, which Starlight, checking once content loads, would see.
  */
-export const SOURCE_DOC_EXTENSIONS = [
-  ".md",
-  ".mdx",
-  ".markdown",
-  ".mdown",
-  ".mkdn",
-  ".mkd",
-  ".mdwn",
-];
+export function getSourceDocExtensions(
+  integrations: { name: string }[],
+): string[] {
+  const hasMarkdoc = integrations.some(
+    ({ name }) => name === MARKDOC_INTEGRATION_NAME,
+  );
+  return hasMarkdoc ? [".md", ".mdx", ".mdoc"] : [".md", ".mdx"];
+}
 
 /**
  * Whether `filePath` is a regular file. False when nothing is at it (or a parent isn't a

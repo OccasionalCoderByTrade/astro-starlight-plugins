@@ -21,7 +21,7 @@ import type { ServedFileRule } from "../utils/served-file-rule.js";
 import { SERVE_DOCS_FILES_INTEGRATION_NAME } from "../utils/serve-docs-files-integration.js";
 import { STARLIGHT_CONTENT_CLASS } from "../utils/starlight-selectors.js";
 import { STARLIGHT_DOC_ROUTE } from "../utils/starlight-routes.js";
-import { isFile, SOURCE_DOC_EXTENSIONS } from "../utils/workspace-utils.js";
+import { isFile } from "../utils/workspace-utils.js";
 
 type TElement = DefaultTreeAdapterTypes.Element;
 type TParentNode = DefaultTreeAdapterTypes.ParentNode;
@@ -31,6 +31,8 @@ export type TLocalLinksSite = {
   rootDirPath: string;
   docsDirPath: string;
   publicDirPath: string;
+  /** The extensions a file under `docsDirPath` needs to be a source doc. */
+  sourceDocExtensions: string[];
   /** Root-absolute URL prefixes Astro and Vite generate (optimized images, bundled assets). */
   generatedPathPrefixes: string[];
 };
@@ -456,7 +458,7 @@ function findRawDocLinkPagePath(
   { site, sourceDocIndex }: TProcessPageOptions,
 ): string | null {
   // the extension match is case-sensitive, like the loader's glob
-  if (!SOURCE_DOC_EXTENSIONS.includes(extname(docsRelativeLinkPath))) {
+  if (!site.sourceDocExtensions.includes(extname(docsRelativeLinkPath))) {
     return null;
   }
   const pagePath = toPagePath(removeExtension(docsRelativeLinkPath).split("/"));
@@ -467,13 +469,22 @@ function findRawDocLinkPagePath(
 }
 
 /**
- * Every source doc under `docsDirPath`, by the page path Astro gives it by default: each
- * path segment slugified, extension dropped, with a trailing `index` dropped. Like
- * Starlight's docs loader, it skips `_`-prefixed files and dotfiles.
+ * Every source doc under the site's `docsDirPath`, by the page path Astro gives it by
+ * default: each path segment slugified, extension dropped, with a trailing `index` dropped.
+ * Like Starlight's docs loader, it skips `_`-prefixed files and dotfiles.
  */
-export function buildSourceDocIndex(docsDirPath: string): TSourceDocIndex {
+export function buildSourceDocIndex({
+  docsDirPath,
+  sourceDocExtensions,
+}: Pick<
+  TLocalLinksSite,
+  "docsDirPath" | "sourceDocExtensions"
+>): TSourceDocIndex {
   const sourceDocIndex: TSourceDocIndex = new Map();
-  for (const sourceDocFilePath of collectSourceDocFilePaths(docsDirPath)) {
+  for (const sourceDocFilePath of collectSourceDocFilePaths(
+    docsDirPath,
+    sourceDocExtensions,
+  )) {
     const pagePath = toSourceDocPagePath(
       relative(docsDirPath, sourceDocFilePath),
     );
@@ -534,7 +545,10 @@ function formatPagePathCollision(
   );
 }
 
-function collectSourceDocFilePaths(dirPath: string): string[] {
+function collectSourceDocFilePaths(
+  dirPath: string,
+  sourceDocExtensions: string[],
+): string[] {
   if (!existsSync(dirPath)) return [];
   return readdirSync(dirPath).flatMap((entryName) => {
     if (entryName.startsWith(".")) return [];
@@ -543,13 +557,13 @@ function collectSourceDocFilePaths(dirPath: string): string[] {
     const entryStats = statSync(entryFileOrDirPath, { throwIfNoEntry: false });
     if (!entryStats) return [];
     if (entryStats.isDirectory()) {
-      return collectSourceDocFilePaths(entryFileOrDirPath);
+      return collectSourceDocFilePaths(entryFileOrDirPath, sourceDocExtensions);
     }
     // the extension match is case-sensitive, like the loader's glob
     const isSourceDoc =
       entryStats.isFile() &&
       !entryName.startsWith("_") &&
-      SOURCE_DOC_EXTENSIONS.includes(extname(entryName));
+      sourceDocExtensions.includes(extname(entryName));
     return isSourceDoc ? [entryFileOrDirPath] : [];
   });
 }
