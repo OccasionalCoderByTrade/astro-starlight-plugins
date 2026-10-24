@@ -31,7 +31,7 @@ Automatically generates a nested Starlight sidebar by recursively scanning direc
 // astro.config.mjs
 import { defineConfig } from "astro/config";
 import starlight from "@astrojs/starlight";
-import { starlightIndexOnlySidebar } from "starlight-cannoli-plugins";
+import { starlightIndexOnlySidebar } from "starlight-cannoli-plugins/starlight-index-only-sidebar";
 
 export default defineConfig({
   integrations: [
@@ -85,7 +85,7 @@ Generates a Starlight sidebar by parsing markdown links out of `index.md` files.
 // astro.config.mjs
 import { defineConfig } from "astro/config";
 import starlight from "@astrojs/starlight";
-import { starlightIndexSourcedSidebar } from "starlight-cannoli-plugins";
+import { starlightIndexSourcedSidebar } from "starlight-cannoli-plugins/starlight-index-sourced-sidebar";
 
 export default defineConfig({
   integrations: [
@@ -180,8 +180,7 @@ astroLatexCompile({
 // astro.config.mjs
 import { defineConfig } from "astro/config";
 import starlight from "@astrojs/starlight";
-import { astroLatexCompile } from "starlight-cannoli-plugins";
-// or: import { astroLatexCompile } from "starlight-cannoli-plugins/astro-latex-compile";
+import { astroLatexCompile } from "starlight-cannoli-plugins/astro-latex-compile";
 
 export default defineConfig({
   integrations: [
@@ -285,7 +284,7 @@ This is especially useful when headings contain inline math or other syntax that
 ```ts
 // astro.config.mjs
 import { defineConfig } from "astro/config";
-import { remarkGfmSlug } from "starlight-cannoli-plugins";
+import remarkGfmSlug from "starlight-cannoli-plugins/remark-gfm-slug";
 
 export default defineConfig({
   markdown: {
@@ -313,17 +312,11 @@ Both run on each page's final HTML, in dev and in build. That means they cover M
 // astro.config.mjs
 import { defineConfig } from "astro/config";
 import starlight from "@astrojs/starlight";
-import { astroLocalLinks } from "starlight-cannoli-plugins";
+import { astroLocalLinks } from "starlight-cannoli-plugins/astro-local-links";
 
 export default defineConfig({
   integrations: [astroLocalLinks(), starlight({ title: "My Docs" })],
 });
-```
-
-Or import directly:
-
-```ts
-import { astroLocalLinks } from "starlight-cannoli-plugins/astro-local-links";
 ```
 
 **Options:**
@@ -436,7 +429,7 @@ It does this through one prerendered `/[...path]` route that it adds to the site
 // astro.config.mjs
 import { defineConfig } from "astro/config";
 import starlight from "@astrojs/starlight";
-import { astroServeDocsFiles } from "starlight-cannoli-plugins";
+import { astroServeDocsFiles } from "starlight-cannoli-plugins/astro-serve-docs-files";
 
 export default defineConfig({
   integrations: [astroServeDocsFiles(), starlight({ title: "My Docs" })],
@@ -491,7 +484,7 @@ An Astro integration that injects a client-side script to apply opt-in DOM patch
 // astro.config.mjs
 import { defineConfig } from "astro/config";
 import starlight from "@astrojs/starlight";
-import { starlightDomPatches } from "starlight-cannoli-plugins";
+import { starlightDomPatches } from "starlight-cannoli-plugins/starlight-dom-patches";
 
 export default defineConfig({
   integrations: [
@@ -528,7 +521,7 @@ Register the plugin with Expressive Code:
 // astro.config.mjs
 import { defineConfig } from "astro/config";
 import starlight from "@astrojs/starlight";
-import { expressiveCodeEmphasis } from "starlight-cannoli-plugins";
+import { expressiveCodeEmphasis } from "starlight-cannoli-plugins/expressive-code-emphasis";
 
 export default defineConfig({
   integrations: [
@@ -571,6 +564,8 @@ With yarn:
 ```bash
 yarn add starlight-cannoli-plugins
 ```
+
+Every plugin has its own subpath (`starlight-cannoli-plugins/<plugin-name>`), as in the usage examples above. Prefer it over the root `starlight-cannoli-plugins` import, which loads every plugin's dependencies, including optional peers like `@expressive-code/core`.
 
 ## Peer Dependencies
 
