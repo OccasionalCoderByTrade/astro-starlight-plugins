@@ -92,6 +92,7 @@ export default defineConfig({
           maxGroupLevels: 2, // optional
           indexMarker: { text: "Index", variant: "note" }, // optional
           collapsed: false, // optional
+          linkScope: "below", // optional
         }),
       ],
     }),
@@ -134,6 +135,7 @@ title: Guides
 - `maxGroupLevels` (optional, default: unlimited): The most levels of groups, the root group included. `1` puts everything flat under the root group, `2` keeps one level of nested groups, and so on. A sub-index link whose group would go past the limit has its entries flattened into the parent group. Must be an integer of at least 1.
 - `indexMarker` (optional, default: `undefined`): A Starlight badge (`{ text, variant }`) shown on every index entry to tell it apart from regular sidebar entries. When set, it replaces an index entry's own `sidebar.badge`. `variant` is one of `"note"`, `"tip"`, `"caution"`, `"danger"`, `"success"` or `"default"`. Example: `{ text: "Index", variant: "note" }`.
 - `collapsed` (optional, default: `true`): Whether sidebar groups start collapsed. Starlight still expands the group holding the current page.
+- `linkScope` (optional, default: `"anywhere"`): Where a sidebar index's links may point. `"anywhere"` keeps links to anywhere in the docs root. `"below"` keeps only links inside the linking sidebar index's own directory, so from `guides/index.md`, `./setup`, `./advanced/` and `/guides/setup` count, but `../reference/` and `/reference/faq` are skipped with a warning. Links to the sidebar index's own directory or an ancestor directory are skipped with a warning either way (see **Link conventions**).
 
 **Startup errors:**
 
@@ -144,18 +146,19 @@ These fail `astro dev` and `astro build` at startup, with a message naming the p
 - the same directory listed twice (e.g. `"guides"` and `"./guides/"`)
 - a `directories` entry with no sidebar index (`index.md`, `index.mdx`, or `index.mdoc` when Markdoc is installed)
 - a `maxGroupLevels` that isn't an integer of at least 1, `Infinity` and `null` included (leave it unset for unlimited)
+- a `linkScope` that isn't `"anywhere"` or `"below"`
 
 **Link conventions:**
 
-- Links to sub-sections are sub-index links: they end in `/index` (with or without an extension) or `/`, e.g. `[Subtopic](./subtopic/index)` or `[Subtopic](./subtopic/)`. A link to `.` or `..` is a sub-index link too, to that folder's sidebar index (so usually an ancestor, which warns). The plugin recurses into the target's sidebar index unless it's a leaf index.
-- A root-absolute link equal to `base` (`/docs` on a site with base `/docs`) is a sub-index link to the docs root's sidebar index.
+- Links to sub-sections are sub-index links: they end in `/index` (with or without an extension) or `/`, e.g. `[Subtopic](./subtopic/index)` or `[Subtopic](./subtopic/)`. The plugin recurses into the target's sidebar index unless it's a leaf index.
+- A link to the sidebar index's own directory, or to any directory above it up to the docs root, gives no entry and logs a warning. That covers the directory itself and its sidebar index. From `guides/advanced/index.md`, `.`, `./`, `..`, `../`, `../index.md`, `../../`, `/` and `/guides/` are all skipped this way, and so is `/docs` on a site with base `/docs`. This holds whether or not the directory is one of the sidebar indexes above in the sidebar, so a root group for `guides/advanced` never expands `guides/` from a `..` link. A link that goes up and then sideways or down, like `../setup.md` or `../../reference/`, still counts.
 - A folder link (`./subtopic/`) whose folder has no sidebar index logs a warning and adds nothing. It doesn't fall back to a sibling `subtopic.md`.
 - All other links to source docs become flat page entries
 - Links are found by parsing the markdown body, whatever the sidebar index's extension
 
 Link forms that count:
 
-- Relative file-form links, with or without the extension: `./setup`, `./setup.md`, `../other/page`. A file whose name has a dot in it must be linked with its extension: `./v1.2.md`, not `./v1.2`, which counts as a link to a docs asset.
+- Relative file-form links, with or without the extension: `./setup`, `./setup.md`, `../other/page`. A file whose name has a dot in it works either way: `./v1.2` reaches `v1.2.md` when there's no file named `v1.2`.
 - Root-absolute links, resolved against the docs root: `/guides/setup`. On a site with a `base` (say `/docs`), a link that starts with it has it stripped first, so `/docs/guides/setup` works too.
 - Percent-encoded links, which are decoded: `./my%20page` reaches `my page.md`
 - Reference-style links, through their definitions: `[Setup][setup]`, `[Setup][]` or `[Setup]` with `[setup]: ./setup` somewhere in the file. Entries follow the order the references appear, not the definitions.
@@ -170,7 +173,7 @@ Skipped silently:
 
 - External links: any `scheme:` link (`https:`, `mailto:`, `tel:`, `ftp:`, ...) and protocol-relative `//` links
 - Same-page anchors (`#section`)
-- Links to docs assets: links with an extension that isn't a source doc extension (images, PDFs, `./v1.2`, etc.). No source doc extension is tried, so `./manual.pdf` never reaches `manual.pdf.md`.
+- Links to docs assets: links with an extension that isn't a source doc extension, when that exact file exists (images, PDFs, etc.). So `./manual.pdf` never reaches `manual.pdf.md` while `manual.pdf` exists. When no such file exists, each source doc extension is tried instead, and the link warns if none of them exists either.
 - Links to pages hidden from sidebar (`draft: true` or `sidebar.hidden: true`)
 
 Skipped with a warning naming the sidebar index and the link:
@@ -179,7 +182,9 @@ Skipped with a warning naming the sidebar index and the link:
 - A link that resolves outside the docs root (`../../x.md`, `/../x`)
 - A link to a `_`-prefixed file
 - A folder link whose folder has no sidebar index
+- A link to the sidebar index's own directory or an ancestor directory (`.`, `..`, `../index.md`, `/`)
 - A sub-index link back to an ancestor sidebar index
+- With `linkScope: "below"`, a link outside the sidebar index's own directory
 
 These are only warnings. If you also use [`astroLocalLinks`](#local-links), broken links keep failing there, on the final HTML.
 
@@ -220,7 +225,7 @@ These apply to both sidebar plugins unless marked otherwise.
 - **Labels prefer `sidebar.label`.** Entry labels are now `sidebar.label`, then `title`, then the filename (for `starlightIndexOnlySidebar`, only with `dirnameDeterminesLabels: false`). Entries also show `sidebar.badge` now.
 - **`pagefind: false` no longer hides entries** (`starlightIndexSourcedSidebar`). It only keeps a page out of search, as in Starlight. Use `sidebar.hidden: true` to hide an entry. `draft: true` and `sidebar.hidden: true` still hide, in dev and build alike.
 - **`index.mdx` sub-indexes now expand** (`starlightIndexSourcedSidebar`). A sub-index link to `index.mdx` used to become a single entry, and now expands into a nested group like `index.md`. To keep the old behaviour, add `indexSourcedSidebar: { leaf: true }` to the `index.mdx` frontmatter (see [Leaf indexes](#leaf-indexes)).
-- **More links count, and repeats are kept** (`starlightIndexSourcedSidebar`). Folder links (`./sub/`), root-absolute links (`/guides/setup`) and percent-encoded links (`./my%20page`) used to be dropped silently and now add entries. A directory linked from two sidebar indexes used to appear only under the first, and now appears under both. Broken links now log a warning instead of vanishing.
+- **More links count, and repeats are kept** (`starlightIndexSourcedSidebar`). Folder links (`./sub/`), root-absolute links (`/guides/setup`) and percent-encoded links (`./my%20page`) used to be dropped silently and now add entries. A directory linked from two sidebar indexes used to appear only under the first, and now appears under both. Broken links now log a warning instead of vanishing. Links to the sidebar index's own directory or an ancestor directory (`.`, `..`, `../index.md`, `/`) give no entry and warn.
 - **`indexMarker` docs are corrected** (`starlightIndexSourcedSidebar`). It was documented as a string prepended to the label, but it has always been a `{ text, variant }` badge. If you passed a string, pass `{ text: "★", variant: "default" }` instead.
 - **Subpath imports.** `starlightIndexSourcedSidebar` now has its own subpath export, `starlight-cannoli-plugins/starlight-index-sourced-sidebar`, like `starlightIndexOnlySidebar` (`starlight-cannoli-plugins/starlight-index-only-sidebar`). Importing from the package root still works, but it loads every plugin's dependencies, so switch to the subpath.
 

@@ -940,35 +940,6 @@ describe("starlightIndexSourcedSidebar link forms", () => {
     ]);
   });
 
-  it("treats a root-absolute link equal to base as a sub-index link to the docs root", async () => {
-    const { setup } = runSetup(
-      {
-        "index.md": "---\ntitle: Home\n---\n",
-        "guides/index.md": "---\ntitle: Guides\n---\n\n[Home](/docs)\n",
-      },
-      { directories: ["guides"] },
-      { base: "/docs" },
-    );
-
-    const { sidebar, warnings } = await setup();
-
-    expect(sidebar).toEqual([
-      {
-        label: "Guides",
-        collapsed: true,
-        items: [
-          { label: "Guides", slug: "guides" },
-          {
-            label: "Docs",
-            collapsed: true,
-            items: [{ label: "Home", slug: "" }],
-          },
-        ],
-      },
-    ]);
-    expect(warnings).toEqual([]);
-  });
-
   it.each(["../../outside.md", "/../outside"])(
     "warns and adds nothing for a link %s that resolves outside the docs root",
     async (href) => {
@@ -997,12 +968,12 @@ describe("starlightIndexSourcedSidebar link forms", () => {
     },
   );
 
-  it("skips a link with a non-source-doc extension without trying source doc extensions", async () => {
+  it("skips a link with a non-source-doc extension silently when that exact file exists", async () => {
     const { setup } = runSetup(
       {
         "guides/index.md":
-          "---\ntitle: Guides\n---\n\n[Old](./v1.2) [Manual](./manual.pdf) [New](./v2.0.md)\n",
-        "guides/v1.2.md": "---\ntitle: V1.2\n---\n",
+          "---\ntitle: Guides\n---\n\n[Manual](./manual.pdf) [New](./v2.0.md)\n",
+        "guides/manual.pdf": "pdf",
         "guides/manual.pdf.md": "---\ntitle: Manual\n---\n",
         "guides/v2.0.md": "---\ntitle: V2.0\n---\n",
       },
@@ -1022,6 +993,33 @@ describe("starlightIndexSourcedSidebar link forms", () => {
       },
     ]);
     expect(warnings).toEqual([]);
+  });
+
+  it("tries source doc extensions on a link with a non-source-doc extension and no such file", async () => {
+    const { setup } = runSetup(
+      {
+        "guides/index.md":
+          "---\ntitle: Guides\n---\n\n[Old](./v1.2) [Gone](./v3.1)\n",
+        "guides/v1.2.md": "---\ntitle: V1.2\n---\n",
+      },
+      { directories: ["guides"] },
+    );
+
+    const { sidebar, warnings } = await setup();
+
+    expect(sidebar).toEqual([
+      {
+        label: "Guides",
+        collapsed: true,
+        items: [
+          { label: "Guides", slug: "guides" },
+          { label: "V1.2", slug: "guides/v12" },
+        ],
+      },
+    ]);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain('"./v3.1"');
+    expect(warnings[0]).toContain("no source doc exists there");
   });
 
   it("percent-decodes a link", async () => {
@@ -1121,4 +1119,226 @@ describe("starlightIndexSourcedSidebar link forms", () => {
     ]);
     expect(warnings).toEqual([]);
   });
+});
+
+describe("starlightIndexSourcedSidebar linkScope", () => {
+  const SCOPED_DOCS_FILES = {
+    "guides/index.md": [
+      "---\ntitle: Guides\n---\n",
+      "- [Setup](./setup)",
+      "- [Advanced](./advanced/)",
+      "- [Also Setup](/guides/setup)",
+      "- [Reference](../reference/)",
+      "- [Faq](/reference/faq)",
+      "",
+    ].join("\n"),
+    "guides/setup.md": "---\ntitle: Setup\n---\n",
+    "guides/advanced/index.md":
+      "---\ntitle: Advanced\n---\n\n[Tips](./tips) [Setup](../setup)\n",
+    "guides/advanced/tips.md": "---\ntitle: Tips\n---\n",
+    "reference/index.md": "---\ntitle: Reference\n---\n",
+    "reference/faq.md": "---\ntitle: Faq\n---\n",
+  };
+
+  it('drops links outside the linking sidebar index\'s directory with a warning when "below"', async () => {
+    const { setup } = runSetup(SCOPED_DOCS_FILES, {
+      directories: ["guides"],
+      linkScope: "below",
+    });
+
+    const { sidebar, warnings } = await setup();
+
+    expect(sidebar).toEqual([
+      {
+        label: "Guides",
+        collapsed: true,
+        items: [
+          { label: "Guides", slug: "guides" },
+          { label: "Setup", slug: "guides/setup" },
+          {
+            label: "Advanced",
+            collapsed: true,
+            items: [
+              { label: "Advanced", slug: "guides/advanced" },
+              { label: "Tips", slug: "guides/advanced/tips" },
+            ],
+          },
+          { label: "Setup", slug: "guides/setup" },
+        ],
+      },
+    ]);
+    expect(warnings).toHaveLength(3);
+    expect(warnings[0]).toContain("guides/advanced/index.md");
+    expect(warnings[0]).toContain('"../setup"');
+    expect(warnings[1]).toContain("guides/index.md");
+    expect(warnings[1]).toContain('"../reference/"');
+    expect(warnings[2]).toContain('"/reference/faq"');
+    for (const warning of warnings) expect(warning).toContain("linkScope");
+  });
+
+  it.each([undefined, "anywhere" as const])(
+    "keeps links anywhere in the docs root when linkScope is %s",
+    async (linkScope) => {
+      const { setup } = runSetup(SCOPED_DOCS_FILES, {
+        directories: ["guides"],
+        linkScope,
+      });
+
+      const { sidebar, warnings } = await setup();
+
+      expect(sidebar).toEqual([
+        {
+          label: "Guides",
+          collapsed: true,
+          items: [
+            { label: "Guides", slug: "guides" },
+            { label: "Setup", slug: "guides/setup" },
+            {
+              label: "Advanced",
+              collapsed: true,
+              items: [
+                { label: "Advanced", slug: "guides/advanced" },
+                { label: "Tips", slug: "guides/advanced/tips" },
+                { label: "Setup", slug: "guides/setup" },
+              ],
+            },
+            { label: "Setup", slug: "guides/setup" },
+            {
+              label: "Reference",
+              collapsed: true,
+              items: [{ label: "Reference", slug: "reference" }],
+            },
+            { label: "Faq", slug: "reference/faq" },
+          ],
+        },
+      ]);
+      expect(warnings).toEqual([]);
+    },
+  );
+
+  it.each(["above", "", null, 1])(
+    "throws at startup when linkScope is %s",
+    async (linkScope) => {
+      const { setup } = runSetup(SCOPED_DOCS_FILES, {
+        directories: ["guides"],
+        linkScope: linkScope as unknown as "below",
+      });
+
+      await expect(setup()).rejects.toThrow(
+        `${PLUGIN_PREFIX} linkScope must be "anywhere" or "below", got ${JSON.stringify(linkScope)}`,
+      );
+    },
+  );
+});
+
+describe("starlightIndexSourcedSidebar ancestor links", () => {
+  /** guides/advanced/index.md whose only link is `href`, next to docs it could reach. */
+  function ancestorLinkDocsFiles(href: string) {
+    return {
+      "index.md": "---\ntitle: Home\n---\n",
+      "guides/index.md": "---\ntitle: Guides\n---\n\n[Setup](./setup)\n",
+      "guides/setup.md": "---\ntitle: Setup\n---\n",
+      "guides/advanced/index.md": `---\ntitle: Advanced\n---\n\n[Link](${href})\n`,
+      "reference/index.md": "---\ntitle: Reference\n---\n",
+    };
+  }
+  const ADVANCED_ONLY_SIDEBAR = [
+    {
+      label: "Advanced",
+      collapsed: true,
+      items: [{ label: "Advanced", slug: "guides/advanced" }],
+    },
+  ];
+
+  it.each([
+    [".", "/"],
+    ["./", "/"],
+    ["./index.md", "/"],
+    ["..", "/"],
+    ["../", "/"],
+    ["../index", "/"],
+    ["../index.md", "/"],
+    ["../../", "/"],
+    ["../../index.md", "/"],
+    ["/", "/"],
+    ["/guides", "/"],
+    ["/guides/", "/"],
+    ["/guides/advanced/", "/"],
+    ["/docs", "/docs"],
+    ["/docs/", "/docs"],
+    ["/docs/guides/", "/docs"],
+  ])(
+    "warns and adds nothing for a link %s to an ancestor directory (base %s)",
+    async (href, base) => {
+      const { setup } = runSetup(
+        ancestorLinkDocsFiles(href),
+        { directories: ["guides/advanced"] },
+        { base },
+      );
+
+      const { sidebar, warnings } = await setup();
+
+      expect(sidebar).toEqual(ADVANCED_ONLY_SIDEBAR);
+      expect(warnings).toHaveLength(1);
+      expect(warnings[0]).toContain("guides/advanced/index.md");
+      expect(warnings[0]).toContain(`"${href}"`);
+      expect(warnings[0]).toContain("ancestor");
+    },
+  );
+
+  it("warns once and adds no nested group for a root-absolute link to its own folder", async () => {
+    const { setup } = runSetup(
+      {
+        "guides/index.md":
+          "---\ntitle: Guides\n---\n\n[Self](/guides/) [Setup](./setup)\n",
+        "guides/setup.md": "---\ntitle: Setup\n---\n",
+      },
+      { directories: ["guides"] },
+    );
+
+    const { sidebar, warnings } = await setup();
+
+    expect(sidebar).toEqual([
+      {
+        label: "Guides",
+        collapsed: true,
+        items: [
+          { label: "Guides", slug: "guides" },
+          { label: "Setup", slug: "guides/setup" },
+        ],
+      },
+    ]);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain('"/guides/"');
+  });
+
+  it.each([
+    ["../setup.md", { label: "Setup", slug: "guides/setup" }],
+    [
+      "../../reference/",
+      {
+        label: "Reference",
+        collapsed: true,
+        items: [{ label: "Reference", slug: "reference" }],
+      },
+    ],
+  ])(
+    "keeps a link %s that goes up then to a non-ancestor",
+    async (href, entry) => {
+      const { setup } = runSetup(ancestorLinkDocsFiles(href), {
+        directories: ["guides/advanced"],
+      });
+
+      const { sidebar, warnings } = await setup();
+
+      expect(sidebar).toEqual([
+        {
+          label: "Advanced",
+          collapsed: true,
+          items: [{ label: "Advanced", slug: "guides/advanced" }, entry],
+        },
+      ]);
+      expect(warnings).toEqual([]);
+    },
+  );
 });
