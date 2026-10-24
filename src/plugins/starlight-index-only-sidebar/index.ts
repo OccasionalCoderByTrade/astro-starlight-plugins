@@ -1,8 +1,9 @@
 import type { HookParameters } from "@astrojs/starlight/types";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { getIndexMdSidebarItems } from "./utils";
-import type { TGroupedItem } from "./types";
+import { normalizeSidebarSlug } from "../utils/sidebar-slugs.js";
+import type { TSidebarGroup, TSidebarItem } from "../utils/sidebar-types.js";
+import { getIndexMdSidebarItems } from "./utils.js";
 
 /**
  * Configuration options for sidebar generation behavior.
@@ -38,15 +39,6 @@ type TIndexOnlySidebarPluginOptions = TOptions & {
   directories: string[];
 };
 
-type TSidebarItem =
-  | { label: string; slug: string }
-  | { label: string; items: TSidebarItem[] };
-
-function normalizeSlug(slug: string): string {
-  // Starlight expects slugs without "/index" suffix
-  return slug.endsWith("/index") ? slug.slice(0, -6) : slug;
-}
-
 function normalizeItems(items: TSidebarItem[]): TSidebarItem[] {
   return items.map((item) => {
     if ("items" in item) {
@@ -58,7 +50,7 @@ function normalizeItems(items: TSidebarItem[]): TSidebarItem[] {
     if ("slug" in item) {
       return {
         label: item.label,
-        slug: normalizeSlug(item.slug),
+        slug: normalizeSidebarSlug(item.slug),
       };
     }
     return item;
@@ -116,7 +108,7 @@ export function starlightIndexOnlySidebar(
             };
           })
           .filter(
-            (group): group is TGroupedItem =>
+            (group): group is TSidebarGroup =>
               group !== undefined && group.items.length > 0,
           ); // remove empty groups
 

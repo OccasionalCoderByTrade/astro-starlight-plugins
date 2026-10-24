@@ -14,10 +14,10 @@ See the spec: Implementation Decisions › Shared utils.
 
 **Blocked by:** 02
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Neither sidebar plugin defines its own copy of the shared helpers or types
-- [ ] `starlightIndexOnlySidebar` builds on a site with a custom `srcDir`
-- [ ] `starlightIndexOnlySidebar` tests run through its `config:setup` hook
-- [ ] The sidebar output of both plugins is unchanged for the existing cases
-- [ ] `npm run lib:build` and `npm test` pass
+- [x] Neither sidebar plugin defines its own copy of the shared helpers or types
+- [x] `starlightIndexOnlySidebar` builds on a site with a custom `srcDir`
+- [x] `starlightIndexOnlySidebar` tests run through its `config:setup` hook
+- [x] The sidebar output of both plugins is unchanged for the existing cases
+- [x] `npm run lib:build` and `npm test` pass
