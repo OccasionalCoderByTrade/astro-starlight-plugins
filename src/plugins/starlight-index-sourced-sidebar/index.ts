@@ -7,58 +7,83 @@ import { getIndexSourcedSidebarGroup } from "./utils.js";
 
 type TOptions = {
   /**
-   * The most levels of groups the sidebar can have, the root group included, so `1` puts
-   * every entry flat under the root group. A sub-index link whose group would go past the
-   * limit has its entries flattened into the parent group. Must be an integer of at least 1.
-   * When undefined, groups nest without limit.
-   */
-  maxGroupLevels?: number;
-
-  /**
-   * Array of directory names (relative to the docs root, `content/docs/` under Astro's
-   * `srcDir`) to generate sidebar groups for. Each directory must contain an index.md or
-   * index.mdx whose links define the sidebar content.
+   * Array of directory names, relative to the docs root (`content/docs/` under Astro's
+   * `srcDir`, so `src/content/docs` by default), to generate sidebar groups for. Each
+   * directory must contain a sidebar index (`index.md`, `index.mdx`, or `index.mdoc` when
+   * `@astrojs/markdoc` is installed) whose links define the group's entries. An entry that
+   * resolves outside the docs root, doesn't exist, has no sidebar index, or is listed twice
+   * fails startup.
    * @example ["guides", "reference"]
    */
   directories: string[];
 
   /**
-   * A badge (`{ text, variant }`) shown on every index entry to tell it apart from regular
-   * sidebar entries. `variant` is one of Starlight's badge variants. When undefined, index
-   * entries get no badge.
+   * The most levels of groups the sidebar can have, the root group included. `1` puts every
+   * entry flat under the root group, `2` keeps one level of nested groups, and so on. A
+   * sub-index link whose group would go past the limit has its entries flattened into the
+   * parent group. Must be an integer of at least 1, or startup fails. When undefined, groups
+   * nest without limit.
+   */
+  maxGroupLevels?: number;
+
+  /**
+   * A Starlight badge (`{ text, variant }`) shown on every index entry to tell it apart from
+   * regular sidebar entries. When set, it replaces an index entry's own `sidebar.badge`.
+   * `variant` is one of `"note"`, `"tip"`, `"caution"`, `"danger"`, `"success"` or
+   * `"default"`. When undefined, index entries show their own `sidebar.badge`, if any.
    * @example { text: "Index", variant: "note" }
    */
   indexMarker?: TSidebarBadge;
 
   /**
-   * Whether sidebar groups should be collapsed by default. Starlight automatically expands
-   * the group containing the current page regardless of this setting.
+   * Whether sidebar groups start collapsed. Starlight still expands the group holding the
+   * current page.
    * @default true
    */
   collapsed?: boolean;
 };
 
 /**
- * Starlight plugin that generates a sidebar by parsing markdown links from index.md files.
+ * Starlight plugin that builds a sidebar from the markdown links written in each listed
+ * directory's sidebar index (`index.md`, `index.mdx`, or `index.mdoc` when Markdoc is
+ * installed).
  *
- * For each directory, the plugin reads its index.md and uses the links found there as sidebar
- * entries. Sub-index links (ending in `/index` or `/`) are recursed into whatever the target
- * sidebar index's extension, creating nested groups up to maxGroupLevels levels of groups,
+ * A group's entries are its index entry, then one entry per link, in the order written.
+ * Sub-index links (ending in `/index`, with or without an extension, or `/`) expand into a
+ * nested group whatever the target's extension, up to `maxGroupLevels` levels of groups,
  * unless the target's frontmatter has `indexSourcedSidebar: { leaf: true }`, which makes it a
- * single entry. A link back to an ancestor sidebar index is skipped with a warning. All other
- * links become leaf items. Inline and reference-style markdown links count, relative or
- * root-absolute (with Astro's `base` stripped), percent-decoded; JSX and HTML links don't.
- * External (`scheme:` or `//`) links, anchors and docs assets are skipped silently, and a
- * link to a missing source doc is skipped with a warning. Entries are labelled `sidebar.label`, then `title`, then the
- * filename, and show `sidebar.badge` (an index entry shows `indexMarker` instead, when set);
- * groups take their directory name. The docs root is `content/docs/` under Astro's
- * `srcDir`.
+ * single entry with the index marker (ignored on a root sidebar index). Other links to source
+ * docs become page entries.
+ *
+ * Inline and reference-style markdown links count: relative file-form links, root-absolute
+ * links (resolved against the docs root, with Astro's `base` stripped) and percent-encoded
+ * links, with query strings and anchors stripped. JSX and HTML links and page-form links
+ * don't. External (`scheme:` or `//`) links, same-page anchors, docs assets and pages hidden
+ * from sidebar are skipped silently. A link to a missing source doc, a `_`-prefixed file, a
+ * folder with no sidebar index, or an ancestor sidebar index is skipped with a warning naming
+ * the sidebar index and the link.
+ *
+ * A source doc is hidden from sidebar when its frontmatter has `draft: true` or
+ * `sidebar.hidden: true`, in dev and build alike (on purpose, unlike Starlight's dev
+ * rendering of drafts). A hidden sidebar index drops its whole group. `pagefind: false` hides
+ * nothing.
+ *
+ * Each entry's slug is the source doc's `slug:` frontmatter, or else its page path (each
+ * segment slugified the way Starlight does, trailing `/index` dropped). Entries are labelled
+ * `sidebar.label`, then `title`, then the filename, and show `sidebar.badge` (an index entry
+ * shows `indexMarker` instead, when set). Groups take their directory name.
+ *
+ * Bad options, missing directories and missing root sidebar indexes fail `astro dev` and
+ * `astro build` at startup.
  *
  * @example
+ * import { starlightIndexSourcedSidebar } from "starlight-cannoli-plugins/starlight-index-sourced-sidebar";
+ *
  * starlightIndexSourcedSidebar({
- *   maxGroupLevels: 2,
  *   directories: ["guides", "reference"],
+ *   maxGroupLevels: 2,
  *   indexMarker: { text: "Index", variant: "note" },
+ *   collapsed: false,
  * })
  */
 export function starlightIndexSourcedSidebar(options: TOptions) {
