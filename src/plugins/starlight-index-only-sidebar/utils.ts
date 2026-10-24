@@ -1,21 +1,21 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { buildSidebarEntry } from "../utils/sidebar-entries.js";
+import {
+  buildSidebarEntry,
+  type TSidebarSourceDocFrontmatter,
+} from "../utils/sidebar-entries.js";
 import { findSidebarIndexFile } from "../utils/sidebar-index.js";
 import {
   pathSegmentToLabel,
   sidebarEntryLabel,
-  type TSidebarEntryFrontmatter,
 } from "../utils/sidebar-labels.js";
-import type { TSidebarGroup, TSidebarItem } from "../utils/sidebar-types.js";
+import type {
+  TSidebarEntry,
+  TSidebarGroup,
+  TSidebarItem,
+} from "../utils/sidebar-types.js";
 import { isHiddenFromSidebar } from "../utils/sidebar-visibility.js";
-import {
-  isDir,
-  parseFrontmatter,
-  type TSourceDocFrontmatter,
-} from "../utils/workspace-utils.js";
-
-type TFrontmatter = TSourceDocFrontmatter & TSidebarEntryFrontmatter;
+import { isDir, parseFrontmatter } from "../utils/workspace-utils.js";
 
 export type TIndexOnlySidebarOptions = {
   /** Absolute path of Starlight's docs root (`content/docs/` under Astro's `srcDir`). */
@@ -60,6 +60,33 @@ function isGroupItem(item: TSidebarItem): boolean {
 }
 
 /**
+ * The index entry for `dirPath`'s sidebar index, labelled by `labelFor`, or undefined when
+ * the directory has no sidebar index or it's hidden from sidebar.
+ */
+function buildIndexEntry(
+  dirPath: string,
+  options: TBuildItemsOptions,
+  labelFor: (frontmatter: TSidebarSourceDocFrontmatter) => string,
+): TSidebarEntry | undefined {
+  const indexFilePath = findSidebarIndexFile(
+    dirPath,
+    options.sourceDocExtensions,
+  );
+  if (!indexFilePath) return undefined;
+
+  const frontmatter =
+    parseFrontmatter<TSidebarSourceDocFrontmatter>(indexFilePath);
+  if (isHiddenFromSidebar(frontmatter)) return undefined;
+
+  return buildSidebarEntry({
+    label: labelFor(frontmatter),
+    docsDirPath: options.docsDirPath,
+    sourceDocFilePath: indexFilePath,
+    frontmatter,
+  });
+}
+
+/**
  * The items of the group for `dirPath`, which sits at `groupLevel` (the root group is
  * level 1). At the group level limit, deeper sidebar indexes are flattened into it.
  */
@@ -69,35 +96,18 @@ function buildSidebarItems(
   options: TBuildItemsOptions,
   parentDirName: string = "",
 ): TSidebarItem[] {
-  const { docsDirPath, sourceDocExtensions } = options;
+  const { sourceDocExtensions } = options;
   const isAtGroupLevelLimit = groupLevel >= options.maxGroupLevels;
   const items: TSidebarItem[] = [];
 
-  // The sidebar index of the current directory, if it has one
-  const indexFilePath = findSidebarIndexFile(dirPath, sourceDocExtensions);
-  if (indexFilePath) {
-    const frontmatter = parseFrontmatter<TFrontmatter>(indexFilePath);
-    if (!isHiddenFromSidebar(frontmatter)) {
-      let label: string;
-      if (isAtGroupLevelLimit && parentDirName) {
-        // At the limit: flattened items use the immediate parent directory name
-        label = parentDirName;
-      } else if (options.dirnameDeterminesLabels) {
-        label = "Overview";
-      } else {
-        label = sidebarEntryLabel(frontmatter, "Overview");
-      }
-
-      items.push(
-        buildSidebarEntry({
-          label,
-          docsDirPath,
-          sourceDocFilePath: indexFilePath,
-          frontmatter,
-        }),
-      );
-    }
-  }
+  // The index entry of the current directory, if it has a visible sidebar index
+  const indexEntry = buildIndexEntry(dirPath, options, (frontmatter) => {
+    // At the limit: flattened items use the immediate parent directory name
+    if (isAtGroupLevelLimit && parentDirName) return parentDirName;
+    if (options.dirnameDeterminesLabels) return "Overview";
+    return sidebarEntryLabel(frontmatter, "Overview");
+  });
+  if (indexEntry) items.push(indexEntry);
 
   // At the limit, flatten every deeper sidebar index into this group
   if (isAtGroupLevelLimit) {
@@ -123,19 +133,12 @@ function buildSidebarItems(
       entry,
     );
 
-    // A directory without a sidebar index promotes its children instead of wrapping them
+    // A directory without a sidebar index promotes its child groups instead of wrapping them
     const hasSidebarIndex =
       findSidebarIndexFile(entryPath, sourceDocExtensions) !== null;
-    if (!hasSidebarIndex) {
-      const allGroups = subItems.length > 0 && subItems.every(isGroupItem);
-      if (allGroups || (subItems.length === 1 && isGroupItem(subItems[0]))) {
-        items.push(...subItems);
-      } else {
-        items.push({
-          label: pathSegmentToLabel(entry),
-          items: subItems,
-        });
-      }
+    const allGroups = subItems.length > 0 && subItems.every(isGroupItem);
+    if (!hasSidebarIndex && allGroups) {
+      items.push(...subItems);
     } else {
       items.push({
         label: pathSegmentToLabel(entry),
@@ -152,7 +155,6 @@ function flattenSidebarIndexesBelow(
   dirPath: string,
   options: TBuildItemsOptions,
 ): TSidebarItem[] {
-  const { docsDirPath, sourceDocExtensions } = options;
   const items: TSidebarItem[] = [];
 
   const entries = fs.readdirSync(dirPath);
@@ -162,20 +164,10 @@ function flattenSidebarIndexesBelow(
     const entryPath = path.join(dirPath, entry);
     if (!isDir(entryPath)) continue;
 
-    const indexFilePath = findSidebarIndexFile(entryPath, sourceDocExtensions);
-    if (indexFilePath) {
-      const frontmatter = parseFrontmatter<TFrontmatter>(indexFilePath);
-      if (!isHiddenFromSidebar(frontmatter)) {
-        items.push(
-          buildSidebarEntry({
-            label: pathSegmentToLabel(entry),
-            docsDirPath,
-            sourceDocFilePath: indexFilePath,
-            frontmatter,
-          }),
-        );
-      }
-    }
+    const indexEntry = buildIndexEntry(entryPath, options, () =>
+      pathSegmentToLabel(entry),
+    );
+    if (indexEntry) items.push(indexEntry);
 
     // Recursively search deeper directories
     items.push(...flattenSidebarIndexesBelow(entryPath, options));

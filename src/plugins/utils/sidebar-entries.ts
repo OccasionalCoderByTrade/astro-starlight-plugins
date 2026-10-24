@@ -5,6 +5,11 @@ import {
 } from "./sidebar-labels.js";
 import { toSidebarSlug } from "./sidebar-slugs.js";
 import type { TSidebarBadge, TSidebarEntry } from "./sidebar-types.js";
+import type { TSourceDocFrontmatter } from "./workspace-utils.js";
+
+/** The frontmatter fields a sidebar reads from a source doc it lists. */
+export type TSidebarSourceDocFrontmatter = TSourceDocFrontmatter &
+  TSidebarEntryFrontmatter;
 
 /**
  * The sidebar entry for a source doc: `label`, the doc's slug (see `toSidebarSlug`) and its
@@ -22,7 +27,7 @@ export function buildSidebarEntry({
   docsDirPath: string;
   /** Absolute path of the source doc. */
   sourceDocFilePath: string;
-  frontmatter: TSidebarEntryFrontmatter & { slug?: unknown };
+  frontmatter: TSidebarSourceDocFrontmatter;
   /** Shown instead of the doc's `sidebar.badge` when set, like an index marker. */
   badgeOverride?: TSidebarBadge;
 }): TSidebarEntry {

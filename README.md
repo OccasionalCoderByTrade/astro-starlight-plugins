@@ -121,7 +121,7 @@ title: Guides
 - Sub-index links (`./sub/index` or `./sub/`) create nested sub-groups, recursed automatically, whatever the target sidebar index's extension (`index.md`, `index.mdx` or `index.mdoc`)
 - Leaf indexes: a sidebar index with `indexSourcedSidebar: { leaf: true }` in its frontmatter becomes a single entry (see [Leaf indexes](#leaf-indexes))
 - Group levels limited by `maxGroupLevels`; deeper items are flattened
-- A directory or page linked from several sidebar indexes appears under each of them, and the same link written twice in one sidebar index gives two entries. A sub-index link back to an ancestor sidebar index is skipped with a warning, so a loop can't hang startup.
+- A directory or page linked from several sidebar indexes appears under each of them, and the same link written twice in one sidebar index gives two entries. A sub-index link to a sidebar index already in the current chain is skipped with a warning, so a loop between sibling directories (`guides/` links `../shared/`, which links `../guides/`) can't hang startup.
 - Labels and badges come from Starlight's sidebar frontmatter (see **Labels and badges**)
 - Source docs (sidebar indexes and linked pages) are `.md`, `.mdx`, and `.mdoc` when `@astrojs/markdoc` is in Astro's `integrations`. Without Markdoc, a `.mdoc` file is a docs asset and a link to it is skipped like a link to a PDF.
 - Respects frontmatter: `draft: true` and `sidebar.hidden: true` hide an entry, in `astro dev` and `astro build` alike. Drafts are hidden in dev on purpose, unlike Starlight, which renders draft pages in dev: the dev sidebar shows what the build will show. A hidden sidebar index drops its whole group, and a hidden root sidebar index drops its root group without an error. `pagefind: false` only affects search and doesn't hide anything.
@@ -183,7 +183,7 @@ Skipped with a warning naming the sidebar index and the link:
 - A link to a `_`-prefixed file
 - A folder link whose folder has no sidebar index
 - A link to the sidebar index's own directory or an ancestor directory (`.`, `..`, `../index.md`, `/`)
-- A sub-index link back to an ancestor sidebar index
+- A sub-index link to a sidebar index already in the current chain (a loop)
 - With `linkScope: "below"`, a link outside the sidebar index's own directory
 
 These are only warnings. If you also use [`astroLocalLinks`](#local-links), broken links keep failing there, on the final HTML.

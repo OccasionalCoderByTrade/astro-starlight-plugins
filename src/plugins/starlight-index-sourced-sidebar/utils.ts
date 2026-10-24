@@ -3,12 +3,14 @@ import * as path from "node:path";
 import remarkParse from "remark-parse";
 import { unified } from "unified";
 import { visit } from "unist-util-visit";
-import { buildSidebarEntry } from "../utils/sidebar-entries.js";
+import {
+  buildSidebarEntry,
+  type TSidebarSourceDocFrontmatter,
+} from "../utils/sidebar-entries.js";
 import { findSidebarIndexFile } from "../utils/sidebar-index.js";
 import {
   pathSegmentToLabel,
   sidebarEntryLabel,
-  type TSidebarEntryFrontmatter,
 } from "../utils/sidebar-labels.js";
 import type {
   TSidebarBadge,
@@ -21,17 +23,15 @@ import {
   isOutsideDir,
   parseSourceDoc,
   type TSourceDoc,
-  type TSourceDocFrontmatter,
 } from "../utils/workspace-utils.js";
 
 export const PLUGIN_NAME = "starlight-index-sourced-sidebar";
 const LOG_PREFIX = `[${PLUGIN_NAME}]`;
 
-type TFrontmatter = TSourceDocFrontmatter &
-  TSidebarEntryFrontmatter & {
-    /** The plugin's own key. `leaf: true` makes a sub-index link to this doc a single entry. */
-    indexSourcedSidebar?: { leaf?: boolean };
-  };
+type TFrontmatter = TSidebarSourceDocFrontmatter & {
+  /** The plugin's own key. `leaf: true` makes a sub-index link to this doc a single entry. */
+  indexSourcedSidebar?: { leaf?: boolean };
+};
 
 /** A sidebar index file and its contents. */
 type TSidebarIndex = {
@@ -88,8 +88,8 @@ type TBuildItemsOptions = Omit<TIndexSourcedSidebarOptions, "dirPath"> & {
   sidebarIndex: TSidebarIndex;
   /** The group level of the current sidebar index's group; the root group is level 1. */
   groupLevel: number;
-  /** Dirs of the sidebar indexes from the root down to this one, this one included. */
-  ancestorDirPaths: Set<string>;
+  /** Dirs of the sidebar index chain, from the root down to this one, this one included. */
+  chainDirPaths: Set<string>;
 };
 
 /**
@@ -305,10 +305,11 @@ function resolveSubIndexLink(
   if (!indexFilePath) {
     return { kind: "skipped", warning: "the directory has no sidebar index" };
   }
-  if (options.ancestorDirPaths.has(dirPath)) {
+  if (options.chainDirPaths.has(dirPath)) {
     return {
       kind: "skipped",
-      warning: "it links back to an ancestor sidebar index",
+      warning:
+        "it links to a sidebar index already in the current chain (a loop)",
     };
   }
   return { kind: "sub-index", dirPath, indexFilePath };
@@ -442,7 +443,7 @@ function buildSubIndexItems(
     ...options,
     sidebarIndex: subIndex,
     groupLevel: isFlattened ? options.groupLevel : subGroupLevel,
-    ancestorDirPaths: new Set([...options.ancestorDirPaths, subIndex.dirPath]),
+    chainDirPaths: new Set([...options.chainDirPaths, subIndex.dirPath]),
   });
 
   if (isFlattened) return subItems;
@@ -523,7 +524,7 @@ export function getIndexSourcedSidebarGroup(
     ...options,
     sidebarIndex: { dirPath, indexFilePath, indexDoc },
     groupLevel: 1,
-    ancestorDirPaths: new Set([dirPath]),
+    chainDirPaths: new Set([dirPath]),
   });
 
   return {

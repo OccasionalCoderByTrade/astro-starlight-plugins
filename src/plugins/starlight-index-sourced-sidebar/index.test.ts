@@ -813,7 +813,7 @@ describe("starlightIndexSourcedSidebar sub-index links", () => {
     expect(warnings[0]).toContain("./advanced/");
   });
 
-  it("warns and doesn't recurse on a sub-index link back to an ancestor sidebar index", async () => {
+  it("warns and doesn't recurse on a sub-index link back to an ancestor directory", async () => {
     const { setup } = runSetup(
       {
         "guides/index.md":

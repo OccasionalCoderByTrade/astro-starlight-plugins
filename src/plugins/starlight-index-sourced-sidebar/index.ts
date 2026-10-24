@@ -78,9 +78,10 @@ type TOptions = {
  * from sidebar are skipped silently. A dotted link with no such file has each source doc
  * extension tried, so `./v1.2` reaches `v1.2.md`. A link to a missing source doc, a path
  * outside the docs root, a `_`-prefixed file, a folder with no sidebar index, the sidebar
- * index's own directory or an ancestor directory (`.`, `..`, `../index.md`, `/`), an
- * ancestor sidebar index, or (with `linkScope: "below"`) anything outside the sidebar index's
- * directory is skipped with a warning naming the sidebar index and the link.
+ * index's own directory or an ancestor directory (`.`, `..`, `../index.md`, `/`), a
+ * sidebar index already in the current chain (a loop), or (with `linkScope: "below"`)
+ * anything outside the sidebar index's directory is skipped with a warning naming the
+ * sidebar index and the link.
  *
  * A source doc is hidden from sidebar when its frontmatter has `draft: true` or
  * `sidebar.hidden: true`, in dev and build alike (on purpose, unlike Starlight's dev
