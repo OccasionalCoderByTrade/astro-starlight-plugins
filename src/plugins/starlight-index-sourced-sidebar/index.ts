@@ -1,7 +1,8 @@
 import type { HookParameters } from "@astrojs/starlight/types";
-import { join } from "path";
-import { getIndexSourcedSidebarItems } from "./utils";
-import type { TGroupedItem, TIndexMarker } from "./types";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+import type { TGroupedItem, TIndexMarker } from "./types.js";
+import { getIndexSourcedSidebarGroup } from "./utils.js";
 
 type TOptions = {
   /**
@@ -13,16 +14,18 @@ type TOptions = {
   maxDepthNesting?: number;
 
   /**
-   * Array of directory names (relative to src/content/docs) to generate sidebar groups for.
-   * Each directory must contain an index.md or index.mdx whose links define the sidebar content.
+   * Array of directory names (relative to the docs root, `content/docs/` under Astro's
+   * `srcDir`) to generate sidebar groups for. Each directory must contain an index.md or
+   * index.mdx whose links define the sidebar content.
    * @example ["guides", "reference"]
    */
   directories: string[];
 
   /**
-   * A string prepended to the label of every index entry to visually distinguish it from
-   * regular sidebar entries. When undefined, no marker is added.
-   * @example "★"
+   * A badge (`{ text, variant }`) shown on every index entry to tell it apart from regular
+   * sidebar entries. `variant` is one of Starlight's badge variants. When undefined, index
+   * entries get no badge.
+   * @example { text: "Index", variant: "note" }
    */
   indexMarker?: TIndexMarker;
 
@@ -34,20 +37,20 @@ type TOptions = {
   collapsed?: boolean;
 };
 
-const SITE_DOCS_ROOT = "./src/content/docs";
-
 /**
  * Starlight plugin that generates a sidebar by parsing markdown links from index.md files.
  *
  * For each directory, the plugin reads its index.md and uses the links found there as sidebar
  * entries. Links ending in `/index` are treated as sub-sections and recursed into, creating
  * nested groups up to maxDepthNesting levels deep. All other links become leaf items labeled
- * with the linked page's frontmatter title.
+ * with the linked page's frontmatter title. The docs root is `content/docs/` under Astro's
+ * `srcDir`.
  *
  * @example
  * starlightIndexSourcedSidebar({
  *   maxDepthNesting: 2,
  *   directories: ["guides", "reference"],
+ *   indexMarker: { text: "Index", variant: "note" },
  * })
  */
 export function starlightIndexSourcedSidebar(options: TOptions) {
@@ -55,28 +58,30 @@ export function starlightIndexSourcedSidebar(options: TOptions) {
     name: "index-sourced-sidebar",
     hooks: {
       "config:setup": (hookOptions: HookParameters<"config:setup">) => {
-        const { updateConfig } = hookOptions;
-        const { directories, maxDepthNesting = 100, indexMarker, collapsed = true } = options;
+        const { updateConfig, astroConfig } = hookOptions;
+        const {
+          directories,
+          maxDepthNesting = 100,
+          indexMarker,
+          collapsed = true,
+        } = options;
+        const docsDirPath = fileURLToPath(
+          new URL("content/docs/", astroConfig.srcDir),
+        );
 
-        const sidebarItems = directories
-          .map((directory) => {
-            const dirPath = join(SITE_DOCS_ROOT, directory);
-            const rawItems = getIndexSourcedSidebarItems(
-              dirPath,
+        const sidebarGroups = directories
+          .map((directory) =>
+            getIndexSourcedSidebarGroup({
+              docsDirPath,
+              dirPath: join(docsDirPath, directory),
               maxDepthNesting,
               indexMarker,
               collapsed,
-            );
-            const rootGroup = rawItems[0];
-            if (!rootGroup || !("items" in rootGroup)) return undefined;
-            return rootGroup as TGroupedItem;
-          })
-          .filter(
-            (group): group is TGroupedItem =>
-              group !== undefined && group.items.length > 0,
-          );
+            }),
+          )
+          .filter((group): group is TGroupedItem => group !== undefined);
 
-        updateConfig({ sidebar: sidebarItems });
+        updateConfig({ sidebar: sidebarGroups });
       },
     },
   };

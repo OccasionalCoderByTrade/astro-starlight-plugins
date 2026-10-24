@@ -69,9 +69,10 @@ Generates a Starlight sidebar by parsing markdown links out of `index.md` files.
 
 **Options:**
 
-- `directories` (required): Array of directory names to scan (relative to `src/content/docs`)
+- `directories` (required): Array of directory names to scan, relative to the docs root (`content/docs/` under Astro's `srcDir`, so `src/content/docs` by default)
 - `maxDepthNesting` (optional, default: `100`): Maximum nesting depth. At this depth, sub-index groups are not created and their items are flattened into the current level instead. With `maxDepthNesting: 1`, all items are flat under the root group.
-- `indexMarker` (optional, default: `undefined`): A string prepended to the label of every index entry to visually distinguish it from regular sidebar entries. Example: `"★"`.
+- `indexMarker` (optional, default: `undefined`): A Starlight badge (`{ text, variant }`) shown on every index entry to tell it apart from regular sidebar entries. `variant` is one of `"note"`, `"tip"`, `"caution"`, `"danger"`, `"success"` or `"default"`. Example: `{ text: "Index", variant: "note" }`.
+- `collapsed` (optional, default: `true`): Whether sidebar groups start collapsed. Starlight still expands the group holding the current page.
 
 **Link conventions in `index.md`:**
 
@@ -95,6 +96,8 @@ export default defineConfig({
         starlightIndexSourcedSidebar({
           directories: ["guides", "reference"],
           maxDepthNesting: 2, // optional
+          indexMarker: { text: "Index", variant: "note" }, // optional
+          collapsed: false, // optional
         }),
       ],
     }),
