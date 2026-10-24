@@ -110,6 +110,85 @@ describe("starlightIndexOnlySidebar", () => {
     ]);
   });
 
+  it("labels index entries from sidebar.label, then title, when dirnameDeterminesLabels is false", async () => {
+    const { setup } = runSetup(
+      {
+        "guides/index.md":
+          "---\ntitle: Guides\nsidebar:\n  label: Start Here\n---\n",
+        "guides/setup/index.md": "---\ntitle: Setup\n---\n",
+      },
+      { directories: ["guides"], dirnameDeterminesLabels: false },
+    );
+
+    expect((await setup()).sidebar).toEqual([
+      {
+        label: "Guides",
+        items: [
+          { label: "Start Here", slug: "guides" },
+          {
+            label: "Setup",
+            items: [{ label: "Setup", slug: "guides/setup" }],
+          },
+        ],
+      },
+    ]);
+  });
+
+  it("keeps directory-name labels over sidebar.label when dirnameDeterminesLabels is true", async () => {
+    const { setup } = runSetup(
+      {
+        "guides/index.md":
+          "---\ntitle: Guides\nsidebar:\n  label: Start Here\n---\n",
+      },
+      { directories: ["guides"] },
+    );
+
+    expect((await setup()).sidebar).toEqual([
+      { label: "Guides", items: [{ label: "Overview", slug: "guides" }] },
+    ]);
+  });
+
+  it("shows sidebar.badge on its entries", async () => {
+    const { setup } = runSetup(
+      {
+        "guides/index.md": "---\ntitle: Guides\nsidebar:\n  badge: New\n---\n",
+        "guides/setup/index.md":
+          "---\ntitle: Setup\nsidebar:\n  badge:\n    text: Beta\n    variant: caution\n---\n",
+        "guides/setup/linux-101/index.md":
+          "---\ntitle: Linux\nsidebar:\n  badge: Deep\n---\n",
+      },
+      { directories: ["guides"], maxDepthNesting: 1 },
+    );
+
+    expect((await setup()).sidebar).toEqual([
+      {
+        label: "Guides",
+        items: [
+          {
+            label: "Overview",
+            slug: "guides",
+            badge: { text: "New", variant: "default" },
+          },
+          {
+            label: "Setup",
+            items: [
+              {
+                label: "setup",
+                slug: "guides/setup",
+                badge: { text: "Beta", variant: "caution" },
+              },
+              {
+                label: "LINUX 101",
+                slug: "guides/setup/linux-101",
+                badge: { text: "Deep", variant: "default" },
+              },
+            ],
+          },
+        ],
+      },
+    ]);
+  });
+
   it("flattens directories past maxDepthNesting into their parent", async () => {
     const { setup } = runSetup(
       {

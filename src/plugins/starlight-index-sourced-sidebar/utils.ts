@@ -6,7 +6,12 @@ import remarkParse from "remark-parse";
 import { unified } from "unified";
 import { visit } from "unist-util-visit";
 import { findSidebarIndexFile } from "../utils/sidebar-index.js";
-import { pathSegmentToLabel } from "../utils/sidebar-labels.js";
+import {
+  pathSegmentToLabel,
+  sidebarEntryBadge,
+  sidebarEntryLabel,
+  type TSidebarEntryFrontmatter,
+} from "../utils/sidebar-labels.js";
 import { toSidebarSlug } from "../utils/sidebar-slugs.js";
 import type {
   TSidebarBadge,
@@ -19,8 +24,7 @@ import {
 } from "../utils/sidebar-visibility.js";
 import { isFile } from "../utils/workspace-utils.js";
 
-type TFrontmatter = {
-  title?: string;
+type TFrontmatter = TSidebarEntryFrontmatter & {
   slug?: string;
   draft?: boolean;
   sidebar?: { hidden?: boolean };
@@ -135,6 +139,11 @@ function warnSkippedLink(
   );
 }
 
+/** `{ badge }` to spread into an entry, or nothing when there's no badge. */
+function badgeProperty(badge: TSidebarBadge | undefined) {
+  return badge ? { badge } : {};
+}
+
 function buildItems(options: TBuildItemsOptions): TSidebarItem[] {
   const {
     docsDirPath,
@@ -163,15 +172,16 @@ function buildItems(options: TBuildItemsOptions): TSidebarItem[] {
   // The index page itself is always the first item in its group
   const items: TSidebarItem[] = [
     {
-      label:
-        indexDoc.frontmatter.title ??
+      label: sidebarEntryLabel(
+        indexDoc.frontmatter,
         pathSegmentToLabel(path.basename(dirPath)),
+      ),
       slug: toSidebarSlug({
         docsDirPath,
         sourceDocFilePath: indexFilePath,
         frontmatterSlug: indexDoc.frontmatter.slug,
       }),
-      ...(indexMarker && { badge: indexMarker }),
+      ...badgeProperty(indexMarker ?? sidebarEntryBadge(indexDoc.frontmatter)),
     },
   ];
 
@@ -233,30 +243,35 @@ function buildItems(options: TBuildItemsOptions): TSidebarItem[] {
     if (isSubIndex) {
       // index.mdx: add as a single entry only, without recursing into it
       items.push({
-        label:
-          linkedDoc.frontmatter.title ??
+        label: sidebarEntryLabel(
+          linkedDoc.frontmatter,
           pathSegmentToLabel(path.basename(path.dirname(resolvedFilePath))),
+        ),
         slug: toSidebarSlug({
         docsDirPath,
         sourceDocFilePath: resolvedFilePath,
         frontmatterSlug: linkedDoc.frontmatter.slug,
       }),
-        ...(indexMarker && { badge: indexMarker }),
+        ...badgeProperty(
+          indexMarker ?? sidebarEntryBadge(linkedDoc.frontmatter),
+        ),
       });
       continue;
     }
 
     items.push({
-      label:
-        linkedDoc.frontmatter.title ??
+      label: sidebarEntryLabel(
+        linkedDoc.frontmatter,
         pathSegmentToLabel(
           path.basename(resolvedFilePath, path.extname(resolvedFilePath)),
         ),
+      ),
       slug: toSidebarSlug({
         docsDirPath,
         sourceDocFilePath: resolvedFilePath,
         frontmatterSlug: linkedDoc.frontmatter.slug,
       }),
+      ...badgeProperty(sidebarEntryBadge(linkedDoc.frontmatter)),
     });
   }
 

@@ -43,8 +43,9 @@ type TOptions = {
  *
  * For each directory, the plugin reads its index.md and uses the links found there as sidebar
  * entries. Links ending in `/index` are treated as sub-sections and recursed into, creating
- * nested groups up to maxDepthNesting levels deep. All other links become leaf items labeled
- * with the linked page's frontmatter title. The docs root is `content/docs/` under Astro's
+ * nested groups up to maxDepthNesting levels deep. All other links become leaf items. Entries
+ * are labelled `sidebar.label`, then `title`, then the filename, and show `sidebar.badge`
+ * (an index entry shows `indexMarker` instead, when set); groups take their directory name. The docs root is `content/docs/` under Astro's
  * `srcDir`.
  *
  * @example
