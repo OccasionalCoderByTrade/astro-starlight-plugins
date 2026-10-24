@@ -92,7 +92,7 @@ Origin: a code review of the plugin (no spec existed, so the README and JSDoc st
 42. As a site author, I want reference-style links (`[Setup][setup]`) to count, so that I can keep a long index tidy.
 43. As a site author, I want the README to say that JSX and HTML links (`<Card href>`, `<a>`) don't count, so that I know why an MDX component's link is missing.
 44. As a site author, I want page-form links (`./my-page/` for `My Page.md`) documented as unsupported, so that I write file-form links instead.
-45. As a site author, I want links to non-source-doc files (PDFs, images) skipped without a warning, so that an index can link to attachments.
+45. As a site author, I want links to non-source-doc files (PDFs, images) that exist skipped without a warning, so that an index can link to attachments.
 46. As a site author, I want a link to a missing file to log a warning that names the sidebar index and the link, so that I catch typos.
 47. As a site author who also uses `astroLocalLinks`, I want broken links to keep failing there and only warn here, so that link validation stays in one place.
 
@@ -157,13 +157,15 @@ The page-path logic in `astroLocalLinks` moves to the shared utils too, and both
 
 ### Options
 
-- The public options are `directories` (required), `maxGroupLevels` (optional, unset means unlimited), `indexMarker` (optional `{ text, variant }`) and `collapsed` (optional, default `true`). `maxDepthNesting` is removed with no alias. `starlightIndexOnlySidebar` renames its option the same way and keeps `dirnameDeterminesLabels`.
+- The public options are `directories` (required), `maxGroupLevels` (optional, unset means unlimited), `indexMarker` (optional `{ text, variant }`), `collapsed` (optional, default `true`) and `linkScope` (optional, `"anywhere"` or `"below"`, default `"anywhere"`).
+- `linkScope: "below"` keeps only links inside the linking sidebar index's own directory. Any other link is skipped with a warning. `"anywhere"` keeps links to anywhere in the docs root. `starlightIndexOnlySidebar` doesn't read links, so it doesn't get this option. `maxDepthNesting` is removed with no alias. `starlightIndexOnlySidebar` renames its option the same way and keeps `dirnameDeterminesLabels`.
 - `maxGroupLevels` counts levels of groups with the root group included. `1` means everything is flat under the root group. A sub-index link whose group would go past the limit has its entries flattened into the parent group.
 - These fail startup with a message naming the plugin and the bad value:
   - a `directories` entry that resolves outside the docs root
   - a `directories` entry that doesn't exist ("directory not found")
   - a directory listed twice
   - a `maxGroupLevels` that isn't an integer of at least 1
+  - a `linkScope` that isn't `"anywhere"` or `"below"`
   - a root directory with no sidebar index
 - Internally, the sidebar-building function takes one options object (docs root, directory, group level limit, index marker, collapsed, source doc extensions, base, logger) instead of positional parameters.
 
@@ -182,12 +184,12 @@ The page-path logic in `astroLocalLinks` moves to the shared utils too, and both
   2. Strip the query string and anchor. Skip it silently if nothing is left (a same-page anchor).
   3. Percent-decode it.
   4. If it's root-absolute: strip `base` when the link starts with it, then resolve against the docs root. Otherwise resolve against the sidebar index's directory.
-  5. If the result ends in `/` or `/index` (with or without a source doc extension), it's a sub-index link to that directory's sidebar index. If that directory has no sidebar index, warn and skip. There's no fallback to a sibling file.
-  6. Otherwise, if it carries a source doc extension, use that exact file. If it carries no extension, try each source doc extension. If it carries some other extension, skip it silently (a docs asset).
+  5. If it points at the directory, or the sidebar index, of the sidebar index it's written in or of any directory above it up to the docs root, warn and skip. From `guides/advanced/index.md` that's `.`, `./`, `..`, `../`, `../index.md`, `../../` and `/`, and `/docs` on a site with base `/docs`. This holds whether or not the directory is in the current chain of sidebar indexes, so a root group for `guides/advanced` never expands `guides/` from a `..` link. A link that goes up and then sideways or down (`../setup.md`, `../../reference/`) is not an ancestor link. With `linkScope: "below"`, also warn and skip any link that isn't inside the sidebar index's own directory. Resolved paths are compared with no trailing separator, so `/guides/` and `guides` are the same directory.
+  6. If the result ends in `/` or `/index` (with or without a source doc extension), it's a sub-index link to that directory's sidebar index. If that directory has no sidebar index, warn and skip. There's no fallback to a sibling file. Otherwise, if it carries a source doc extension, use that exact file. If it carries no extension, try each source doc extension. If it carries some other extension and a file with that exact name exists, skip it silently (a docs asset). If no such file exists, try each source doc extension appended to the name, so `./v1.2` reaches `v1.2.md`.
   7. If no file exists, warn and skip. If the filename starts with `_`, warn and skip.
   8. If the target is hidden from sidebar, skip it silently.
 - A sub-index link expands into a nested group unless its target's frontmatter has `indexSourcedSidebar: { leaf: true }`. A leaf index becomes a single entry with the index marker. The leaf key is ignored on a root sidebar index.
-- Cycle protection follows only the current chain of sidebar indexes from the root. A sub-index link to an ancestor is skipped with a warning. The same directory or page may appear under several sidebar indexes, and repeated links in one sidebar index give repeated entries.
+- Links to a directory above the sidebar index on the filesystem are already skipped at step 5. On top of that, cycle protection follows the current chain of sidebar indexes from the root, which catches loops between sibling directories (`guides/` links `../shared/`, which links `../guides/`). A sub-index link to a sidebar index in that chain is skipped with a warning. The same directory or page may appear under several sidebar indexes, and repeated links in one sidebar index give repeated entries.
 - Warnings name the sidebar index file and the link as written.
 
 ### Slugs, labels and badges
