@@ -1,7 +1,12 @@
-import * as fs from "fs";
-import * as path from "path";
-import { parseFrontmatter } from "../utils/workspace-utils";
-import type { TSidebarItem } from "./types";
+import * as fs from "node:fs";
+import * as path from "node:path";
+import { findSidebarIndexFile } from "../utils/sidebar-index.js";
+import { pathSegmentToLabel } from "../utils/sidebar-labels.js";
+import type { TSidebarItem } from "../utils/sidebar-types.js";
+import { isHiddenFromSidebar } from "../utils/sidebar-visibility.js";
+import { parseFrontmatter } from "../utils/workspace-utils.js";
+
+const SOURCE_DOC_EXTENSIONS = [".md", ".mdx"];
 
 type TOptions = {
   maxDepthNesting?: number;
@@ -15,16 +20,6 @@ function isDir(dirPath: string): boolean {
   );
 }
 
-function findIndexMd(dirPath: string): string | null {
-  for (const name of ["index.md", "index.mdx"]) {
-    const indexFilePath = path.join(dirPath, name);
-    if (fs.statSync(indexFilePath, { throwIfNoEntry: false })?.isFile()) {
-      return indexFilePath;
-    }
-  }
-  return null;
-}
-
 function getSlug(dirPath: string, rootDir: string): string {
   const normalized = path.normalize(dirPath).replace(/\\/g, "/");
   const rootParent = path.normalize(path.dirname(rootDir)).replace(/\\/g, "/");
@@ -36,11 +31,10 @@ function getSlug(dirPath: string, rootDir: string): string {
 }
 
 function hasIndexMdInSubtree(dirPath: string): boolean {
-  const indexFilePath = findIndexMd(dirPath);
+  const indexFilePath = findSidebarIndexFile(dirPath, SOURCE_DOC_EXTENSIONS);
   if (indexFilePath) {
     const frontmatter = parseFrontmatter(indexFilePath);
-    if (frontmatter.draft || frontmatter.sidebar?.hidden) return false;
-    return true;
+    return !isHiddenFromSidebar(frontmatter);
   }
 
   const entries = fs.readdirSync(dirPath);
@@ -58,28 +52,6 @@ function isGroupItem(item: TSidebarItem): boolean {
   return "items" in item;
 }
 
-/**
- * Convert a directory path segment to a human-readable label
- * @param {string} pathSegment - A segment of the path (e.g., "csci-316")
- * @returns {string} - Human-readable label (e.g., "CSCI 316")
- */
-function pathSegmentToLabel(pathSegment: string): string {
-  let label = pathSegment
-    .split("-")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
-
-  // Handle pattern like "csci 316" -> uppercase first group
-  const match = label.match(/^([a-z]+) [0-9]{2,}/i);
-  if (match) {
-    const firstGroup = match[1];
-    const uppercasedFirstGroup = firstGroup.toUpperCase();
-    label = uppercasedFirstGroup + label.substring(firstGroup.length);
-  }
-
-  return label;
-}
-
 function buildSidebarItems(
   dirPath: string,
   rootDir: string,
@@ -91,10 +63,10 @@ function buildSidebarItems(
   const items: TSidebarItem[] = [];
 
   // Add index.md of current directory if it exists
-  const indexFilePath = findIndexMd(dirPath);
+  const indexFilePath = findSidebarIndexFile(dirPath, SOURCE_DOC_EXTENSIONS);
   if (indexFilePath) {
     const frontmatter = parseFrontmatter(indexFilePath);
-    if (!frontmatter.draft && !frontmatter.sidebar?.hidden) {
+    if (!isHiddenFromSidebar(frontmatter)) {
       let label: string;
       if (currentDepth >= maxDepth && parentDirName) {
         // At max depth: flattened items use immediate parent directory name
@@ -145,7 +117,8 @@ function buildSidebarItems(
     );
 
     // Apply truncation: if no index.md in this dir, promote children instead of wrapping
-    const hasIndex = findIndexMd(entryPath) !== null;
+    const hasIndex =
+      findSidebarIndexFile(entryPath, SOURCE_DOC_EXTENSIONS) !== null;
     if (!hasIndex) {
       const allGroups = subItems.length > 0 && subItems.every(isGroupItem);
       if (allGroups || (subItems.length === 1 && isGroupItem(subItems[0]))) {
@@ -183,10 +156,13 @@ function flattenIndexFilesAtDepth(
     const entryPath = path.join(dirPath, entry);
     if (!isDir(entryPath)) continue;
 
-    const indexFilePath = findIndexMd(entryPath);
+    const indexFilePath = findSidebarIndexFile(
+      entryPath,
+      SOURCE_DOC_EXTENSIONS,
+    );
     if (indexFilePath) {
       const frontmatter = parseFrontmatter(indexFilePath);
-      if (!frontmatter.draft && !frontmatter.sidebar?.hidden) {
+      if (!isHiddenFromSidebar(frontmatter)) {
         items.push({
           label: pathSegmentToLabel(entry),
           slug: getSlug(entryPath, rootDir),

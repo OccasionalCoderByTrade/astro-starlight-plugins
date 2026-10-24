@@ -1,6 +1,6 @@
 // @ts-expect-error no types available for lodash
 import _ from "lodash";
-import type { TSidebarItem } from "../starlight-index-only-sidebar/types";
+import type { TSidebarItem } from "../utils/sidebar-types.js";
 
 const { isEqual } = _;
 
@@ -101,9 +101,7 @@ export function testSidebarStructure(
               { label: "Overview", slug: "reference/schemas" },
               {
                 label: "Data",
-                items: [
-                  { label: "Overview", slug: "reference/schemas/data" },
-                ],
+                items: [{ label: "Overview", slug: "reference/schemas/data" }],
               },
               {
                 label: "Rules",

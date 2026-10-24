@@ -4,8 +4,16 @@ import * as path from "node:path";
 import remarkParse from "remark-parse";
 import { unified } from "unified";
 import { visit } from "unist-util-visit";
+import { findSidebarIndexFile } from "../utils/sidebar-index.js";
+import { pathSegmentToLabel } from "../utils/sidebar-labels.js";
+import { normalizeSidebarSlug } from "../utils/sidebar-slugs.js";
+import type {
+  TSidebarBadge,
+  TSidebarGroup,
+  TSidebarItem,
+} from "../utils/sidebar-types.js";
+import { isHiddenFromSidebar as hasHiddenFromSidebarFlag } from "../utils/sidebar-visibility.js";
 import { isFile } from "../utils/workspace-utils.js";
-import type { TGroupedItem, TIndexMarker, TSidebarItem } from "./types.js";
 
 const SOURCE_DOC_EXTENSIONS = [".md", ".mdx"];
 
@@ -29,7 +37,7 @@ export type TIndexSourcedSidebarOptions = {
   dirPath: string;
   /** Depth at which sub-index groups are flattened into their parent; the root is 0. */
   maxDepthNesting: number;
-  indexMarker: TIndexMarker | undefined;
+  indexMarker: TSidebarBadge | undefined;
   collapsed: boolean;
 };
 
@@ -38,21 +46,6 @@ type TBuildItemsOptions = TIndexSourcedSidebarOptions & {
   currentDepth: number;
   visitedDirPaths: Set<string>;
 };
-
-function pathSegmentToLabel(segment: string): string {
-  let label = segment
-    .split("-")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
-
-  const match = label.match(/^([a-z]+) [0-9]{2,}/i);
-  if (match) {
-    const firstGroup = match[1];
-    label = firstGroup.toUpperCase() + label.substring(firstGroup.length);
-  }
-
-  return label;
-}
 
 /** Throws when the file can't be read or its YAML is malformed. */
 function readSourceDoc(filePath: string): TSourceDoc {
@@ -68,20 +61,11 @@ function readSourceDoc(filePath: string): TSourceDoc {
   }
 }
 
+// TODO(05): `pagefind: false` stops hiding entries, leaving the shared check alone
 function isHiddenFromSidebar(frontmatter: TFrontmatter): boolean {
-  return Boolean(
-    frontmatter.draft ||
-      frontmatter.pagefind === false ||
-      frontmatter.sidebar?.hidden,
+  return (
+    hasHiddenFromSidebarFlag(frontmatter) || frontmatter.pagefind === false
   );
-}
-
-function findIndexFile(dirPath: string): string | null {
-  for (const extension of SOURCE_DOC_EXTENSIONS) {
-    const indexFilePath = path.join(dirPath, `index${extension}`);
-    if (isFile(indexFilePath)) return indexFilePath;
-  }
-  return null;
 }
 
 function findSourceDoc(extensionlessFilePath: string): string | null {
@@ -96,8 +80,7 @@ function filePathToSlug(filePath: string, docsDirPath: string): string {
   const docsRelativeFilePath = path
     .relative(docsDirPath, filePath)
     .replace(/\\/g, "/");
-  const slug = docsRelativeFilePath.replace(/\.(mdx?)$/, "");
-  return slug.endsWith("/index") ? slug.slice(0, -"/index".length) : slug;
+  return normalizeSidebarSlug(docsRelativeFilePath.replace(/\.(mdx?)$/, ""));
 }
 
 function extractMarkdownLinks(body: string): string[] {
@@ -120,7 +103,10 @@ function isExternal(href: string): boolean {
 }
 
 /** The source doc `hrefPath` points at from `fromDirPath`, or null when there's none. */
-function resolveSourceDoc(hrefPath: string, fromDirPath: string): string | null {
+function resolveSourceDoc(
+  hrefPath: string,
+  fromDirPath: string,
+): string | null {
   const resolvedFilePath = path.resolve(fromDirPath, hrefPath);
 
   // An href that already carries a source doc extension names that exact file
@@ -145,7 +131,7 @@ function buildItems(options: TBuildItemsOptions): TSidebarItem[] {
   if (visitedDirPaths.has(dirPath)) return [];
   visitedDirPaths.add(dirPath);
 
-  const indexFilePath = findIndexFile(dirPath);
+  const indexFilePath = findSidebarIndexFile(dirPath, SOURCE_DOC_EXTENSIONS);
   if (!indexFilePath) {
     throw new Error(
       `[starlight-index-sourced-sidebar] No index.md or index.mdx found in "${dirPath}"`,
@@ -159,7 +145,8 @@ function buildItems(options: TBuildItemsOptions): TSidebarItem[] {
   const items: TSidebarItem[] = [
     {
       label:
-        indexDoc.frontmatter.title ?? pathSegmentToLabel(path.basename(dirPath)),
+        indexDoc.frontmatter.title ??
+        pathSegmentToLabel(path.basename(dirPath)),
       slug: filePathToSlug(indexFilePath, docsDirPath),
       ...(indexMarker && { badge: indexMarker }),
     },
@@ -236,7 +223,7 @@ function buildItems(options: TBuildItemsOptions): TSidebarItem[] {
  */
 export function getIndexSourcedSidebarGroup(
   options: TIndexSourcedSidebarOptions,
-): TGroupedItem | undefined {
+): TSidebarGroup | undefined {
   const items = buildItems({
     ...options,
     currentDepth: 0,

@@ -1,7 +1,9 @@
 import type { HookParameters } from "@astrojs/starlight/types";
-import { join } from "path";
-import { getIndexMdSidebarItems } from "./utils";
-import type { TGroupedItem } from "./types";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { normalizeSidebarSlug } from "../utils/sidebar-slugs.js";
+import type { TSidebarGroup, TSidebarItem } from "../utils/sidebar-types.js";
+import { getIndexMdSidebarItems } from "./utils.js";
 
 /**
  * Configuration options for sidebar generation behavior.
@@ -30,23 +32,12 @@ type TOptions = {
  */
 type TIndexOnlySidebarPluginOptions = TOptions & {
   /**
-   * Array of directory names (relative to src/content/docs) to scan for sidebar generation.
+   * Array of directory names (relative to the docs root, `content/docs/` under Astro's `srcDir`) to scan for sidebar generation.
    * Each directory will become a top-level group in the sidebar.
    * @example ["reference", "guides", "api-docs"]
    */
   directories: string[];
 };
-
-type TSidebarItem =
-  | { label: string; slug: string }
-  | { label: string; items: TSidebarItem[] };
-
-const SITE_DOCS_ROOT = "./src/content/docs";
-
-function normalizeSlug(slug: string): string {
-  // Starlight expects slugs without "/index" suffix
-  return slug.endsWith("/index") ? slug.slice(0, -6) : slug;
-}
 
 function normalizeItems(items: TSidebarItem[]): TSidebarItem[] {
   return items.map((item) => {
@@ -59,7 +50,7 @@ function normalizeItems(items: TSidebarItem[]): TSidebarItem[] {
     if ("slug" in item) {
       return {
         label: item.label,
-        slug: normalizeSlug(item.slug),
+        slug: normalizeSidebarSlug(item.slug),
       };
     }
     return item;
@@ -86,7 +77,7 @@ export function starlightIndexOnlySidebar(
     name: "index-only-sidebar",
     hooks: {
       "config:setup": (hookOptions: HookParameters<"config:setup">) => {
-        const { updateConfig } = hookOptions;
+        const { updateConfig, astroConfig } = hookOptions;
         const { directories, maxDepthNesting, dirnameDeterminesLabels } =
           pluginOptions;
         const functionOptions: TOptions = {
@@ -94,9 +85,13 @@ export function starlightIndexOnlySidebar(
           dirnameDeterminesLabels,
         };
 
+        const docsDirPath = fileURLToPath(
+          new URL("content/docs/", astroConfig.srcDir),
+        );
+
         const sidebarItems = directories
           .map((directory) => {
-            const dirPath = join(SITE_DOCS_ROOT, directory);
+            const dirPath = join(docsDirPath, directory);
             const rawItems = getIndexMdSidebarItems(dirPath, functionOptions);
             // Remove the root group wrapper that getIndexMdSidebarItems adds
             const rootGroup = rawItems[0];
@@ -113,7 +108,7 @@ export function starlightIndexOnlySidebar(
             };
           })
           .filter(
-            (group): group is TGroupedItem =>
+            (group): group is TSidebarGroup =>
               group !== undefined && group.items.length > 0,
           ); // remove empty groups
 

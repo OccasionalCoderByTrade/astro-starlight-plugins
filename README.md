@@ -21,7 +21,7 @@ Automatically generates a nested Starlight sidebar by recursively scanning direc
 
 **Options:**
 
-- `directories` (required): Array of directory names to scan (e.g., `["guides", "api"]`)
+- `directories` (required): Array of directory names to scan, relative to the docs root (`content/docs/` under Astro's `srcDir`, so `src/content/docs` by default), e.g. `["guides", "api"]`
 - `maxDepthNesting` (optional, default: `100`): Maximum nesting depth. Root is level 0. At max depth, deeper index files are flattened as sibling items.
 - `dirnameDeterminesLabels` (optional, default: `true`): When `true`, all labels use raw directory names. When `false`, slug item labels come from frontmatter `title` field; group labels still use directory names.
 

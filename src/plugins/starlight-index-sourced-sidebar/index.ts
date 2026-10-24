@@ -1,7 +1,7 @@
 import type { HookParameters } from "@astrojs/starlight/types";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { TGroupedItem, TIndexMarker } from "./types.js";
+import type { TSidebarBadge, TSidebarGroup } from "../utils/sidebar-types.js";
 import { getIndexSourcedSidebarGroup } from "./utils.js";
 
 type TOptions = {
@@ -27,7 +27,7 @@ type TOptions = {
    * entries get no badge.
    * @example { text: "Index", variant: "note" }
    */
-  indexMarker?: TIndexMarker;
+  indexMarker?: TSidebarBadge;
 
   /**
    * Whether sidebar groups should be collapsed by default. Starlight automatically expands
@@ -79,7 +79,7 @@ export function starlightIndexSourcedSidebar(options: TOptions) {
               collapsed,
             }),
           )
-          .filter((group): group is TGroupedItem => group !== undefined);
+          .filter((group): group is TSidebarGroup => group !== undefined);
 
         updateConfig({ sidebar: sidebarGroups });
       },
