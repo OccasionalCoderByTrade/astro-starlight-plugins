@@ -6,12 +6,12 @@ See the spec: `.scratch/starlight-index-sourced-sidebar/spec.md` (Implementation
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] `starlight-cannoli-plugins/starlight-index-sourced-sidebar` resolves after `lib:build`, with types
-- [ ] `starlight-cannoli-plugins/expressive-code-emphasis` resolves after `lib:build`, with types
-- [ ] Internal sibling modules aren't package exports
-- [ ] The drift test fails when an entry has no export, or an export has no entry, and passes on the fixed config
-- [ ] CLAUDE.md's Layout section says every plugin must have a subpath export, citing ADR 0013
-- [ ] Every plugin's README usage example imports from its subpath
-- [ ] `npm pack --dry-run` still includes only `dist/`, README, LICENSE and package.json
+- [x] `starlight-cannoli-plugins/starlight-index-sourced-sidebar` resolves after `lib:build`, with types
+- [x] `starlight-cannoli-plugins/expressive-code-emphasis` resolves after `lib:build`, with types
+- [x] Internal sibling modules aren't package exports
+- [x] The drift test fails when an entry has no export, or an export has no entry, and passes on the fixed config
+- [x] CLAUDE.md's Layout section says every plugin must have a subpath export, citing ADR 0013
+- [x] Every plugin's README usage example imports from its subpath
+- [x] `npm pack --dry-run` still includes only `dist/`, README, LICENSE and package.json
