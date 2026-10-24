@@ -145,6 +145,50 @@ describe("starlightIndexSourcedSidebar", () => {
     ]);
   });
 
+  it("gives each entry its source doc's page path as the slug", async () => {
+    const { setup } = runSetup(
+      {
+        "Getting Started/index.md":
+          "---\ntitle: Getting Started\n---\n\n[My Page](<./My Page.md>)\n",
+        "Getting Started/My Page.md": "---\ntitle: My Page\n---\n",
+      },
+      { directories: ["Getting Started"] },
+    );
+
+    expect((await setup()).sidebar).toEqual([
+      {
+        label: "Getting Started",
+        collapsed: true,
+        items: [
+          { label: "Getting Started", slug: "getting-started" },
+          { label: "My Page", slug: "getting-started/my-page" },
+        ],
+      },
+    ]);
+  });
+
+  it("uses a source doc's slug frontmatter as its entry's slug", async () => {
+    const { setup } = runSetup(
+      {
+        "guides/index.md":
+          "---\ntitle: Guides\nslug: start\n---\n\n[Setup](./setup.md)\n",
+        "guides/setup.md": "---\ntitle: Setup\nslug: install/setup\n---\n",
+      },
+      { directories: ["guides"] },
+    );
+
+    expect((await setup()).sidebar).toEqual([
+      {
+        label: "Guides",
+        collapsed: true,
+        items: [
+          { label: "Guides", slug: "start" },
+          { label: "Setup", slug: "install/setup" },
+        ],
+      },
+    ]);
+  });
+
   it("skips links in a sidebar index that don't resolve to a source doc", async () => {
     const { setup } = runSetup(
       {

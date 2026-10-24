@@ -137,6 +137,55 @@ describe("starlightIndexOnlySidebar", () => {
     ]);
   });
 
+  it("gives index entries of a nested directory their page path as the slug", async () => {
+    const { setup } = runSetup(
+      {
+        "guides/Getting Started/index.md": "---\ntitle: Start\n---\n",
+        "guides/Getting Started/First Steps/index.md":
+          "---\ntitle: First\n---\n",
+      },
+      { directories: ["guides/Getting Started"] },
+    );
+
+    expect((await setup()).sidebar).toEqual([
+      {
+        label: "Getting Started",
+        items: [
+          { label: "Overview", slug: "guides/getting-started" },
+          {
+            label: "First Steps",
+            items: [
+              {
+                label: "Overview",
+                slug: "guides/getting-started/first-steps",
+              },
+            ],
+          },
+        ],
+      },
+    ]);
+  });
+
+  it("uses an index's slug frontmatter as its entry's slug", async () => {
+    const { setup } = runSetup(
+      {
+        "guides/index.md": "---\ntitle: Guides\nslug: start\n---\n",
+        "guides/setup/index.md": "---\ntitle: Setup\nslug: install\n---\n",
+      },
+      { directories: ["guides"] },
+    );
+
+    expect((await setup()).sidebar).toEqual([
+      {
+        label: "Guides",
+        items: [
+          { label: "Overview", slug: "start" },
+          { label: "Setup", items: [{ label: "Overview", slug: "install" }] },
+        ],
+      },
+    ]);
+  });
+
   it("throws when a directory doesn't exist", async () => {
     const { setup, docsDirPath } = runSetup(
       { "reference/index.md": "---\ntitle: Reference\n---\n" },

@@ -6,11 +6,11 @@ See the spec: Implementation Decisions › Shared utils, › Slugs, labels and b
 
 **Blocked by:** 03
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] A non-slug path (`My Page.md`) gets its page path as the slug, in both sidebar plugins
-- [ ] A `slug:` frontmatter override is used as the slug, in both sidebar plugins
-- [ ] Index entries drop a trailing `/index`
-- [ ] The `astroLocalLinks` tests pass unchanged
-- [ ] README updated for both sidebar plugins
-- [ ] `npm run lib:build` and `npm test` pass
+- [x] A non-slug path (`My Page.md`) gets its page path as the slug, in both sidebar plugins
+- [x] A `slug:` frontmatter override is used as the slug, in both sidebar plugins
+- [x] Index entries drop a trailing `/index`
+- [x] The `astroLocalLinks` tests pass unchanged
+- [x] README updated for both sidebar plugins
+- [x] `npm run lib:build` and `npm test` pass
