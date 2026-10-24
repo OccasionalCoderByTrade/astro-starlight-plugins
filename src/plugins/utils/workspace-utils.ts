@@ -3,6 +3,7 @@ import * as fs from "fs";
 
 type TFrontmatter = {
   title?: string;
+  slug?: string;
   draft?: boolean;
   pagefind?: boolean;
   sidebar?: {

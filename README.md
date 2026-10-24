@@ -25,6 +25,10 @@ Automatically generates a nested Starlight sidebar by recursively scanning direc
 - `maxDepthNesting` (optional, default: `100`): Maximum nesting depth. Root is level 0. At max depth, deeper index files are flattened as sibling items.
 - `dirnameDeterminesLabels` (optional, default: `true`): When `true`, all labels use raw directory names. When `false`, slug item labels come from frontmatter `title` field; group labels still use directory names.
 
+**Slugs:**
+
+Each entry links to the page Starlight serves for its index file. The slug is the index's frontmatter `slug:` when it has one. Otherwise it's the file's page path, relative to the docs root: each path segment is slugified the way Starlight does it, the extension is dropped, and a trailing `/index` is dropped. So `guides/Getting Started/index.md` gets the slug `guides/getting-started`, also when `directories` lists `"guides/Getting Started"`.
+
 **Usage:**
 
 ```ts
@@ -73,6 +77,10 @@ Generates a Starlight sidebar by parsing markdown links out of `index.md` files.
 - `maxDepthNesting` (optional, default: `100`): Maximum nesting depth. At this depth, sub-index groups are not created and their items are flattened into the current level instead. With `maxDepthNesting: 1`, all items are flat under the root group.
 - `indexMarker` (optional, default: `undefined`): A Starlight badge (`{ text, variant }`) shown on every index entry to tell it apart from regular sidebar entries. `variant` is one of `"note"`, `"tip"`, `"caution"`, `"danger"`, `"success"` or `"default"`. Example: `{ text: "Index", variant: "note" }`.
 - `collapsed` (optional, default: `true`): Whether sidebar groups start collapsed. Starlight still expands the group holding the current page.
+
+**Slugs:**
+
+Each entry links to the page Starlight serves for its source doc. The slug is the doc's frontmatter `slug:` when it has one. Otherwise it's the doc's page path, relative to the docs root: each path segment is slugified the way Starlight does it, the extension is dropped, and a trailing `/index` is dropped. So `reference/My Page.md` gets the slug `reference/my-page`, and `reference/advanced/index.md` gets `reference/advanced`.
 
 **Link conventions in `index.md`:**
 

@@ -1,8 +1,7 @@
 import type { HookParameters } from "@astrojs/starlight/types";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { normalizeSidebarSlug } from "../utils/sidebar-slugs.js";
-import type { TSidebarGroup, TSidebarItem } from "../utils/sidebar-types.js";
+import type { TSidebarGroup } from "../utils/sidebar-types.js";
 import { getIndexMdSidebarItems } from "./utils.js";
 
 /**
@@ -39,24 +38,6 @@ type TIndexOnlySidebarPluginOptions = TOptions & {
   directories: string[];
 };
 
-function normalizeItems(items: TSidebarItem[]): TSidebarItem[] {
-  return items.map((item) => {
-    if ("items" in item) {
-      return {
-        label: item.label,
-        items: normalizeItems(item.items),
-      };
-    }
-    if ("slug" in item) {
-      return {
-        label: item.label,
-        slug: normalizeSidebarSlug(item.slug),
-      };
-    }
-    return item;
-  });
-}
-
 /**
  * Starlight plugin that automatically generates a sidebar configuration by scanning the filesystem
  * for index.md/index.mdx files in specified directories.
@@ -92,19 +73,19 @@ export function starlightIndexOnlySidebar(
         const sidebarItems = directories
           .map((directory) => {
             const dirPath = join(docsDirPath, directory);
-            const rawItems = getIndexMdSidebarItems(dirPath, functionOptions);
+            const rawItems = getIndexMdSidebarItems(
+              docsDirPath,
+              dirPath,
+              functionOptions,
+            );
             // Remove the root group wrapper that getIndexMdSidebarItems adds
             const rootGroup = rawItems[0];
             if (!rootGroup || !("items" in rootGroup)) {
               return undefined;
             }
-            const items = rootGroup.items || [];
-            // Normalize slugs for Starlight
-            const normalizedItems = normalizeItems(items);
-
             return {
               label: rootGroup.label,
-              items: normalizedItems,
+              items: rootGroup.items,
             };
           })
           .filter(

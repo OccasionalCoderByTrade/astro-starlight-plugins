@@ -2,6 +2,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { findSidebarIndexFile } from "../utils/sidebar-index.js";
 import { pathSegmentToLabel } from "../utils/sidebar-labels.js";
+import { toSidebarSlug } from "../utils/sidebar-slugs.js";
 import type { TSidebarItem } from "../utils/sidebar-types.js";
 import { isHiddenFromSidebar } from "../utils/sidebar-visibility.js";
 import { parseFrontmatter } from "../utils/workspace-utils.js";
@@ -18,16 +19,6 @@ function isDir(dirPath: string): boolean {
   return (
     fs.statSync(dirPath, { throwIfNoEntry: false })?.isDirectory() ?? false
   );
-}
-
-function getSlug(dirPath: string, rootDir: string): string {
-  const normalized = path.normalize(dirPath).replace(/\\/g, "/");
-  const rootParent = path.normalize(path.dirname(rootDir)).replace(/\\/g, "/");
-
-  const slug = normalized.startsWith(rootParent)
-    ? normalized.slice(rootParent.length + 1)
-    : normalized;
-  return slug + "/index";
 }
 
 function hasIndexMdInSubtree(dirPath: string): boolean {
@@ -54,7 +45,7 @@ function isGroupItem(item: TSidebarItem): boolean {
 
 function buildSidebarItems(
   dirPath: string,
-  rootDir: string,
+  docsDirPath: string,
   currentDepth: number,
   maxDepth: number,
   dirnameDeterminesLabels: boolean,
@@ -79,7 +70,11 @@ function buildSidebarItems(
 
       items.push({
         label,
-        slug: getSlug(dirPath, rootDir),
+        slug: toSidebarSlug({
+          docsDirPath,
+          sourceDocFilePath: indexFilePath,
+          frontmatterSlug: frontmatter.slug,
+        }),
       });
     }
   }
@@ -88,7 +83,7 @@ function buildSidebarItems(
   if (currentDepth >= maxDepth) {
     const flattenedItems = flattenIndexFilesAtDepth(
       dirPath,
-      rootDir,
+      docsDirPath,
       dirnameDeterminesLabels,
     );
     items.push(...flattenedItems);
@@ -109,7 +104,7 @@ function buildSidebarItems(
     // Recursively build items for this subdirectory
     const subItems = buildSidebarItems(
       entryPath,
-      rootDir,
+      docsDirPath,
       currentDepth + 1,
       maxDepth,
       dirnameDeterminesLabels,
@@ -144,7 +139,7 @@ function buildSidebarItems(
 
 function flattenIndexFilesAtDepth(
   dirPath: string,
-  rootDir: string,
+  docsDirPath: string,
   dirnameDeterminesLabels: boolean,
 ): TSidebarItem[] {
   const items: TSidebarItem[] = [];
@@ -165,14 +160,18 @@ function flattenIndexFilesAtDepth(
       if (!isHiddenFromSidebar(frontmatter)) {
         items.push({
           label: pathSegmentToLabel(entry),
-          slug: getSlug(entryPath, rootDir),
+          slug: toSidebarSlug({
+            docsDirPath,
+            sourceDocFilePath: indexFilePath,
+            frontmatterSlug: frontmatter.slug,
+          }),
         });
       }
     }
 
     // Recursively search deeper directories
     items.push(
-      ...flattenIndexFilesAtDepth(entryPath, rootDir, dirnameDeterminesLabels),
+      ...flattenIndexFilesAtDepth(entryPath, docsDirPath, dirnameDeterminesLabels),
     );
   }
 
@@ -180,6 +179,7 @@ function flattenIndexFilesAtDepth(
 }
 
 export function getIndexMdSidebarItems(
+  docsDirPath: string,
   directory: string,
   options: TOptions = {},
 ): TSidebarItem[] {
@@ -194,7 +194,7 @@ export function getIndexMdSidebarItems(
 
   const items = buildSidebarItems(
     directory,
-    directory,
+    docsDirPath,
     0,
     maxDepth,
     dirnameDeterminesLabels,
