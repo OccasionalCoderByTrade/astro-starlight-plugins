@@ -10,11 +10,11 @@ See the spec: User Stories 50-53, 59-60; Implementation Decisions › Slugs, lab
 
 **Blocked by:** 03
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] `sidebar.label` beats `title` on page entries and index entries in the index-sourced sidebar
-- [ ] `sidebar.badge` shows on a page entry. On an index entry it shows only when no index marker is set
-- [ ] Group labels are unchanged
-- [ ] Index-only with `dirnameDeterminesLabels: false` uses `sidebar.label`, then `title`, and shows `sidebar.badge`
-- [ ] README updated for both sidebar plugins
-- [ ] `npm run lib:build` and `npm test` pass
+- [x] `sidebar.label` beats `title` on page entries and index entries in the index-sourced sidebar
+- [x] `sidebar.badge` shows on a page entry. On an index entry it shows only when no index marker is set
+- [x] Group labels are unchanged
+- [x] Index-only with `dirnameDeterminesLabels: false` uses `sidebar.label`, then `title`, and shows `sidebar.badge`
+- [x] README updated for both sidebar plugins
+- [x] `npm run lib:build` and `npm test` pass

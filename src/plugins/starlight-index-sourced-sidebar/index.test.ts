@@ -51,6 +51,16 @@ const NESTED_DOCS_FILES = {
   "guides/advanced/tips.md": "# no title\n",
 };
 
+/** guides -> a -> b -> c, each a sub-index of the one above. */
+const DEEP_DOCS_FILES = {
+  "guides/index.md": "---\ntitle: Guides\n---\n\n[A](./a/index)\n",
+  "guides/a/index.md": "---\ntitle: A\n---\n\n[B](./b/index)\n",
+  "guides/a/b/index.md": "---\ntitle: B\n---\n\n[C](./c/index)\n",
+  "guides/a/b/c/index.md": "---\ntitle: C\n---\n",
+};
+
+const PLUGIN_PREFIX = "[starlight-index-sourced-sidebar]";
+
 describe("starlightIndexSourcedSidebar", () => {
   it("builds nested groups from the links in each sidebar index", async () => {
     const { setup } = runSetup(NESTED_DOCS_FILES, { directories: ["guides"] });
@@ -97,10 +107,10 @@ describe("starlightIndexSourcedSidebar", () => {
     ]);
   });
 
-  it("flattens groups at maxDepthNesting into their parent", async () => {
+  it("flattens every group under the root group when maxGroupLevels is 1", async () => {
     const { setup } = runSetup(NESTED_DOCS_FILES, {
       directories: ["guides"],
-      maxDepthNesting: 1,
+      maxGroupLevels: 1,
     });
 
     expect((await setup()).sidebar).toEqual([
@@ -115,6 +125,120 @@ describe("starlightIndexSourcedSidebar", () => {
         ],
       },
     ]);
+  });
+
+  it("keeps one level of nested groups when maxGroupLevels is 2", async () => {
+    const { setup } = runSetup(DEEP_DOCS_FILES, {
+      directories: ["guides"],
+      maxGroupLevels: 2,
+    });
+
+    expect((await setup()).sidebar).toEqual([
+      {
+        label: "Guides",
+        collapsed: true,
+        items: [
+          { label: "Guides", slug: "guides" },
+          {
+            label: "A",
+            collapsed: true,
+            items: [
+              { label: "A", slug: "guides/a" },
+              { label: "B", slug: "guides/a/b" },
+              { label: "C", slug: "guides/a/b/c" },
+            ],
+          },
+        ],
+      },
+    ]);
+  });
+
+  it("nests without limit when maxGroupLevels is unset", async () => {
+    const { setup } = runSetup(DEEP_DOCS_FILES, { directories: ["guides"] });
+
+    expect((await setup()).sidebar).toEqual([
+      {
+        label: "Guides",
+        collapsed: true,
+        items: [
+          { label: "Guides", slug: "guides" },
+          {
+            label: "A",
+            collapsed: true,
+            items: [
+              { label: "A", slug: "guides/a" },
+              {
+                label: "B",
+                collapsed: true,
+                items: [
+                  { label: "B", slug: "guides/a/b" },
+                  {
+                    label: "C",
+                    collapsed: true,
+                    items: [{ label: "C", slug: "guides/a/b/c" }],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    ]);
+  });
+
+  it.each([0, 1.5, -1])(
+    "throws at startup when maxGroupLevels is %s",
+    async (maxGroupLevels) => {
+      const { setup } = runSetup(NESTED_DOCS_FILES, {
+        directories: ["guides"],
+        maxGroupLevels,
+      });
+
+      await expect(setup()).rejects.toThrow(
+        `${PLUGIN_PREFIX} maxGroupLevels must be an integer of at least 1, got ${maxGroupLevels}`,
+      );
+    },
+  );
+
+  it("throws when a directories entry is outside the docs root", async () => {
+    const { setup, docsDirPath } = runSetup(NESTED_DOCS_FILES, {
+      directories: ["../outside"],
+    });
+
+    await expect(setup()).rejects.toThrow(
+      `${PLUGIN_PREFIX} directories entry "../outside" is outside the docs root ${docsDirPath}`,
+    );
+  });
+
+  it("throws directory not found when a directories entry doesn't exist", async () => {
+    const { setup, docsDirPath } = runSetup(NESTED_DOCS_FILES, {
+      directories: ["gone"],
+    });
+
+    await expect(setup()).rejects.toThrow(
+      `${PLUGIN_PREFIX} Directory not found for directories entry "gone": ${join(docsDirPath, "gone")}`,
+    );
+  });
+
+  it("throws when the same directory is listed twice", async () => {
+    const { setup } = runSetup(NESTED_DOCS_FILES, {
+      directories: ["guides", "./guides/"],
+    });
+
+    await expect(setup()).rejects.toThrow(
+      `${PLUGIN_PREFIX} directories entry "./guides/" is the same directory as "guides"`,
+    );
+  });
+
+  it("throws when a root directory has no sidebar index", async () => {
+    const { setup, docsDirPath } = runSetup(
+      { "guides/setup.md": "---\ntitle: Setup\n---\n" },
+      { directories: ["guides"] },
+    );
+
+    await expect(setup()).rejects.toThrow(
+      `${PLUGIN_PREFIX} No sidebar index (index.md or index.mdx) for directories entry "guides": ${join(docsDirPath, "guides")}`,
+    );
   });
 
   it("badges index entries with indexMarker and honours collapsed", async () => {
@@ -184,6 +308,117 @@ describe("starlightIndexSourcedSidebar", () => {
         items: [
           { label: "Guides", slug: "start" },
           { label: "Setup", slug: "install/setup" },
+        ],
+      },
+    ]);
+  });
+
+  it("labels index entries and page entries from sidebar.label, then title", async () => {
+    const { setup } = runSetup(
+      {
+        "guides/index.md":
+          "---\ntitle: All Guides\nsidebar:\n  label: Start Here\n---\n\n- [Setup](./setup)\n- [Advanced](./advanced/index)\n",
+        "guides/setup.md":
+          "---\ntitle: Setup\nsidebar:\n  label: Install\n---\n",
+        "guides/advanced/index.md":
+          "---\ntitle: Advanced\nsidebar:\n  label: Deep Dive\n---\n\n[Tips](./tips.md)\n",
+        "guides/advanced/tips.md": "# no title\n",
+      },
+      { directories: ["guides"] },
+    );
+
+    expect((await setup()).sidebar).toEqual([
+      {
+        label: "Guides",
+        collapsed: true,
+        items: [
+          { label: "Start Here", slug: "guides" },
+          { label: "Install", slug: "guides/setup" },
+          {
+            label: "Advanced",
+            collapsed: true,
+            items: [
+              { label: "Deep Dive", slug: "guides/advanced" },
+              { label: "Tips", slug: "guides/advanced/tips" },
+            ],
+          },
+        ],
+      },
+    ]);
+  });
+
+  const BADGED_DOCS_FILES = {
+    "guides/index.md":
+      "---\ntitle: Guides\nsidebar:\n  badge: Start\n---\n\n- [Setup](./setup)\n- [Faq](./faq)\n- [Advanced](./advanced/index)\n",
+    "guides/setup.md":
+      "---\ntitle: Setup\nsidebar:\n  badge:\n    text: New\n    variant: tip\n---\n",
+    "guides/faq.md": "---\ntitle: Faq\nsidebar:\n  badge: Old\n---\n",
+    "guides/advanced/index.md": "---\ntitle: Advanced\n---\n",
+  };
+
+  it("shows sidebar.badge on page entries and on index entries without an indexMarker", async () => {
+    const { setup } = runSetup(BADGED_DOCS_FILES, { directories: ["guides"] });
+
+    expect((await setup()).sidebar).toEqual([
+      {
+        label: "Guides",
+        collapsed: true,
+        items: [
+          {
+            label: "Guides",
+            slug: "guides",
+            badge: { text: "Start", variant: "default" },
+          },
+          {
+            label: "Setup",
+            slug: "guides/setup",
+            badge: { text: "New", variant: "tip" },
+          },
+          {
+            label: "Faq",
+            slug: "guides/faq",
+            badge: { text: "Old", variant: "default" },
+          },
+          {
+            label: "Advanced",
+            collapsed: true,
+            items: [{ label: "Advanced", slug: "guides/advanced" }],
+          },
+        ],
+      },
+    ]);
+  });
+
+  it("shows the indexMarker instead of sidebar.badge on index entries", async () => {
+    const indexMarker = { text: "Index", variant: "note" } as const;
+    const { setup } = runSetup(BADGED_DOCS_FILES, {
+      directories: ["guides"],
+      indexMarker,
+    });
+
+    expect((await setup()).sidebar).toEqual([
+      {
+        label: "Guides",
+        collapsed: true,
+        items: [
+          { label: "Guides", slug: "guides", badge: indexMarker },
+          {
+            label: "Setup",
+            slug: "guides/setup",
+            badge: { text: "New", variant: "tip" },
+          },
+          {
+            label: "Faq",
+            slug: "guides/faq",
+            badge: { text: "Old", variant: "default" },
+          },
+          {
+            label: "Advanced",
+            collapsed: true,
+            items: [
+              { label: "Advanced", slug: "guides/advanced", badge: indexMarker },
+            ],
+          },
         ],
       },
     ]);

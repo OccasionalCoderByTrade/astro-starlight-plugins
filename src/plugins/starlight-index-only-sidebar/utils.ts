@@ -1,14 +1,20 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { findSidebarIndexFile } from "../utils/sidebar-index.js";
-import { pathSegmentToLabel } from "../utils/sidebar-labels.js";
+import {
+  pathSegmentToLabel,
+  sidebarEntryBadge,
+  sidebarEntryLabel,
+  type TSidebarEntryFrontmatter,
+} from "../utils/sidebar-labels.js";
 import { toSidebarSlug } from "../utils/sidebar-slugs.js";
 import type { TSidebarItem } from "../utils/sidebar-types.js";
 import { isHiddenFromSidebar } from "../utils/sidebar-visibility.js";
 import { parseFrontmatter } from "../utils/workspace-utils.js";
 
 type TOptions = {
-  maxDepthNesting?: number;
+  /** Levels of groups allowed, the root group included. @default Infinity */
+  maxGroupLevels?: number;
   dirnameDeterminesLabels?: boolean;
   /** Extensions that make a file a source doc, from `getSourceDocExtensions`. */
   sourceDocExtensions: string[];
@@ -19,6 +25,18 @@ function isDir(dirPath: string): boolean {
   return (
     fs.statSync(dirPath, { throwIfNoEntry: false })?.isDirectory() ?? false
   );
+}
+
+/** A source doc's frontmatter, with the fields that decide its entry's label and badge. */
+function readEntryFrontmatter(filePath: string) {
+  return parseFrontmatter(filePath) as ReturnType<typeof parseFrontmatter> &
+    TSidebarEntryFrontmatter;
+}
+
+/** `{ badge }` from `frontmatter`'s `sidebar.badge`, or nothing when it has none. */
+function badgeProperty(frontmatter: TSidebarEntryFrontmatter) {
+  const badge = sidebarEntryBadge(frontmatter);
+  return badge ? { badge } : {};
 }
 
 function hasIndexMdInSubtree(
@@ -60,7 +78,7 @@ function buildSidebarItems(
   // Add index.md of current directory if it exists
   const indexFilePath = findSidebarIndexFile(dirPath, sourceDocExtensions);
   if (indexFilePath) {
-    const frontmatter = parseFrontmatter(indexFilePath);
+    const frontmatter = readEntryFrontmatter(indexFilePath);
     if (!isHiddenFromSidebar(frontmatter)) {
       let label: string;
       if (currentDepth >= maxDepth && parentDirName) {
@@ -69,7 +87,7 @@ function buildSidebarItems(
       } else if (dirnameDeterminesLabels) {
         label = "Overview";
       } else {
-        label = frontmatter.title || "Overview";
+        label = sidebarEntryLabel(frontmatter, "Overview");
       }
 
       items.push({
@@ -79,6 +97,7 @@ function buildSidebarItems(
           sourceDocFilePath: indexFilePath,
           frontmatterSlug: frontmatter.slug,
         }),
+        ...badgeProperty(frontmatter),
       });
     }
   }
@@ -160,7 +179,7 @@ function flattenIndexFilesAtDepth(
 
     const indexFilePath = findSidebarIndexFile(entryPath, sourceDocExtensions);
     if (indexFilePath) {
-      const frontmatter = parseFrontmatter(indexFilePath);
+      const frontmatter = readEntryFrontmatter(indexFilePath);
       if (!isHiddenFromSidebar(frontmatter)) {
         items.push({
           label: pathSegmentToLabel(entry),
@@ -169,6 +188,7 @@ function flattenIndexFilesAtDepth(
             sourceDocFilePath: indexFilePath,
             frontmatterSlug: frontmatter.slug,
           }),
+          ...badgeProperty(frontmatter),
         });
       }
     }
@@ -192,12 +212,8 @@ export function getIndexMdSidebarItems(
   directory: string,
   options: TOptions,
 ): TSidebarItem[] {
-  if (!isDir(directory)) {
-    throw new Error(
-      `[starlight-index-only-sidebar] Directory not found: "${path.resolve(directory)}"`,
-    );
-  }
-  const maxDepth = options.maxDepthNesting ?? 100;
+  // The root directory is depth 0 and its group is level 1
+  const maxDepth = (options.maxGroupLevels ?? Infinity) - 1;
   const dirnameDeterminesLabels = options.dirnameDeterminesLabels ?? true;
   const { sourceDocExtensions } = options;
   const rootGroupLabel = pathSegmentToLabel(path.basename(directory));

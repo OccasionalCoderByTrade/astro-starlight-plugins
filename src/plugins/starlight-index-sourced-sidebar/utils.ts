@@ -6,7 +6,12 @@ import remarkParse from "remark-parse";
 import { unified } from "unified";
 import { visit } from "unist-util-visit";
 import { findSidebarIndexFile } from "../utils/sidebar-index.js";
-import { pathSegmentToLabel } from "../utils/sidebar-labels.js";
+import {
+  pathSegmentToLabel,
+  sidebarEntryBadge,
+  sidebarEntryLabel,
+  type TSidebarEntryFrontmatter,
+} from "../utils/sidebar-labels.js";
 import { toSidebarSlug } from "../utils/sidebar-slugs.js";
 import type {
   TSidebarBadge,
@@ -19,8 +24,7 @@ import {
 } from "../utils/sidebar-visibility.js";
 import { isFile } from "../utils/workspace-utils.js";
 
-type TFrontmatter = {
-  title?: string;
+type TFrontmatter = TSidebarEntryFrontmatter & {
   slug?: string;
   draft?: boolean;
   sidebar?: { hidden?: boolean };
@@ -46,8 +50,8 @@ export type TIndexSourcedSidebarOptions = {
   docsDirPath: string;
   /** Absolute path of the directory whose sidebar index defines the root group. */
   dirPath: string;
-  /** Depth at which sub-index groups are flattened into their parent; the root is 0. */
-  maxDepthNesting: number;
+  /** Levels of groups allowed, the root group included; deeper groups are flattened. */
+  maxGroupLevels: number;
   indexMarker: TSidebarBadge | undefined;
   collapsed: boolean;
   /** Extensions that make a file a source doc, from `getSourceDocExtensions`. */
@@ -238,21 +242,33 @@ function warnSkippedLink(
   );
 }
 
-/** The entry for a sidebar index's own page, badged with the index marker. */
+/** `{ badge }` to spread into an entry, or nothing when there's no badge. */
+function badgeProperty(badge: TSidebarBadge | undefined) {
+  return badge ? { badge } : {};
+}
+
+/**
+ * The entry for a sidebar index's own page. It shows the index marker when one is set, and
+ * otherwise its `sidebar.badge`.
+ */
 function toIndexEntry(
   sidebarIndex: TSidebarIndex,
   options: Pick<TIndexSourcedSidebarOptions, "docsDirPath" | "indexMarker">,
 ): TSidebarItem {
   const { dirPath, indexFilePath, indexDoc } = sidebarIndex;
   return {
-    label:
-      indexDoc.frontmatter.title ?? pathSegmentToLabel(path.basename(dirPath)),
+    label: sidebarEntryLabel(
+      indexDoc.frontmatter,
+      pathSegmentToLabel(path.basename(dirPath)),
+    ),
     slug: toSidebarSlug({
       docsDirPath: options.docsDirPath,
       sourceDocFilePath: indexFilePath,
       frontmatterSlug: indexDoc.frontmatter.slug,
     }),
-    ...(options.indexMarker && { badge: options.indexMarker }),
+    ...badgeProperty(
+      options.indexMarker ?? sidebarEntryBadge(indexDoc.frontmatter),
+    ),
   };
 }
 
@@ -279,7 +295,8 @@ function buildSubIndexItems(
     ancestorDirPaths: new Set([...options.ancestorDirPaths, subIndex.dirPath]),
   });
 
-  if (options.currentDepth + 1 >= options.maxDepthNesting) return subItems;
+  // The root group is level 1, so the sub-index group would be level currentDepth + 2
+  if (options.currentDepth + 2 > options.maxGroupLevels) return subItems;
   return [
     {
       label: pathSegmentToLabel(path.basename(subIndex.dirPath)),
@@ -300,14 +317,16 @@ function buildPageItems(
 
   return [
     {
-      label:
-        linkedDoc.frontmatter.title ??
+      label: sidebarEntryLabel(
+        linkedDoc.frontmatter,
         pathSegmentToLabel(path.basename(filePath, path.extname(filePath))),
+      ),
       slug: toSidebarSlug({
         docsDirPath: options.docsDirPath,
         sourceDocFilePath: filePath,
         frontmatterSlug: linkedDoc.frontmatter.slug,
       }),
+      ...badgeProperty(sidebarEntryBadge(linkedDoc.frontmatter)),
     },
   ];
 }
