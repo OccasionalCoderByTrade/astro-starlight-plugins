@@ -15,7 +15,8 @@ Automatically generates a nested Starlight sidebar by recursively scanning direc
 - Respects frontmatter: `draft: true` and `sidebar.hidden: true` hide entries
 - Automatically collapses single-child groups (no intermediate wrappers)
 - Configurable depth limiting to flatten deeply nested content
-- Two labeling modes: directory names or frontmatter titles
+- Two labeling modes: directory names, or Starlight's `sidebar.label` then `title` from frontmatter
+- Shows Starlight's `sidebar.badge` frontmatter on entries (a string gets the `default` variant)
 - Ignores `assets` directories entirely
 - Fails `astro dev` and `astro build` at startup when an index file's frontmatter can't be parsed, a configured directory doesn't exist, or a directory under it can't be read
 
@@ -23,7 +24,7 @@ Automatically generates a nested Starlight sidebar by recursively scanning direc
 
 - `directories` (required): Array of directory names to scan, relative to the docs root (`content/docs/` under Astro's `srcDir`, so `src/content/docs` by default), e.g. `["guides", "api"]`
 - `maxDepthNesting` (optional, default: `100`): Maximum nesting depth. Root is level 0. At max depth, deeper index files are flattened as sibling items.
-- `dirnameDeterminesLabels` (optional, default: `true`): When `true`, all labels use raw directory names. When `false`, slug item labels come from frontmatter `title` field; group labels still use directory names.
+- `dirnameDeterminesLabels` (optional, default: `true`): When `true`, all labels use raw directory names. When `false`, slug item labels come from frontmatter `sidebar.label`, then `title`, then `"Overview"`; group labels still use directory names. `sidebar.badge` shows on entries either way.
 
 **Usage:**
 
@@ -60,7 +61,7 @@ Generates a Starlight sidebar by parsing markdown links out of `index.md` files.
 - Links ending in `/index` pointing to an `index.mdx` add it as a single leaf item without recursing into it
 - Sub-group depth limited by `maxDepthNesting`; deeper items are flattened
 - Each index page itself appears as the first leaf item in its group
-- Labels for leaf items come from the linked page's frontmatter `title`
+- Labels and badges come from Starlight's sidebar frontmatter (see [Labels and badges](#labels-and-badges))
 - Respects frontmatter: `draft: true`, `pagefind: false`, and `sidebar.hidden: true` hide entries
 - Links to non-markdown files (images, PDFs, etc.) are silently skipped
 - Links to markdown files that do not exist on disk are silently skipped
@@ -71,8 +72,15 @@ Generates a Starlight sidebar by parsing markdown links out of `index.md` files.
 
 - `directories` (required): Array of directory names to scan, relative to the docs root (`content/docs/` under Astro's `srcDir`, so `src/content/docs` by default)
 - `maxDepthNesting` (optional, default: `100`): Maximum nesting depth. At this depth, sub-index groups are not created and their items are flattened into the current level instead. With `maxDepthNesting: 1`, all items are flat under the root group.
-- `indexMarker` (optional, default: `undefined`): A Starlight badge (`{ text, variant }`) shown on every index entry to tell it apart from regular sidebar entries. `variant` is one of `"note"`, `"tip"`, `"caution"`, `"danger"`, `"success"` or `"default"`. Example: `{ text: "Index", variant: "note" }`.
+- `indexMarker` (optional, default: `undefined`): A Starlight badge (`{ text, variant }`) shown on every index entry to tell it apart from regular sidebar entries. When set, it replaces an index entry's own `sidebar.badge`. `variant` is one of `"note"`, `"tip"`, `"caution"`, `"danger"`, `"success"` or `"default"`. Example: `{ text: "Index", variant: "note" }`.
 - `collapsed` (optional, default: `true`): Whether sidebar groups start collapsed. Starlight still expands the group holding the current page.
+
+**Labels and badges:**
+
+- Index entries and page entries are labelled with the source doc's `sidebar.label`, then its `title`, then a label made from its filename (or its directory name, for an index)
+- Groups, the root group included, are always labelled from their directory name (e.g. `csci-316` becomes `CSCI 316`)
+- A page entry shows its `sidebar.badge`. A string badge gets the `default` variant
+- An index entry shows `indexMarker` when one is set, and otherwise its own `sidebar.badge`
 
 **Link conventions in `index.md`:**
 

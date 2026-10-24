@@ -19,8 +19,9 @@ type TOptions = {
 
   /**
    * When true, all labels (both group labels and slug item labels) are derived from the raw directory name.
-   * When false, the label for a slug item is read from the title field in the index.md or index.mdx file's
-   * frontmatter; group labels are still derived from the raw directory name.
+   * When false, the label for a slug item is read from the index.md or index.mdx file's frontmatter
+   * `sidebar.label`, then `title`; group labels are still derived from the raw directory name.
+   * Either way, a slug item shows its frontmatter `sidebar.badge`.
    * @default true
    */
   dirnameDeterminesLabels?: boolean;
@@ -49,7 +50,7 @@ function normalizeItems(items: TSidebarItem[]): TSidebarItem[] {
     }
     if ("slug" in item) {
       return {
-        label: item.label,
+        ...item,
         slug: normalizeSidebarSlug(item.slug),
       };
     }
