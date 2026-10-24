@@ -625,7 +625,7 @@ An Expressive Code plugin that highlights specific terms inside code blocks usin
 **Features:**
 
 - Comma-separated list of terms to emphasize per code block
-- Whole-word matching for letters and digits (Unicode-aware): `foo` doesn't match in `food`, and `na` doesn't match in `naïve`
+- Whole-word matching for letters, combining marks and digits in any script: `foo` doesn't match in `food`, and `na` doesn't match in `naïve`
 - Terms can contain or be made of punctuation (e.g. `()`, `arr[0]`, `;`)
 - Overlapping or duplicate terms never produce nested spans
 
@@ -666,7 +666,7 @@ Here `foo`, `bar` and all three `()` are emphasized.
 Matching rules:
 
 - Terms are comma-separated and trimmed, so a term can't contain a comma. Matching is case-sensitive.
-- An edge of a term that is a letter, digit or `_` can't sit against another letter, digit or `_`. An edge that is punctuation can sit against anything, so `()` matches in `foo()`, and `-` matches each dash in `--`.
+- An edge of a term that is a word character can't sit against another word character. A word character is a letter, combining mark (such as the accent in a decomposed `é`), digit or `_`, in any script. An edge that is punctuation can sit against anything, so `()` matches in `foo()`, and `-` matches each dash in `--`.
 - Matches never overlap. The one that starts first wins, and at the same start the longer term wins, so `emph="foo,foo.bar"` emphasizes `foo.bar` as one unit.
 
 The `.fw-supreme` styles (Source Code Pro at weight 900, loaded from Google Fonts) ship as SCSS in the package's `./styles` export. Add `starlight-cannoli-plugins/styles/main.scss` to Starlight's `customCss` (needs `sass` installed) to get them. Without them, the span has no styling.

@@ -20,10 +20,10 @@ class EmphasisAnnotation extends ExpressiveCodeAnnotation {
  *
  * - Terms are comma-separated and trimmed; a term can't contain a comma.
  * - Matching is case-sensitive.
- * - A term edge that is a letter, digit or `_` (Unicode-aware) can't sit
- *   against another one, so `foo` doesn't match in `food` or `naïve` doesn't
- *   leak `na`. A punctuation edge can sit against anything, so `()` matches
- *   in `foo()`.
+ * - A term edge that is a word character (a letter, combining mark, digit or
+ *   `_`, in any script) can't sit against another one, so `foo` doesn't match
+ *   in `food` and `na` doesn't match in `naïve`. A punctuation edge can sit
+ *   against anything, so `()` matches in `foo()`.
  * - Matches never overlap: the one that starts first wins, and at the same
  *   start the longer term wins (`foo.bar` over `foo`).
  */

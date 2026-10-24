@@ -145,5 +145,5 @@ _Avoid_: link boundary, link range
 ### Expressive Code emphasis
 
 **Expressive Code Emphasis Term**:
-A string listed in a code block's `emph` meta, comma-separated, whose every whole-unit occurrence in the block is emphasized. A term edge that is a letter, digit or `_` can't sit against another one; an edge that is punctuation can sit against anything. Where two terms' occurrences overlap, the one that starts first wins, and at the same start the longer one.
+A string listed in a code block's `emph` meta, comma-separated, whose every whole-unit occurrence in the block is emphasized. A term edge that is a letter, combining mark, digit or `_` can't sit against another one; an edge that is punctuation can sit against anything. Where two terms' occurrences overlap, the one that starts first wins, and at the same start the longer one.
 _Avoid_: emph word, highlight term, keyword
