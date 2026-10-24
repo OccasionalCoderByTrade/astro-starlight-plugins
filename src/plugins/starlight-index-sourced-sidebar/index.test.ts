@@ -313,6 +313,117 @@ describe("starlightIndexSourcedSidebar", () => {
     ]);
   });
 
+  it("labels index entries and page entries from sidebar.label, then title", async () => {
+    const { setup } = runSetup(
+      {
+        "guides/index.md":
+          "---\ntitle: All Guides\nsidebar:\n  label: Start Here\n---\n\n- [Setup](./setup)\n- [Advanced](./advanced/index)\n",
+        "guides/setup.md":
+          "---\ntitle: Setup\nsidebar:\n  label: Install\n---\n",
+        "guides/advanced/index.md":
+          "---\ntitle: Advanced\nsidebar:\n  label: Deep Dive\n---\n\n[Tips](./tips.md)\n",
+        "guides/advanced/tips.md": "# no title\n",
+      },
+      { directories: ["guides"] },
+    );
+
+    expect((await setup()).sidebar).toEqual([
+      {
+        label: "Guides",
+        collapsed: true,
+        items: [
+          { label: "Start Here", slug: "guides" },
+          { label: "Install", slug: "guides/setup" },
+          {
+            label: "Advanced",
+            collapsed: true,
+            items: [
+              { label: "Deep Dive", slug: "guides/advanced" },
+              { label: "Tips", slug: "guides/advanced/tips" },
+            ],
+          },
+        ],
+      },
+    ]);
+  });
+
+  const BADGED_DOCS_FILES = {
+    "guides/index.md":
+      "---\ntitle: Guides\nsidebar:\n  badge: Start\n---\n\n- [Setup](./setup)\n- [Faq](./faq)\n- [Advanced](./advanced/index)\n",
+    "guides/setup.md":
+      "---\ntitle: Setup\nsidebar:\n  badge:\n    text: New\n    variant: tip\n---\n",
+    "guides/faq.md": "---\ntitle: Faq\nsidebar:\n  badge: Old\n---\n",
+    "guides/advanced/index.md": "---\ntitle: Advanced\n---\n",
+  };
+
+  it("shows sidebar.badge on page entries and on index entries without an indexMarker", async () => {
+    const { setup } = runSetup(BADGED_DOCS_FILES, { directories: ["guides"] });
+
+    expect((await setup()).sidebar).toEqual([
+      {
+        label: "Guides",
+        collapsed: true,
+        items: [
+          {
+            label: "Guides",
+            slug: "guides",
+            badge: { text: "Start", variant: "default" },
+          },
+          {
+            label: "Setup",
+            slug: "guides/setup",
+            badge: { text: "New", variant: "tip" },
+          },
+          {
+            label: "Faq",
+            slug: "guides/faq",
+            badge: { text: "Old", variant: "default" },
+          },
+          {
+            label: "Advanced",
+            collapsed: true,
+            items: [{ label: "Advanced", slug: "guides/advanced" }],
+          },
+        ],
+      },
+    ]);
+  });
+
+  it("shows the indexMarker instead of sidebar.badge on index entries", async () => {
+    const indexMarker = { text: "Index", variant: "note" } as const;
+    const { setup } = runSetup(BADGED_DOCS_FILES, {
+      directories: ["guides"],
+      indexMarker,
+    });
+
+    expect((await setup()).sidebar).toEqual([
+      {
+        label: "Guides",
+        collapsed: true,
+        items: [
+          { label: "Guides", slug: "guides", badge: indexMarker },
+          {
+            label: "Setup",
+            slug: "guides/setup",
+            badge: { text: "New", variant: "tip" },
+          },
+          {
+            label: "Faq",
+            slug: "guides/faq",
+            badge: { text: "Old", variant: "default" },
+          },
+          {
+            label: "Advanced",
+            collapsed: true,
+            items: [
+              { label: "Advanced", slug: "guides/advanced", badge: indexMarker },
+            ],
+          },
+        ],
+      },
+    ]);
+  });
+
   it("skips links in a sidebar index that don't resolve to a source doc", async () => {
     const { setup } = runSetup(
       {

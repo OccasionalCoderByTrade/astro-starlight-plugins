@@ -1,3 +1,5 @@
+import type { TSidebarBadge, TSidebarBadgeVariant } from "./sidebar-types.js";
+
 /**
  * A sidebar label made from a path segment (a directory name, or a file name without its
  * extension): each `-`-separated word capitalized, and a leading word followed by a number
@@ -18,4 +20,39 @@ export function pathSegmentToLabel(pathSegment: string): string {
   }
 
   return label;
+}
+
+/** The frontmatter fields that decide a sidebar entry's label and badge. */
+export type TSidebarEntryFrontmatter = {
+  title?: string;
+  sidebar?: {
+    label?: string;
+    /** Starlight takes a string, or a `{ text, variant }` object. */
+    badge?: string | { text: string; variant?: TSidebarBadgeVariant };
+  };
+};
+
+/**
+ * The label for the entry of a source doc with `frontmatter`: `sidebar.label`, then
+ * `title`, then `fallbackLabel` (usually made from the filename).
+ */
+export function sidebarEntryLabel(
+  frontmatter: TSidebarEntryFrontmatter,
+  fallbackLabel: string,
+): string {
+  return frontmatter.sidebar?.label || frontmatter.title || fallbackLabel;
+}
+
+/**
+ * The badge for the entry of a source doc with `frontmatter`, from its `sidebar.badge`, or
+ * undefined when it has none. A string badge, or one without a `variant`, gets Starlight's
+ * `default` variant.
+ */
+export function sidebarEntryBadge(
+  frontmatter: TSidebarEntryFrontmatter,
+): TSidebarBadge | undefined {
+  const badge = frontmatter.sidebar?.badge;
+  if (!badge) return undefined;
+  if (typeof badge === "string") return { text: badge, variant: "default" };
+  return { text: badge.text, variant: badge.variant ?? "default" };
 }
