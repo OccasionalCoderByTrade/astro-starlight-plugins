@@ -15,9 +15,17 @@
       "import": "./dist/plugins/starlight-index-only-sidebar.js",
       "types": "./dist/plugins/starlight-index-only-sidebar.d.ts"
     },
+    "./starlight-index-sourced-sidebar": {
+      "import": "./dist/plugins/starlight-index-sourced-sidebar.js",
+      "types": "./dist/plugins/starlight-index-sourced-sidebar.d.ts"
+    },
     "./rehype-validate-links": {
       "import": "./dist/plugins/rehype-validate-links.js",
       "types": "./dist/plugins/rehype-validate-links.d.ts"
+    },
+    "./remark-gfm-slug": {
+      "import": "./dist/plugins/remark-gfm-slug.js",
+      "types": "./dist/plugins/remark-gfm-slug.d.ts"
     },
     "./astro-normalize-paths": {
       "import": "./dist/plugins/astro-normalize-paths.js",
@@ -38,6 +46,10 @@
     "./starlight-dom-patches": {
       "import": "./dist/plugins/starlight-dom-patches.js",
       "types": "./dist/plugins/starlight-dom-patches.d.ts"
+    },
+    "./expressive-code-emphasis": {
+      "import": "./dist/plugins/expressive-code-emphasis.js",
+      "types": "./dist/plugins/expressive-code-emphasis.d.ts"
     },
     "./styles": "./dist/styles/",
     "./styles/*": "./dist/styles/*"
