@@ -6,40 +6,9 @@ A collection of powerful plugins for [Astro Starlight](https://starlight.astro.b
 
 ### Starlight Index-Only Sidebar
 
-Automatically generates a nested Starlight sidebar by recursively scanning directories for `index.md`/`index.mdx` files. Only directories with index files appear in the sidebar, creating a clean, minimal navigation structure.
+Automatically generates a nested Starlight sidebar by recursively scanning directories for index files. Only directories with index files appear in the sidebar, creating a clean, minimal navigation structure.
 
-**Features:**
-
-- Recursively scans directories for `index.md` or `index.mdx` files
-- Creates sidebar entries only for pages with index files
-- Respects frontmatter: `draft: true` and `sidebar.hidden: true` hide an index and its whole subtree, in `astro dev` and `astro build` alike. Drafts are hidden in dev on purpose, unlike Starlight, which renders draft pages in dev: the dev sidebar shows what the build will show. A hidden root index drops its root group. `pagefind: false` only affects search and doesn't hide anything.
-- Index files can be `index.md`, `index.mdx`, or `index.mdoc` when `@astrojs/markdoc` is in Astro's `integrations`. Without Markdoc, an `index.mdoc` doesn't count. A `_`-prefixed file is never an index, but a `_`-prefixed folder (like `_partials/index.md`) still counts, as in Astro.
-- Automatically collapses single-child groups (no intermediate wrappers)
-- Configurable depth limiting to flatten deeply nested content
-- Two labeling modes: directory names, or Starlight's `sidebar.label` then `title` from frontmatter
-- Shows Starlight's `sidebar.badge` frontmatter on entries (a string gets the `default` variant)
-- Ignores `assets` directories entirely
-- Fails `astro dev` and `astro build` at startup when an option is bad (see **Startup errors**), an index file's frontmatter can't be parsed, or a directory under it can't be read
-
-**Options:**
-
-- `directories` (required): Array of directory names to scan, relative to the docs root (`content/docs/` under Astro's `srcDir`, so `src/content/docs` by default), e.g. `["guides", "api"]`
-- `maxGroupLevels` (optional, default: unlimited): The most levels of groups, the root group included. `1` puts everything flat under the root group, `2` keeps one level of nested groups, and so on. At the limit, deeper index files are flattened into the deepest group. Must be an integer of at least 1.
-- `dirnameDeterminesLabels` (optional, default: `true`): When `true`, all labels use raw directory names. When `false`, slug item labels come from frontmatter `sidebar.label`, then `title`, then `"Overview"`; group labels still use directory names. `sidebar.badge` shows on entries either way.
-
-**Startup errors:**
-
-These fail `astro dev` and `astro build` at startup, with a message naming the plugin and the bad value:
-
-- a `directories` entry that resolves outside the docs root (e.g. `"../x"`)
-- a `directories` entry that doesn't exist ("Directory not found")
-- the same directory listed twice (e.g. `"guides"` and `"./guides/"`)
-- a `directories` entry with no sidebar index (`index.md`, `index.mdx`, or `index.mdoc` when Markdoc is installed)
-- a `maxGroupLevels` that isn't an integer of at least 1
-
-**Slugs:**
-
-Each entry links to the page Starlight serves for its index file. The slug is the index's frontmatter `slug:` when it has one. Otherwise it's the file's page path, relative to the docs root: each path segment is slugified the way Starlight does it, the extension is dropped, and a trailing `/index` is dropped. So `guides/Getting Started/index.md` gets the slug `guides/getting-started`, also when `directories` lists `"guides/Getting Started"`.
+Upgrading from 3.x? See [Sidebar breaking changes in 4.0.0](#sidebar-breaking-changes-in-400).
 
 **Usage:**
 
@@ -65,28 +34,103 @@ export default defineConfig({
 });
 ```
 
-### Starlight Index-Sourced Sidebar
-
-Generates a Starlight sidebar by parsing markdown links out of `index.md` files. Instead of scanning the filesystem for every index file, this plugin reads the links declared in each directory's own `index.md` and uses those to build the sidebar — giving you explicit, author-controlled navigation with automatic nesting.
+Import it from its subpath, as above, so your config doesn't load other plugins' dependencies. The package root still exports it too.
 
 **Features:**
 
-- Builds sidebar entries from the links written in each directory's `index.md`
-- Sub-index links (`./sub/index` or `./sub/`) create nested sub-groups, recursed automatically, whatever the target sidebar index's extension (`index.md`, `index.mdx` or `index.mdoc`)
-- Leaf indexes: a sidebar index with `indexSourcedSidebar: { leaf: true }` in its frontmatter becomes a single entry carrying the index marker, and its own links don't affect the sidebar. The leaf key is ignored on a root sidebar index, so a listed directory always expands.
-- A directory or page linked from several sidebar indexes appears under each of them. A sub-index link back to an ancestor sidebar index is skipped with a warning, so a loop can't hang startup.
-- Group levels limited by `maxGroupLevels`; deeper items are flattened
-- Each index page itself appears as the first leaf item in its group
-- Labels and badges come from Starlight's sidebar frontmatter (see [Labels and badges](#labels-and-badges))
-- Source docs (sidebar indexes and linked pages) are `.md`, `.mdx`, and `.mdoc` when `@astrojs/markdoc` is in Astro's `integrations`. Without Markdoc, a `.mdoc` file is a docs asset and a link to it is skipped like a link to a PDF.
-- Respects frontmatter: `draft: true` and `sidebar.hidden: true` hide an entry, in `astro dev` and `astro build` alike. Drafts are hidden in dev on purpose, unlike Starlight, which renders draft pages in dev: the dev sidebar shows what the build will show. A hidden sidebar index drops its whole group, and a hidden root sidebar index drops its root group without an error. `pagefind: false` only affects search and doesn't hide anything.
-- A link to a `_`-prefixed file (like `./_partial.md`) gives no entry, since Astro never makes it a page, and logs a warning naming the sidebar index and the link. Only the filename counts: a page in a `_`-prefixed folder (like `./_partials/shared`) still gets an entry.
-- A link to a source doc that doesn't exist logs a warning naming the sidebar index and the link, so typos don't go unnoticed (see **Link conventions** below)
-- Fails `astro dev` and `astro build` at startup when an option is bad (see **Startup errors**), or an index or linked page can't be read or its frontmatter can't be parsed
+- Recursively scans directories for index files and creates sidebar entries only for pages with index files
+- Index files can be `index.md`, `index.mdx`, or `index.mdoc` when `@astrojs/markdoc` is in Astro's `integrations`. Without Markdoc, an `index.mdoc` doesn't count. A `_`-prefixed file is never an index, but a `_`-prefixed folder (like `_partials/index.md`) still counts, as in Astro.
+- Respects frontmatter: `draft: true` and `sidebar.hidden: true` hide an index and its whole subtree, in `astro dev` and `astro build` alike. Drafts are hidden in dev on purpose, unlike Starlight, which renders draft pages in dev: the dev sidebar shows what the build will show. A hidden root index drops its root group. `pagefind: false` only affects search and doesn't hide anything.
+- Automatically collapses single-child groups (no intermediate wrappers)
+- Group levels limited by `maxGroupLevels`; deeper index files are flattened
+- Two labeling modes: directory names, or Starlight's `sidebar.label` then `title` from frontmatter
+- Shows Starlight's `sidebar.badge` frontmatter on entries (a string gets the `default` variant)
+- Ignores `assets` directories entirely
+- Fails `astro dev` and `astro build` at startup when an option is bad (see **Startup errors**), an index file's frontmatter can't be parsed, or a directory under it can't be read
 
 **Options:**
 
-- `directories` (required): Array of directory names to scan, relative to the docs root (`content/docs/` under Astro's `srcDir`, so `src/content/docs` by default)
+- `directories` (required): Array of directory names to scan, relative to the docs root (`content/docs/` under Astro's `srcDir`, so `src/content/docs` by default), e.g. `["guides", "api"]`. Each one becomes a top-level group.
+- `maxGroupLevels` (optional, default: unlimited): The most levels of groups, the root group included. `1` puts everything flat under the root group, `2` keeps one level of nested groups, and so on. At the limit, deeper index files are flattened into the deepest group. Must be an integer of at least 1.
+- `dirnameDeterminesLabels` (optional, default: `true`): When `true`, all labels use raw directory names. When `false`, slug item labels come from frontmatter `sidebar.label`, then `title`, then `"Overview"`; group labels still use directory names. `sidebar.badge` shows on entries either way.
+
+**Startup errors:**
+
+These fail `astro dev` and `astro build` at startup, with a message naming the plugin and the bad value:
+
+- a `directories` entry that resolves outside the docs root (e.g. `"../x"`)
+- a `directories` entry that doesn't exist ("Directory not found")
+- the same directory listed twice (e.g. `"guides"` and `"./guides/"`)
+- a `directories` entry with no sidebar index (`index.md`, `index.mdx`, or `index.mdoc` when Markdoc is installed)
+- a `maxGroupLevels` that isn't an integer of at least 1
+
+**Slugs:**
+
+Each entry links to the page Starlight serves for its index file. The slug is the index's frontmatter `slug:` when it has one. Otherwise it's the file's page path, relative to the docs root: each path segment is slugified the way Starlight does it, the extension is dropped, and a trailing `/index` is dropped. So `guides/Getting Started/index.md` gets the slug `guides/getting-started`, also when `directories` lists `"guides/Getting Started"`.
+
+### Starlight Index-Sourced Sidebar
+
+Generates a Starlight sidebar by parsing the markdown links out of each directory's sidebar index (its `index.md`, `index.mdx`, or `index.mdoc`). Instead of scanning the filesystem for every index file, this plugin reads the links written in each sidebar index and uses those to build the sidebar, giving you explicit, author-controlled navigation with automatic nesting.
+
+Upgrading from 3.x? See [Sidebar breaking changes in 4.0.0](#sidebar-breaking-changes-in-400).
+
+**Usage:**
+
+```ts
+// astro.config.mjs
+import { defineConfig } from "astro/config";
+import starlight from "@astrojs/starlight";
+import { starlightIndexSourcedSidebar } from "starlight-cannoli-plugins/starlight-index-sourced-sidebar";
+
+export default defineConfig({
+  integrations: [
+    starlight({
+      title: "My Docs",
+      plugins: [
+        starlightIndexSourcedSidebar({
+          directories: ["guides", "reference"],
+          maxGroupLevels: 2, // optional
+          indexMarker: { text: "Index", variant: "note" }, // optional
+          collapsed: false, // optional
+        }),
+      ],
+    }),
+  ],
+});
+```
+
+Import it from its subpath, as above, so your config doesn't load other plugins' dependencies (like the optional peer `@expressive-code/core`). The package root still exports it too.
+
+**Example `index.md`:**
+
+```markdown
+---
+title: Guides
+---
+
+- [Getting Started](./getting-started)
+- [Configuration](./configuration)
+- [Advanced Topics](./advanced/index)
+- [Showcase](./showcase/)
+```
+
+**Features:**
+
+- Builds sidebar entries from the links written in each directory's sidebar index. A group's entries are, in order: the sidebar index's own entry, then one entry per link, in the order written.
+- Sub-index links (`./sub/index` or `./sub/`) create nested sub-groups, recursed automatically, whatever the target sidebar index's extension (`index.md`, `index.mdx` or `index.mdoc`)
+- Leaf indexes: a sidebar index with `indexSourcedSidebar: { leaf: true }` in its frontmatter becomes a single entry (see [Leaf indexes](#leaf-indexes))
+- Group levels limited by `maxGroupLevels`; deeper items are flattened
+- A directory or page linked from several sidebar indexes appears under each of them, and the same link written twice in one sidebar index gives two entries. A sub-index link back to an ancestor sidebar index is skipped with a warning, so a loop can't hang startup.
+- Labels and badges come from Starlight's sidebar frontmatter (see **Labels and badges**)
+- Source docs (sidebar indexes and linked pages) are `.md`, `.mdx`, and `.mdoc` when `@astrojs/markdoc` is in Astro's `integrations`. Without Markdoc, a `.mdoc` file is a docs asset and a link to it is skipped like a link to a PDF.
+- Respects frontmatter: `draft: true` and `sidebar.hidden: true` hide an entry, in `astro dev` and `astro build` alike. Drafts are hidden in dev on purpose, unlike Starlight, which renders draft pages in dev: the dev sidebar shows what the build will show. A hidden sidebar index drops its whole group, and a hidden root sidebar index drops its root group without an error. `pagefind: false` only affects search and doesn't hide anything.
+- A link to a `_`-prefixed file (like `./_partial.md`) gives no entry, since Astro never makes it a page, and logs a warning naming the sidebar index and the link. Only the filename counts: a page in a `_`-prefixed folder (like `./_partials/shared`) still gets an entry.
+- A link to a source doc that doesn't exist logs a warning naming the sidebar index and the link, so typos don't go unnoticed (see **Link conventions**)
+- Fails `astro dev` and `astro build` at startup when an option is bad (see **Startup errors**), or a sidebar index or linked page can't be read or its frontmatter can't be parsed
+
+**Options:**
+
+- `directories` (required): Array of directory names to scan, relative to the docs root (`content/docs/` under Astro's `srcDir`, so `src/content/docs` by default). Each one must have a sidebar index and becomes a top-level group.
 - `maxGroupLevels` (optional, default: unlimited): The most levels of groups, the root group included. `1` puts everything flat under the root group, `2` keeps one level of nested groups, and so on. A sub-index link whose group would go past the limit has its entries flattened into the parent group. Must be an integer of at least 1.
 - `indexMarker` (optional, default: `undefined`): A Starlight badge (`{ text, variant }`) shown on every index entry to tell it apart from regular sidebar entries. When set, it replaces an index entry's own `sidebar.badge`. `variant` is one of `"note"`, `"tip"`, `"caution"`, `"danger"`, `"success"` or `"default"`. Example: `{ text: "Index", variant: "note" }`.
 - `collapsed` (optional, default: `true`): Whether sidebar groups start collapsed. Starlight still expands the group holding the current page.
@@ -101,22 +145,11 @@ These fail `astro dev` and `astro build` at startup, with a message naming the p
 - a `directories` entry with no sidebar index (`index.md`, `index.mdx`, or `index.mdoc` when Markdoc is installed)
 - a `maxGroupLevels` that isn't an integer of at least 1
 
-**Labels and badges:**
-
-- Index entries and page entries are labelled with the source doc's `sidebar.label`, then its `title`, then a label made from its filename (or its directory name, for an index)
-- Groups, the root group included, are always labelled from their directory name (e.g. `csci-316` becomes `CSCI 316`)
-- A page entry shows its `sidebar.badge`. A string badge gets the `default` variant
-- An index entry shows `indexMarker` when one is set, and otherwise its own `sidebar.badge`
-
-**Slugs:**
-
-Each entry links to the page Starlight serves for its source doc. The slug is the doc's frontmatter `slug:` when it has one. Otherwise it's the doc's page path, relative to the docs root: each path segment is slugified the way Starlight does it, the extension is dropped, and a trailing `/index` is dropped. So `reference/My Page.md` gets the slug `reference/my-page`, and `reference/advanced/index.md` gets `reference/advanced`.
-
-**Link conventions in `index.md`:**
+**Link conventions:**
 
 - Links to sub-sections are sub-index links: they end in `/index` (with or without an extension) or `/`, e.g. `[Subtopic](./subtopic/index)` or `[Subtopic](./subtopic/)`. The plugin recurses into the target's sidebar index unless it's a leaf index.
 - A folder link (`./subtopic/`) whose folder has no sidebar index logs a warning and adds nothing. It doesn't fall back to a sibling `subtopic.md`.
-- All other links to source docs become flat leaf items
+- All other links to source docs become flat page entries
 - Links are found by parsing the markdown body, whatever the sidebar index's extension
 
 Link forms that count:
@@ -148,45 +181,9 @@ Skipped with a warning naming the sidebar index and the link:
 
 These are only warnings. If you also use [`astroLocalLinks`](#local-links), broken links keep failing there, on the final HTML.
 
-**Usage:**
+#### Leaf indexes
 
-```ts
-// astro.config.mjs
-import { defineConfig } from "astro/config";
-import starlight from "@astrojs/starlight";
-import { starlightIndexSourcedSidebar } from "starlight-cannoli-plugins/starlight-index-sourced-sidebar";
-
-export default defineConfig({
-  integrations: [
-    starlight({
-      title: "My Docs",
-      plugins: [
-        starlightIndexSourcedSidebar({
-          directories: ["guides", "reference"],
-          maxGroupLevels: 2, // optional
-          indexMarker: { text: "Index", variant: "note" }, // optional
-          collapsed: false, // optional
-        }),
-      ],
-    }),
-  ],
-});
-```
-
-**Example `index.md`:**
-
-```markdown
----
-title: Guides
----
-
-- [Getting Started](./getting-started)
-- [Configuration](./configuration)
-- [Advanced Topics](./advanced/index)
-- [Showcase](./showcase/)
-```
-
-**Leaf index:** a landing page full of components can opt out of driving navigation:
+A landing page full of components can opt out of driving navigation. Mark its sidebar index as a leaf index:
 
 ```markdown
 ---
@@ -196,7 +193,34 @@ indexSourcedSidebar:
 ---
 ```
 
-**Upgrading from 3.x:** `index.mdx` sub-indexes used to become a single entry and now expand into a nested group like `index.md`. To keep the old behaviour, add `indexSourcedSidebar: { leaf: true }` to the `index.mdx` frontmatter.
+A sub-index link to a leaf index gives a single entry carrying the index marker, and the leaf index's own links don't affect the sidebar. The leaf key is ignored on a root sidebar index, so a listed directory always expands.
+
+**Labels and badges:**
+
+- Index entries and page entries are labelled with the source doc's `sidebar.label`, then its `title`, then a label made from its filename (or its directory name, for an index)
+- Groups, the root group included, are always labelled from their directory name (e.g. `csci-316` becomes `CSCI 316`)
+- A page entry shows its `sidebar.badge`. A string badge gets the `default` variant
+- An index entry shows `indexMarker` when one is set, and otherwise its own `sidebar.badge`
+
+**Slugs:**
+
+Each entry links to the page Starlight serves for its source doc. The slug is the doc's frontmatter `slug:` when it has one. Otherwise it's the doc's page path, relative to the docs root: each path segment is slugified the way Starlight does it, the extension is dropped, and a trailing `/index` is dropped. So `reference/My Page.md` gets the slug `reference/my-page`, and `reference/advanced/index.md` gets `reference/advanced`.
+
+#### Sidebar breaking changes in 4.0.0
+
+These apply to both sidebar plugins unless marked otherwise.
+
+- **`maxDepthNesting` is renamed to `maxGroupLevels`**, with no alias. It now counts levels of groups with the root group included, and leaving it unset means unlimited (the old default was `100`).
+  - `starlightIndexSourcedSidebar`: use the same number. `maxDepthNesting: 2` becomes `maxGroupLevels: 2`. The old `0` behaved like `1`, so use `1`.
+  - `starlightIndexOnlySidebar`: add one. `maxDepthNesting: 1` becomes `maxGroupLevels: 2`, and `maxDepthNesting: 0` becomes `maxGroupLevels: 1`.
+- **Bad options and missing directories fail startup** (see **Startup errors** in each section). A `maxGroupLevels` that isn't an integer of at least 1 fails, and so does a `directories` entry that's outside the docs root, doesn't exist, has no sidebar index, or is listed twice. The docs root is now `content/docs/` under Astro's `srcDir`, not `src/content/docs` relative to the working directory.
+- **Slugs are page paths.** Each segment is slugified the way Starlight does it, so `My Page.md` links to `/my-page/`, and a frontmatter `slug:` override is honoured. Entries used to carry the raw file path, which Starlight rejected for non-slug filenames.
+- **Labels prefer `sidebar.label`.** Entry labels are now `sidebar.label`, then `title`, then the filename (for `starlightIndexOnlySidebar`, only with `dirnameDeterminesLabels: false`). Entries also show `sidebar.badge` now.
+- **`pagefind: false` no longer hides entries** (`starlightIndexSourcedSidebar`). It only keeps a page out of search, as in Starlight. Use `sidebar.hidden: true` to hide an entry. `draft: true` and `sidebar.hidden: true` still hide, in dev and build alike.
+- **`index.mdx` sub-indexes now expand** (`starlightIndexSourcedSidebar`). A sub-index link to `index.mdx` used to become a single entry, and now expands into a nested group like `index.md`. To keep the old behaviour, add `indexSourcedSidebar: { leaf: true }` to the `index.mdx` frontmatter (see [Leaf indexes](#leaf-indexes)).
+- **More links count, and repeats are kept** (`starlightIndexSourcedSidebar`). Folder links (`./sub/`), root-absolute links (`/guides/setup`) and percent-encoded links (`./my%20page`) used to be dropped silently and now add entries. A directory linked from two sidebar indexes used to appear only under the first, and now appears under both. Broken links now log a warning instead of vanishing.
+- **`indexMarker` docs are corrected** (`starlightIndexSourcedSidebar`). It was documented as a string prepended to the label, but it has always been a `{ text, variant }` badge. If you passed a string, pass `{ text: "★", variant: "default" }` instead.
+- **Subpath imports.** `starlightIndexSourcedSidebar` now has its own subpath export, `starlight-cannoli-plugins/starlight-index-sourced-sidebar`, like `starlightIndexOnlySidebar` (`starlight-cannoli-plugins/starlight-index-only-sidebar`). Importing from the package root still works, but it loads every plugin's dependencies, so switch to the subpath.
 
 ### LaTeX Compile
 
