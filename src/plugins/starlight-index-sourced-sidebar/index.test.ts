@@ -424,18 +424,21 @@ describe("starlightIndexSourcedSidebar", () => {
     ]);
   });
 
-  it("skips links in a sidebar index that don't resolve to a source doc", async () => {
+  it("skips links to docs assets without a warning", async () => {
     const { setup } = runSetup(
       {
         "guides/index.md":
-          "---\ntitle: Guides\n---\n\n[Setup](./setup) [Diagram](./diagram.png) [Gone](./gone)\n",
+          "---\ntitle: Guides\n---\n\n[Setup](./setup) [Diagram](./diagram.png) [Manual](./manual.pdf)\n",
         "guides/setup.md": "---\ntitle: Setup\n---\n",
         "guides/diagram.png": "png",
+        "guides/manual.pdf": "pdf",
       },
       { directories: ["guides"] },
     );
 
-    expect((await setup()).sidebar).toEqual([
+    const { sidebar, warnings } = await setup();
+
+    expect(sidebar).toEqual([
       {
         label: "Guides",
         collapsed: true,
@@ -445,6 +448,35 @@ describe("starlightIndexSourcedSidebar", () => {
         ],
       },
     ]);
+    expect(warnings).toEqual([]);
+  });
+
+  it("warns once and adds nothing for a link to a missing file", async () => {
+    const { setup } = runSetup(
+      {
+        "guides/index.md":
+          "---\ntitle: Guides\n---\n\n[Setup](./setup) [Gone](./gone)\n",
+        "guides/setup.md": "---\ntitle: Setup\n---\n",
+      },
+      { directories: ["guides"] },
+    );
+
+    const { sidebar, warnings } = await setup();
+
+    expect(sidebar).toEqual([
+      {
+        label: "Guides",
+        collapsed: true,
+        items: [
+          { label: "Guides", slug: "guides" },
+          { label: "Setup", slug: "guides/setup" },
+        ],
+      },
+    ]);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain(PLUGIN_PREFIX);
+    expect(warnings[0]).toContain("guides/index.md");
+    expect(warnings[0]).toContain("./gone");
   });
 
   it.skipIf(isRunningAsRoot)(
@@ -832,6 +864,174 @@ describe("starlightIndexSourcedSidebar sub-index links", () => {
         label: "Reference",
         collapsed: true,
         items: [{ label: "Reference", slug: "reference" }, SHARED_GROUP],
+      },
+    ]);
+    expect(warnings).toEqual([]);
+  });
+});
+
+describe("starlightIndexSourcedSidebar link forms", () => {
+  /** A guides sidebar index whose only link, `setupHref`, should reach guides/setup.md. */
+  function setupLinkDocsFiles(setupHref: string) {
+    return {
+      "guides/index.md": `---\ntitle: Guides\n---\n\n[Setup](${setupHref})\n`,
+      "guides/setup.md": "---\ntitle: Setup\n---\n",
+    };
+  }
+  const SETUP_LINK_SIDEBAR = [
+    {
+      label: "Guides",
+      collapsed: true,
+      items: [
+        { label: "Guides", slug: "guides" },
+        { label: "Setup", slug: "guides/setup" },
+      ],
+    },
+  ];
+
+  it("resolves a root-absolute link against the docs root", async () => {
+    const { setup } = runSetup(setupLinkDocsFiles("/guides/setup"), {
+      directories: ["guides"],
+    });
+
+    const { sidebar, warnings } = await setup();
+
+    expect(sidebar).toEqual(SETUP_LINK_SIDEBAR);
+    expect(warnings).toEqual([]);
+  });
+
+  it.each(["/docs", "/docs/"])(
+    "strips base %s from a root-absolute link that starts with it",
+    async (base) => {
+      const { setup } = runSetup(
+        setupLinkDocsFiles("/docs/guides/setup"),
+        { directories: ["guides"] },
+        { base },
+      );
+
+      const { sidebar, warnings } = await setup();
+
+      expect(sidebar).toEqual(SETUP_LINK_SIDEBAR);
+      expect(warnings).toEqual([]);
+    },
+  );
+
+  it("keeps a root-absolute link that only shares a prefix with base", async () => {
+    const { setup } = runSetup(
+      {
+        "guides/index.md":
+          "---\ntitle: Guides\n---\n\n[Setup](/docsy/setup)\n",
+        "docsy/setup.md": "---\ntitle: Setup\n---\n",
+      },
+      { directories: ["guides"] },
+      { base: "/docs" },
+    );
+
+    expect((await setup()).sidebar).toEqual([
+      {
+        label: "Guides",
+        collapsed: true,
+        items: [
+          { label: "Guides", slug: "guides" },
+          { label: "Setup", slug: "docsy/setup" },
+        ],
+      },
+    ]);
+  });
+
+  it("percent-decodes a link", async () => {
+    const { setup } = runSetup(
+      {
+        "guides/index.md":
+          "---\ntitle: Guides\n---\n\n[My Page](./my%20page)\n",
+        "guides/my page.md": "---\ntitle: My Page\n---\n",
+      },
+      { directories: ["guides"] },
+    );
+
+    const { sidebar, warnings } = await setup();
+
+    expect(sidebar).toEqual([
+      {
+        label: "Guides",
+        collapsed: true,
+        items: [
+          { label: "Guides", slug: "guides" },
+          { label: "My Page", slug: "guides/my-page" },
+        ],
+      },
+    ]);
+    expect(warnings).toEqual([]);
+  });
+
+  it("skips links with any URL scheme, and protocol-relative links, without a warning", async () => {
+    const { setup } = runSetup(
+      {
+        "guides/index.md": [
+          "---\ntitle: Guides\n---\n",
+          "- [Site](https://example.com/setup)",
+          "- [Mail](mailto:me@example.com)",
+          "- [Call](tel:+123456)",
+          "- [Files](ftp://example.com/setup)",
+          "- [Custom](x-custom:setup)",
+          "- [Cdn](//example.com/setup)",
+          "",
+        ].join("\n"),
+        "guides/setup.md": "---\ntitle: Setup\n---\n",
+      },
+      { directories: ["guides"] },
+    );
+
+    const { sidebar, warnings } = await setup();
+
+    expect(sidebar).toEqual([
+      {
+        label: "Guides",
+        collapsed: true,
+        items: [{ label: "Guides", slug: "guides" }],
+      },
+    ]);
+    expect(warnings).toEqual([]);
+  });
+
+  it("counts reference-style links in the order the references appear", async () => {
+    const { setup } = runSetup(
+      {
+        "guides/index.md": [
+          "---\ntitle: Guides\n---\n",
+          "- [Tips][tips]",
+          "- [Setup](./setup)",
+          "- [Faq]",
+          "- [Advanced][]",
+          "",
+          "[advanced]: ./advanced",
+          "[faq]: ./faq",
+          "[tips]: ./tips",
+          "[unused]: ./unused",
+          "",
+        ].join("\n"),
+        "guides/setup.md": "---\ntitle: Setup\n---\n",
+        "guides/tips.md": "---\ntitle: Tips\n---\n",
+        "guides/faq.md": "---\ntitle: Faq\n---\n",
+        "guides/advanced.md": "---\ntitle: Advanced\n---\n",
+        "guides/unused.md": "---\ntitle: Unused\n---\n",
+      },
+      { directories: ["guides"] },
+    );
+
+    const { sidebar, warnings } = await setup();
+
+    expect(sidebar).toEqual([
+      {
+        label: "Guides",
+        collapsed: true,
+        items: [
+          { label: "Guides", slug: "guides" },
+          { label: "Tips", slug: "guides/tips" },
+          { label: "Setup", slug: "guides/setup" },
+          { label: "Faq", slug: "guides/faq" },
+          { label: "Advanced", slug: "guides/advanced" },
+        ],
       },
     ]);
     expect(warnings).toEqual([]);
