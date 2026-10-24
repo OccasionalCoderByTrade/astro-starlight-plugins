@@ -88,10 +88,10 @@ export function isDir(dirPath: string): boolean {
 
 /** Whether `targetPath` is outside `dirPath` (`dirPath` itself counts as inside). */
 export function isOutsideDir(dirPath: string, targetPath: string): boolean {
-  const relativePath = path.relative(dirPath, targetPath);
+  const relativeTargetPath = path.relative(dirPath, targetPath);
   return (
-    relativePath === ".." ||
-    relativePath.startsWith(`..${path.sep}`) ||
-    path.isAbsolute(relativePath)
+    relativeTargetPath === ".." ||
+    relativeTargetPath.startsWith(`..${path.sep}`) ||
+    path.isAbsolute(relativeTargetPath)
   );
 }

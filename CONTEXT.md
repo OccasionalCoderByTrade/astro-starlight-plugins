@@ -129,3 +129,15 @@ _Avoid_: mdx index, landing page
 **Hidden from sidebar**:
 A source doc with `draft: true` or `sidebar.hidden: true` in its frontmatter. It gets no sidebar entry in dev or build. A sidebar index that's hidden from sidebar takes its whole group with it.
 _Avoid_: excluded, unlisted
+
+**Sidebar index chain**:
+The sidebar indexes a sidebar is being built through, from a root sidebar index down to the current one, following sub-index links. A sub-index link to a sidebar index already in the chain is a loop (`guides/` links `../shared/`, which links `../guides/`), and is skipped with a warning.
+_Avoid_: ancestor sidebar index, ancestor chain
+
+**Ancestor link**:
+A link in a sidebar index to its own directory, or to a directory above it up to the docs root, or to one of those directories' sidebar indexes (`.`, `..`, `../index.md`, `/`). It's skipped with a warning, whether or not the directory is in the sidebar index chain. A link that goes up and then sideways or down (`../setup.md`) isn't one.
+_Avoid_: back link, parent link, upward link
+
+**Link scope**:
+Where a sidebar index's links may point, set by the `linkScope` option: `anywhere` in the docs root, or only `below`, inside the sidebar index's own directory.
+_Avoid_: link boundary, link range
