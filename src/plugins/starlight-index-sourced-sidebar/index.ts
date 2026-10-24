@@ -42,8 +42,11 @@ type TOptions = {
  * Starlight plugin that generates a sidebar by parsing markdown links from index.md files.
  *
  * For each directory, the plugin reads its index.md and uses the links found there as sidebar
- * entries. Links ending in `/index` are treated as sub-sections and recursed into, creating
- * nested groups up to maxDepthNesting levels deep. All other links become leaf items labeled
+ * entries. Sub-index links (ending in `/index` or `/`) are recursed into whatever the target
+ * sidebar index's extension, creating nested groups up to maxDepthNesting levels deep, unless
+ * the target's frontmatter has `indexSourcedSidebar: { leaf: true }`, which makes it a single
+ * entry. A link back to an ancestor sidebar index is skipped with a warning. All other links
+ * become leaf items labeled
  * with the linked page's frontmatter title. The docs root is `content/docs/` under Astro's
  * `srcDir`.
  *

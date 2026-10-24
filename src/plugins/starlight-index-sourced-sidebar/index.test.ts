@@ -413,3 +413,192 @@ describe("starlightIndexSourcedSidebar hidden from sidebar", () => {
     expect(errors).toEqual([]);
   });
 });
+
+describe("starlightIndexSourcedSidebar sub-index links", () => {
+  const ADVANCED_SIDEBAR = [
+    {
+      label: "Guides",
+      collapsed: true,
+      items: [
+        { label: "Guides", slug: "guides" },
+        {
+          label: "Advanced",
+          collapsed: true,
+          items: [
+            { label: "Advanced", slug: "guides/advanced" },
+            { label: "Tips", slug: "guides/advanced/tips" },
+          ],
+        },
+      ],
+    },
+  ];
+
+  it.each([
+    ["index.mdx", []],
+    ["index.mdoc", [MARKDOC_INTEGRATION]],
+  ])(
+    "expands a sub-index link to an %s into a nested group",
+    async (subIndexFileName, integrations) => {
+      const { setup } = runSetup(
+        {
+          "guides/index.md":
+            "---\ntitle: Guides\n---\n\n[Advanced](./advanced/index)\n",
+          [`guides/advanced/${subIndexFileName}`]:
+            "---\ntitle: Advanced\n---\n\n[Tips](./tips.md)\n",
+          "guides/advanced/tips.md": "---\ntitle: Tips\n---\n",
+        },
+        { directories: ["guides"] },
+        { integrations },
+      );
+
+      expect((await setup()).sidebar).toEqual(ADVANCED_SIDEBAR);
+    },
+  );
+
+  it("gives a leaf index one entry with the index marker, leaving out its links", async () => {
+    const indexMarker = { text: "Index", variant: "note" } as const;
+    const { setup } = runSetup(
+      {
+        "guides/index.md":
+          "---\ntitle: Guides\n---\n\n[Showcase](./showcase/index)\n",
+        "guides/showcase/index.md":
+          "---\ntitle: Showcase\nindexSourcedSidebar:\n  leaf: true\n---\n\n[Demo](./demo)\n",
+        "guides/showcase/demo.md": "---\ntitle: Demo\n---\n",
+      },
+      { directories: ["guides"], indexMarker },
+    );
+
+    expect((await setup()).sidebar).toEqual([
+      {
+        label: "Guides",
+        collapsed: true,
+        items: [
+          { label: "Guides", slug: "guides", badge: indexMarker },
+          { label: "Showcase", slug: "guides/showcase", badge: indexMarker },
+        ],
+      },
+    ]);
+  });
+
+  it("ignores the leaf key on a root sidebar index", async () => {
+    const { setup } = runSetup(
+      {
+        "guides/index.md":
+          "---\ntitle: Guides\nindexSourcedSidebar:\n  leaf: true\n---\n\n[Setup](./setup)\n",
+        "guides/setup.md": "---\ntitle: Setup\n---\n",
+      },
+      { directories: ["guides"] },
+    );
+
+    expect((await setup()).sidebar).toEqual([
+      {
+        label: "Guides",
+        collapsed: true,
+        items: [
+          { label: "Guides", slug: "guides" },
+          { label: "Setup", slug: "guides/setup" },
+        ],
+      },
+    ]);
+  });
+
+  it("treats a folder link as a sub-index link to the folder's sidebar index", async () => {
+    const { setup } = runSetup(
+      {
+        "guides/index.md":
+          "---\ntitle: Guides\n---\n\n[Advanced](./advanced/)\n",
+        "guides/advanced/index.md":
+          "---\ntitle: Advanced\n---\n\n[Tips](./tips.md)\n",
+        "guides/advanced/tips.md": "---\ntitle: Tips\n---\n",
+      },
+      { directories: ["guides"] },
+    );
+
+    const { sidebar, warnings } = await setup();
+
+    expect(sidebar).toEqual(ADVANCED_SIDEBAR);
+    expect(warnings).toEqual([]);
+  });
+
+  it("warns and adds nothing for a folder link to a folder with no sidebar index, even with a sibling page", async () => {
+    const { setup } = runSetup(
+      {
+        "guides/index.md":
+          "---\ntitle: Guides\n---\n\n[Advanced](./advanced/)\n",
+        "guides/advanced.md": "---\ntitle: Advanced\n---\n",
+        "guides/advanced/tips.md": "---\ntitle: Tips\n---\n",
+      },
+      { directories: ["guides"] },
+    );
+
+    const { sidebar, warnings } = await setup();
+
+    expect(sidebar).toEqual([
+      {
+        label: "Guides",
+        collapsed: true,
+        items: [{ label: "Guides", slug: "guides" }],
+      },
+    ]);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain("guides/index.md");
+    expect(warnings[0]).toContain("./advanced/");
+  });
+
+  it("warns and doesn't recurse on a sub-index link back to an ancestor sidebar index", async () => {
+    const { setup } = runSetup(
+      {
+        "guides/index.md":
+          "---\ntitle: Guides\n---\n\n[Advanced](./advanced/index)\n",
+        "guides/advanced/index.md":
+          "---\ntitle: Advanced\n---\n\n[Tips](./tips.md) [Back](../index)\n",
+        "guides/advanced/tips.md": "---\ntitle: Tips\n---\n",
+      },
+      { directories: ["guides"] },
+    );
+
+    const { sidebar, warnings } = await setup();
+
+    expect(sidebar).toEqual(ADVANCED_SIDEBAR);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain("guides/advanced/index.md");
+    expect(warnings[0]).toContain("../index");
+  });
+
+  it("puts a directory linked from two sidebar indexes under both", async () => {
+    const SHARED_GROUP = {
+      label: "Shared",
+      collapsed: true,
+      items: [
+        { label: "Shared", slug: "shared" },
+        { label: "Faq", slug: "shared/faq" },
+      ],
+    };
+    const { setup } = runSetup(
+      {
+        "guides/index.md": "---\ntitle: Guides\n---\n\n[Shared](../shared/)\n",
+        "reference/index.md":
+          "---\ntitle: Reference\n---\n\n[Shared](../shared/index)\n",
+        "shared/index.md": "---\ntitle: Shared\n---\n\n[FAQ](./faq)\n",
+        "shared/faq.md": "---\ntitle: Faq\n---\n",
+      },
+      { directories: ["guides", "reference"] },
+    );
+
+    const { sidebar, warnings } = await setup();
+
+    expect(sidebar).toEqual([
+      {
+        label: "Guides",
+        collapsed: true,
+        items: [{ label: "Guides", slug: "guides" }, SHARED_GROUP],
+      },
+      {
+        label: "Reference",
+        collapsed: true,
+        items: [{ label: "Reference", slug: "reference" }, SHARED_GROUP],
+      },
+    ]);
+    expect(warnings).toEqual([]);
+  });
+});
