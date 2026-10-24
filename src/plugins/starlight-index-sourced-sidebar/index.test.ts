@@ -940,35 +940,6 @@ describe("starlightIndexSourcedSidebar link forms", () => {
     ]);
   });
 
-  it("treats a root-absolute link equal to base as a sub-index link to the docs root", async () => {
-    const { setup } = runSetup(
-      {
-        "index.md": "---\ntitle: Home\n---\n",
-        "guides/index.md": "---\ntitle: Guides\n---\n\n[Home](/docs)\n",
-      },
-      { directories: ["guides"] },
-      { base: "/docs" },
-    );
-
-    const { sidebar, warnings } = await setup();
-
-    expect(sidebar).toEqual([
-      {
-        label: "Guides",
-        collapsed: true,
-        items: [
-          { label: "Guides", slug: "guides" },
-          {
-            label: "Docs",
-            collapsed: true,
-            items: [{ label: "Home", slug: "" }],
-          },
-        ],
-      },
-    ]);
-    expect(warnings).toEqual([]);
-  });
-
   it.each(["../../outside.md", "/../outside"])(
     "warns and adds nothing for a link %s that resolves outside the docs root",
     async (href) => {
@@ -1121,4 +1092,116 @@ describe("starlightIndexSourcedSidebar link forms", () => {
     ]);
     expect(warnings).toEqual([]);
   });
+});
+
+describe("starlightIndexSourcedSidebar ancestor links", () => {
+  /** guides/advanced/index.md whose only link is `href`, next to docs it could reach. */
+  function ancestorLinkDocsFiles(href: string) {
+    return {
+      "index.md": "---\ntitle: Home\n---\n",
+      "guides/index.md": "---\ntitle: Guides\n---\n\n[Setup](./setup)\n",
+      "guides/setup.md": "---\ntitle: Setup\n---\n",
+      "guides/advanced/index.md": `---\ntitle: Advanced\n---\n\n[Link](${href})\n`,
+      "reference/index.md": "---\ntitle: Reference\n---\n",
+    };
+  }
+  const ADVANCED_ONLY_SIDEBAR = [
+    {
+      label: "Advanced",
+      collapsed: true,
+      items: [{ label: "Advanced", slug: "guides/advanced" }],
+    },
+  ];
+
+  it.each([
+    [".", "/"],
+    ["./", "/"],
+    ["./index.md", "/"],
+    ["..", "/"],
+    ["../", "/"],
+    ["../index", "/"],
+    ["../index.md", "/"],
+    ["../../", "/"],
+    ["../../index.md", "/"],
+    ["/", "/"],
+    ["/guides", "/"],
+    ["/guides/", "/"],
+    ["/guides/advanced/", "/"],
+    ["/docs", "/docs"],
+    ["/docs/", "/docs"],
+    ["/docs/guides/", "/docs"],
+  ])(
+    "warns and adds nothing for a link %s to an ancestor directory (base %s)",
+    async (href, base) => {
+      const { setup } = runSetup(
+        ancestorLinkDocsFiles(href),
+        { directories: ["guides/advanced"] },
+        { base },
+      );
+
+      const { sidebar, warnings } = await setup();
+
+      expect(sidebar).toEqual(ADVANCED_ONLY_SIDEBAR);
+      expect(warnings).toHaveLength(1);
+      expect(warnings[0]).toContain("guides/advanced/index.md");
+      expect(warnings[0]).toContain(`"${href}"`);
+      expect(warnings[0]).toContain("ancestor");
+    },
+  );
+
+  it("warns once and adds no nested group for a root-absolute link to its own folder", async () => {
+    const { setup } = runSetup(
+      {
+        "guides/index.md":
+          "---\ntitle: Guides\n---\n\n[Self](/guides/) [Setup](./setup)\n",
+        "guides/setup.md": "---\ntitle: Setup\n---\n",
+      },
+      { directories: ["guides"] },
+    );
+
+    const { sidebar, warnings } = await setup();
+
+    expect(sidebar).toEqual([
+      {
+        label: "Guides",
+        collapsed: true,
+        items: [
+          { label: "Guides", slug: "guides" },
+          { label: "Setup", slug: "guides/setup" },
+        ],
+      },
+    ]);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain('"/guides/"');
+  });
+
+  it.each([
+    ["../setup.md", { label: "Setup", slug: "guides/setup" }],
+    [
+      "../../reference/",
+      {
+        label: "Reference",
+        collapsed: true,
+        items: [{ label: "Reference", slug: "reference" }],
+      },
+    ],
+  ])(
+    "keeps a link %s that goes up then to a non-ancestor",
+    async (href, entry) => {
+      const { setup } = runSetup(ancestorLinkDocsFiles(href), {
+        directories: ["guides/advanced"],
+      });
+
+      const { sidebar, warnings } = await setup();
+
+      expect(sidebar).toEqual([
+        {
+          label: "Advanced",
+          collapsed: true,
+          items: [{ label: "Advanced", slug: "guides/advanced" }, entry],
+        },
+      ]);
+      expect(warnings).toEqual([]);
+    },
+  );
 });

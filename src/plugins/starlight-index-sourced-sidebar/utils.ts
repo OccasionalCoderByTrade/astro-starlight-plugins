@@ -78,8 +78,11 @@ type TLinkTarget =
 /** A link path after step 4 of resolving it. */
 type TResolvedLinkPath = {
   /** The link path, with `base` stripped when it's root-absolute and starts with it. */
-  linkPath: string;
-  /** The absolute filesystem path the link points at (a file or a folder). */
+  baselessLinkPath: string;
+  /**
+   * The absolute filesystem path the link points at (a file or a folder), with no trailing
+   * separator, so it compares equal to directory paths.
+   */
   absoluteLinkPath: string;
 };
 
@@ -180,12 +183,15 @@ function resolveLinkPath(
   if (linkPath.startsWith("/")) {
     const baselessLinkPath = stripBase(linkPath, options.base);
     return {
-      linkPath: baselessLinkPath,
-      absoluteLinkPath: path.join(options.docsDirPath, baselessLinkPath),
+      baselessLinkPath,
+      // `path.join` keeps a trailing separator (`/guides/`), which `path.resolve` drops
+      absoluteLinkPath: path.resolve(
+        path.join(options.docsDirPath, baselessLinkPath),
+      ),
     };
   }
   return {
-    linkPath,
+    baselessLinkPath: linkPath,
     absoluteLinkPath: path.resolve(options.sidebarIndex.dirPath, linkPath),
   };
 }
@@ -201,33 +207,70 @@ function stripBase(rootAbsoluteLinkPath: string, base: string): string {
   return rootAbsoluteLinkPath;
 }
 
-/**
- * Whether `linkPath` is a sub-index link: it names a folder (`./sub/`, `.`, `..`) or a
- * directory's `index`, with or without a source doc extension.
- */
-function isSubIndexLinkPath(
+/** Whether the last segment of `linkPath` is `index`, bare or with a source doc extension. */
+function namesIndexFile(
   linkPath: string,
   sourceDocExtensions: string[],
 ): boolean {
   const lastSegment = linkPath.split("/").pop() ?? "";
   return (
-    linkPath.endsWith("/") ||
-    lastSegment === "." ||
-    lastSegment === ".." ||
     lastSegment === "index" ||
     sourceDocExtensions.some((extension) => lastSegment === `index${extension}`)
   );
 }
 
+/**
+ * Whether `linkPath` is a sub-index link: it names a folder (`./sub/`) or a directory's
+ * `index`, with or without a source doc extension.
+ */
+function isSubIndexLinkPath(
+  linkPath: string,
+  sourceDocExtensions: string[],
+): boolean {
+  return (
+    linkPath.endsWith("/") || namesIndexFile(linkPath, sourceDocExtensions)
+  );
+}
+
+/**
+ * The directory a link names: the folder itself, or the folder of the `index` it names.
+ * For any other link, the path it points at.
+ */
+function toLinkedDirPath(
+  { baselessLinkPath, absoluteLinkPath }: TResolvedLinkPath,
+  sourceDocExtensions: string[],
+): string {
+  return namesIndexFile(baselessLinkPath, sourceDocExtensions)
+    ? path.dirname(absoluteLinkPath)
+    : absoluteLinkPath;
+}
+
+/**
+ * Whether a link points at the directory, or the sidebar index, of the current sidebar
+ * index or of any directory above it up to the docs root (`.`, `..`, `../index.md`, `/`),
+ * whether or not that directory is in the current chain of sidebar indexes. A link that
+ * goes up and then sideways (`../setup.md`) isn't an ancestor link.
+ */
+function isAncestorLink(
+  resolvedLinkPath: TResolvedLinkPath,
+  options: TBuildItemsOptions,
+): boolean {
+  const linkedDirPath = toLinkedDirPath(
+    resolvedLinkPath,
+    options.sourceDocExtensions,
+  );
+  return !isOutsideDir(linkedDirPath, options.sidebarIndex.dirPath);
+}
+
 /** Step 5 of resolving a link: the sidebar index a sub-index link points at. */
 function resolveSubIndexLink(
-  { linkPath, absoluteLinkPath }: TResolvedLinkPath,
+  resolvedLinkPath: TResolvedLinkPath,
   options: TBuildItemsOptions,
 ): TLinkTarget {
-  const namesFolder = !/(^|\/)index(\.[^/]*)?$/.test(linkPath);
-  const dirPath = namesFolder
-    ? absoluteLinkPath
-    : path.dirname(absoluteLinkPath);
+  const dirPath = toLinkedDirPath(
+    resolvedLinkPath,
+    options.sourceDocExtensions,
+  );
 
   const indexFilePath = findSidebarIndexFile(
     dirPath,
@@ -247,16 +290,16 @@ function resolveSubIndexLink(
 
 /** Steps 6-7 of resolving a link: the page a link that isn't a sub-index link points at. */
 function resolvePageLink(
-  { linkPath, absoluteLinkPath }: TResolvedLinkPath,
+  { baselessLinkPath, absoluteLinkPath }: TResolvedLinkPath,
   options: TBuildItemsOptions,
 ): TLinkTarget {
   const { sourceDocExtensions } = options;
 
   let filePath: string | null;
-  if (hasSourceDocExtension(linkPath, sourceDocExtensions)) {
+  if (hasSourceDocExtension(baselessLinkPath, sourceDocExtensions)) {
     // A link that already carries a source doc extension names that exact file
     filePath = isFile(absoluteLinkPath) ? absoluteLinkPath : null;
-  } else if (path.extname(linkPath)) {
+  } else if (path.extname(baselessLinkPath)) {
     // Some other extension (`./manual.pdf`, `./v1.2`): a docs asset, never a source doc
     return { kind: "skipped" };
   } else {
@@ -284,9 +327,18 @@ function resolveLink(href: string, options: TBuildItemsOptions): TLinkTarget {
   if (isOutsideDir(options.docsDirPath, resolvedLinkPath.absoluteLinkPath)) {
     return { kind: "skipped", warning: "it resolves outside the docs root" };
   }
-  // Test the base-stripped path, so `/docs` with base `/docs` is a link to the docs root
+  if (isAncestorLink(resolvedLinkPath, options)) {
+    return {
+      kind: "skipped",
+      warning:
+        "it links to the sidebar index's own directory or an ancestor directory",
+    };
+  }
   if (
-    isSubIndexLinkPath(resolvedLinkPath.linkPath, options.sourceDocExtensions)
+    isSubIndexLinkPath(
+      resolvedLinkPath.baselessLinkPath,
+      options.sourceDocExtensions,
+    )
   ) {
     return resolveSubIndexLink(resolvedLinkPath, options);
   }
