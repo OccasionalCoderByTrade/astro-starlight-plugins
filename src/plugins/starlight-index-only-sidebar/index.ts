@@ -1,5 +1,6 @@
 import type { HookParameters } from "@astrojs/starlight/types";
-import { join } from "path";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { getIndexMdSidebarItems } from "./utils";
 import type { TGroupedItem } from "./types";
 
@@ -30,7 +31,7 @@ type TOptions = {
  */
 type TIndexOnlySidebarPluginOptions = TOptions & {
   /**
-   * Array of directory names (relative to src/content/docs) to scan for sidebar generation.
+   * Array of directory names (relative to the docs root, `content/docs/` under Astro's `srcDir`) to scan for sidebar generation.
    * Each directory will become a top-level group in the sidebar.
    * @example ["reference", "guides", "api-docs"]
    */
@@ -40,8 +41,6 @@ type TIndexOnlySidebarPluginOptions = TOptions & {
 type TSidebarItem =
   | { label: string; slug: string }
   | { label: string; items: TSidebarItem[] };
-
-const SITE_DOCS_ROOT = "./src/content/docs";
 
 function normalizeSlug(slug: string): string {
   // Starlight expects slugs without "/index" suffix
@@ -86,7 +85,7 @@ export function starlightIndexOnlySidebar(
     name: "index-only-sidebar",
     hooks: {
       "config:setup": (hookOptions: HookParameters<"config:setup">) => {
-        const { updateConfig } = hookOptions;
+        const { updateConfig, astroConfig } = hookOptions;
         const { directories, maxDepthNesting, dirnameDeterminesLabels } =
           pluginOptions;
         const functionOptions: TOptions = {
@@ -94,9 +93,13 @@ export function starlightIndexOnlySidebar(
           dirnameDeterminesLabels,
         };
 
+        const docsDirPath = fileURLToPath(
+          new URL("content/docs/", astroConfig.srcDir),
+        );
+
         const sidebarItems = directories
           .map((directory) => {
-            const dirPath = join(SITE_DOCS_ROOT, directory);
+            const dirPath = join(docsDirPath, directory);
             const rawItems = getIndexMdSidebarItems(dirPath, functionOptions);
             // Remove the root group wrapper that getIndexMdSidebarItems adds
             const rootGroup = rawItems[0];
