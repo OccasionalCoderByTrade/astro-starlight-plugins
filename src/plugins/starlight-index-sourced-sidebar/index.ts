@@ -1,17 +1,20 @@
 import type { HookParameters } from "@astrojs/starlight/types";
-import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { validateSidebarOptions } from "../utils/sidebar-options.js";
 import type { TSidebarBadge, TSidebarGroup } from "../utils/sidebar-types.js";
-import { getIndexSourcedSidebarGroup } from "./utils.js";
+import {
+  getIndexSourcedSidebarGroup,
+  SOURCE_DOC_EXTENSIONS,
+} from "./utils.js";
 
 type TOptions = {
   /**
-   * Controls how deep the nested group structure can go, where the root directory is level 0.
-   * At depth >= maxDepthNesting, sub-index groups are not created; their items are flattened
-   * directly into the current level instead.
-   * @default 100
+   * The most levels of groups the sidebar can have, the root group included, so `1` puts
+   * every entry flat under the root group. A sub-index link whose group would go past the
+   * limit has its entries flattened into the parent group. Must be an integer of at least 1.
+   * When undefined, groups nest without limit.
    */
-  maxDepthNesting?: number;
+  maxGroupLevels?: number;
 
   /**
    * Array of directory names (relative to the docs root, `content/docs/` under Astro's
@@ -42,13 +45,13 @@ type TOptions = {
  *
  * For each directory, the plugin reads its index.md and uses the links found there as sidebar
  * entries. Links ending in `/index` are treated as sub-sections and recursed into, creating
- * nested groups up to maxDepthNesting levels deep. All other links become leaf items labeled
+ * nested groups up to maxGroupLevels levels of groups. All other links become leaf items labeled
  * with the linked page's frontmatter title. The docs root is `content/docs/` under Astro's
  * `srcDir`.
  *
  * @example
  * starlightIndexSourcedSidebar({
- *   maxDepthNesting: 2,
+ *   maxGroupLevels: 2,
  *   directories: ["guides", "reference"],
  *   indexMarker: { text: "Index", variant: "note" },
  * })
@@ -61,7 +64,6 @@ export function starlightIndexSourcedSidebar(options: TOptions) {
         const { updateConfig, astroConfig } = hookOptions;
         const {
           directories,
-          maxDepthNesting = 100,
           indexMarker,
           collapsed = true,
         } = options;
@@ -69,12 +71,20 @@ export function starlightIndexSourcedSidebar(options: TOptions) {
           new URL("content/docs/", astroConfig.srcDir),
         );
 
-        const sidebarGroups = directories
-          .map((directory) =>
+        const { dirPaths, maxGroupLevels } = validateSidebarOptions({
+          pluginName: "starlight-index-sourced-sidebar",
+          docsDirPath,
+          directories,
+          maxGroupLevels: options.maxGroupLevels,
+          sourceDocExtensions: SOURCE_DOC_EXTENSIONS,
+        });
+
+        const sidebarGroups = dirPaths
+          .map((dirPath) =>
             getIndexSourcedSidebarGroup({
               docsDirPath,
-              dirPath: join(docsDirPath, directory),
-              maxDepthNesting,
+              dirPath,
+              maxGroupLevels,
               indexMarker,
               collapsed,
             }),

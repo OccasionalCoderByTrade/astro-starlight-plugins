@@ -15,7 +15,7 @@ import type {
 import { isHiddenFromSidebar as hasHiddenFromSidebarFlag } from "../utils/sidebar-visibility.js";
 import { isFile } from "../utils/workspace-utils.js";
 
-const SOURCE_DOC_EXTENSIONS = [".md", ".mdx"];
+export const SOURCE_DOC_EXTENSIONS = [".md", ".mdx"];
 
 type TFrontmatter = {
   title?: string;
@@ -35,8 +35,8 @@ export type TIndexSourcedSidebarOptions = {
   docsDirPath: string;
   /** Absolute path of the directory whose sidebar index defines the root group. */
   dirPath: string;
-  /** Depth at which sub-index groups are flattened into their parent; the root is 0. */
-  maxDepthNesting: number;
+  /** Levels of groups allowed, the root group included; deeper groups are flattened. */
+  maxGroupLevels: number;
   indexMarker: TSidebarBadge | undefined;
   collapsed: boolean;
 };
@@ -122,7 +122,7 @@ function buildItems(options: TBuildItemsOptions): TSidebarItem[] {
     docsDirPath,
     dirPath,
     currentDepth,
-    maxDepthNesting,
+    maxGroupLevels,
     visitedDirPaths,
     indexMarker,
     collapsed,
@@ -177,7 +177,8 @@ function buildItems(options: TBuildItemsOptions): TSidebarItem[] {
       });
       if (subItems.length === 0) continue;
 
-      if (currentDepth + 1 >= maxDepthNesting) {
+      // The root group is level 1, so the sub-index group would be level currentDepth + 2
+      if (currentDepth + 2 > maxGroupLevels) {
         items.push(...subItems);
       } else {
         items.push({
