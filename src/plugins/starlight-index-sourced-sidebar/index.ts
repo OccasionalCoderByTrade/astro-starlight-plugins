@@ -1,6 +1,7 @@
 import type { HookParameters } from "@astrojs/starlight/types";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { getSourceDocExtensions } from "../utils/workspace-utils.js";
 import type { TSidebarBadge, TSidebarGroup } from "../utils/sidebar-types.js";
 import { getIndexSourcedSidebarGroup } from "./utils.js";
 
@@ -58,7 +59,7 @@ export function starlightIndexSourcedSidebar(options: TOptions) {
     name: "index-sourced-sidebar",
     hooks: {
       "config:setup": (hookOptions: HookParameters<"config:setup">) => {
-        const { updateConfig, astroConfig } = hookOptions;
+        const { updateConfig, astroConfig, logger } = hookOptions;
         const {
           directories,
           maxDepthNesting = 100,
@@ -67,6 +68,9 @@ export function starlightIndexSourcedSidebar(options: TOptions) {
         } = options;
         const docsDirPath = fileURLToPath(
           new URL("content/docs/", astroConfig.srcDir),
+        );
+        const sourceDocExtensions = getSourceDocExtensions(
+          astroConfig.integrations,
         );
 
         const sidebarGroups = directories
@@ -77,6 +81,8 @@ export function starlightIndexSourcedSidebar(options: TOptions) {
               maxDepthNesting,
               indexMarker,
               collapsed,
+              sourceDocExtensions,
+              logger,
             }),
           )
           .filter((group): group is TSidebarGroup => group !== undefined);

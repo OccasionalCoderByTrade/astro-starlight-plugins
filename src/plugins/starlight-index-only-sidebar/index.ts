@@ -2,6 +2,7 @@ import type { HookParameters } from "@astrojs/starlight/types";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { TSidebarGroup } from "../utils/sidebar-types.js";
+import { getSourceDocExtensions } from "../utils/workspace-utils.js";
 import { getIndexMdSidebarItems } from "./utils.js";
 
 /**
@@ -61,9 +62,10 @@ export function starlightIndexOnlySidebar(
         const { updateConfig, astroConfig } = hookOptions;
         const { directories, maxDepthNesting, dirnameDeterminesLabels } =
           pluginOptions;
-        const functionOptions: TOptions = {
+        const functionOptions = {
           maxDepthNesting,
           dirnameDeterminesLabels,
+          sourceDocExtensions: getSourceDocExtensions(astroConfig.integrations),
         };
 
         const docsDirPath = fileURLToPath(

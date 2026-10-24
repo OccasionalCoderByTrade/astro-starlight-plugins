@@ -11,13 +11,13 @@ See the spec: User Stories 19-27, 57; Implementation Decisions › Hidden from s
 
 **Blocked by:** 03
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] With Markdoc in `integrations`, `.mdoc` sidebar indexes and linked `.mdoc` pages become entries. Without it, they don't
-- [ ] A link to `./_partial.md` gives no entry and logs one warning naming the sidebar index and the link
-- [ ] A page under `_partials/` becomes an entry
-- [ ] `draft: true` hides the entry when `command` is `dev` and when it's `build`
-- [ ] `pagefind: false` alone doesn't hide an entry
-- [ ] A hidden sidebar index drops its whole group; a hidden root sidebar index drops its root group without an error
-- [ ] README updated for both sidebar plugins
-- [ ] `npm run lib:build` and `npm test` pass
+- [x] With Markdoc in `integrations`, `.mdoc` sidebar indexes and linked `.mdoc` pages become entries. Without it, they don't
+- [x] A link to `./_partial.md` gives no entry and logs one warning naming the sidebar index and the link
+- [x] A page under `_partials/` becomes an entry
+- [x] `draft: true` hides the entry when `command` is `dev` and when it's `build`
+- [x] `pagefind: false` alone doesn't hide an entry
+- [x] A hidden sidebar index drops its whole group; a hidden root sidebar index drops its root group without an error
+- [x] README updated for both sidebar plugins
+- [x] `npm run lib:build` and `npm test` pass
