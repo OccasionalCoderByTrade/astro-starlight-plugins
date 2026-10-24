@@ -51,7 +51,7 @@ Import it from its subpath, as above, so your config doesn't load other plugins'
 **Options:**
 
 - `directories` (required): Array of directory names to scan, relative to the docs root (`content/docs/` under Astro's `srcDir`, so `src/content/docs` by default), e.g. `["guides", "api"]`. Each one becomes a top-level group.
-- `maxGroupLevels` (optional, default: unlimited): The most levels of groups, the root group included. `1` puts everything flat under the root group, `2` keeps one level of nested groups, and so on. At the limit, deeper index files are flattened into the deepest group. Must be an integer of at least 1.
+- `maxGroupLevels` (optional, default: unlimited): The most levels of groups, the root group included. `1` puts everything flat under the root group, `2` keeps one level of nested groups, and so on. At the limit, deeper sidebar indexes are flattened into the deepest group. Must be an integer of at least 1.
 - `dirnameDeterminesLabels` (optional, default: `true`): When `true`, all labels use raw directory names. When `false`, slug item labels come from frontmatter `sidebar.label`, then `title`, then `"Overview"`; group labels still use directory names. `sidebar.badge` shows on entries either way.
 
 **Startup errors:**
@@ -62,7 +62,7 @@ These fail `astro dev` and `astro build` at startup, with a message naming the p
 - a `directories` entry that doesn't exist ("Directory not found")
 - the same directory listed twice (e.g. `"guides"` and `"./guides/"`)
 - a `directories` entry with no sidebar index (`index.md`, `index.mdx`, or `index.mdoc` when Markdoc is installed)
-- a `maxGroupLevels` that isn't an integer of at least 1
+- a `maxGroupLevels` that isn't an integer of at least 1, `Infinity` and `null` included (leave it unset for unlimited)
 
 **Slugs:**
 
@@ -143,18 +143,19 @@ These fail `astro dev` and `astro build` at startup, with a message naming the p
 - a `directories` entry that doesn't exist ("Directory not found")
 - the same directory listed twice (e.g. `"guides"` and `"./guides/"`)
 - a `directories` entry with no sidebar index (`index.md`, `index.mdx`, or `index.mdoc` when Markdoc is installed)
-- a `maxGroupLevels` that isn't an integer of at least 1
+- a `maxGroupLevels` that isn't an integer of at least 1, `Infinity` and `null` included (leave it unset for unlimited)
 
 **Link conventions:**
 
-- Links to sub-sections are sub-index links: they end in `/index` (with or without an extension) or `/`, e.g. `[Subtopic](./subtopic/index)` or `[Subtopic](./subtopic/)`. The plugin recurses into the target's sidebar index unless it's a leaf index.
+- Links to sub-sections are sub-index links: they end in `/index` (with or without an extension) or `/`, e.g. `[Subtopic](./subtopic/index)` or `[Subtopic](./subtopic/)`. A link to `.` or `..` is a sub-index link too, to that folder's sidebar index (so usually an ancestor, which warns). The plugin recurses into the target's sidebar index unless it's a leaf index.
+- A root-absolute link equal to `base` (`/docs` on a site with base `/docs`) is a sub-index link to the docs root's sidebar index.
 - A folder link (`./subtopic/`) whose folder has no sidebar index logs a warning and adds nothing. It doesn't fall back to a sibling `subtopic.md`.
 - All other links to source docs become flat page entries
 - Links are found by parsing the markdown body, whatever the sidebar index's extension
 
 Link forms that count:
 
-- Relative file-form links, with or without the extension: `./setup`, `./setup.md`, `../other/page`
+- Relative file-form links, with or without the extension: `./setup`, `./setup.md`, `../other/page`. A file whose name has a dot in it must be linked with its extension: `./v1.2.md`, not `./v1.2`, which counts as a link to a docs asset.
 - Root-absolute links, resolved against the docs root: `/guides/setup`. On a site with a `base` (say `/docs`), a link that starts with it has it stripped first, so `/docs/guides/setup` works too.
 - Percent-encoded links, which are decoded: `./my%20page` reaches `my page.md`
 - Reference-style links, through their definitions: `[Setup][setup]`, `[Setup][]` or `[Setup]` with `[setup]: ./setup` somewhere in the file. Entries follow the order the references appear, not the definitions.
@@ -169,12 +170,13 @@ Skipped silently:
 
 - External links: any `scheme:` link (`https:`, `mailto:`, `tel:`, `ftp:`, ...) and protocol-relative `//` links
 - Same-page anchors (`#section`)
-- Links to docs assets: files with an extension that isn't a source doc extension (images, PDFs, etc.)
+- Links to docs assets: links with an extension that isn't a source doc extension (images, PDFs, `./v1.2`, etc.). No source doc extension is tried, so `./manual.pdf` never reaches `manual.pdf.md`.
 - Links to pages hidden from sidebar (`draft: true` or `sidebar.hidden: true`)
 
 Skipped with a warning naming the sidebar index and the link:
 
 - A link to a source doc that doesn't exist
+- A link that resolves outside the docs root (`../../x.md`, `/../x`)
 - A link to a `_`-prefixed file
 - A folder link whose folder has no sidebar index
 - A sub-index link back to an ancestor sidebar index

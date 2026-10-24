@@ -186,7 +186,8 @@ describe("starlightIndexSourcedSidebar", () => {
     ]);
   });
 
-  it.each([0, 1.5, -1])(
+  // Only undefined means unlimited: an explicit Infinity or null is a bad value too
+  it.each([0, 1.5, -1, Infinity, null as unknown as number])(
     "throws at startup when maxGroupLevels is %s",
     async (maxGroupLevels) => {
       const { setup } = runSetup(NESTED_DOCS_FILES, {
@@ -937,6 +938,90 @@ describe("starlightIndexSourcedSidebar link forms", () => {
         ],
       },
     ]);
+  });
+
+  it("treats a root-absolute link equal to base as a sub-index link to the docs root", async () => {
+    const { setup } = runSetup(
+      {
+        "index.md": "---\ntitle: Home\n---\n",
+        "guides/index.md": "---\ntitle: Guides\n---\n\n[Home](/docs)\n",
+      },
+      { directories: ["guides"] },
+      { base: "/docs" },
+    );
+
+    const { sidebar, warnings } = await setup();
+
+    expect(sidebar).toEqual([
+      {
+        label: "Guides",
+        collapsed: true,
+        items: [
+          { label: "Guides", slug: "guides" },
+          {
+            label: "Docs",
+            collapsed: true,
+            items: [{ label: "Home", slug: "" }],
+          },
+        ],
+      },
+    ]);
+    expect(warnings).toEqual([]);
+  });
+
+  it.each(["../../outside.md", "/../outside"])(
+    "warns and adds nothing for a link %s that resolves outside the docs root",
+    async (href) => {
+      const { setup } = runSetup(
+        {
+          "guides/index.md": `---\ntitle: Guides\n---\n\n[Outside](${href})\n`,
+          // Lands at <srcDir>content/outside.md, just outside the docs root
+          "../outside.md": "---\ntitle: Outside\n---\n",
+        },
+        { directories: ["guides"] },
+      );
+
+      const { sidebar, warnings } = await setup();
+
+      expect(sidebar).toEqual([
+        {
+          label: "Guides",
+          collapsed: true,
+          items: [{ label: "Guides", slug: "guides" }],
+        },
+      ]);
+      expect(warnings).toHaveLength(1);
+      expect(warnings[0]).toContain("guides/index.md");
+      expect(warnings[0]).toContain(href);
+      expect(warnings[0]).toContain("outside the docs root");
+    },
+  );
+
+  it("skips a link with a non-source-doc extension without trying source doc extensions", async () => {
+    const { setup } = runSetup(
+      {
+        "guides/index.md":
+          "---\ntitle: Guides\n---\n\n[Old](./v1.2) [Manual](./manual.pdf) [New](./v2.0.md)\n",
+        "guides/v1.2.md": "---\ntitle: V1.2\n---\n",
+        "guides/manual.pdf.md": "---\ntitle: Manual\n---\n",
+        "guides/v2.0.md": "---\ntitle: V2.0\n---\n",
+      },
+      { directories: ["guides"] },
+    );
+
+    const { sidebar, warnings } = await setup();
+
+    expect(sidebar).toEqual([
+      {
+        label: "Guides",
+        collapsed: true,
+        items: [
+          { label: "Guides", slug: "guides" },
+          { label: "V2.0", slug: "guides/v20" },
+        ],
+      },
+    ]);
+    expect(warnings).toEqual([]);
   });
 
   it("percent-decodes a link", async () => {

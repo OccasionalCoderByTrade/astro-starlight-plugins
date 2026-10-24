@@ -1,48 +1,43 @@
-import { parseFrontmatter as astroParseFrontmatter } from "@astrojs/markdown-remark";
 import type { AstroIntegrationLogger } from "astro";
-import * as fs from "node:fs";
 import * as path from "node:path";
 import remarkParse from "remark-parse";
 import { unified } from "unified";
 import { visit } from "unist-util-visit";
+import { buildSidebarEntry } from "../utils/sidebar-entries.js";
 import { findSidebarIndexFile } from "../utils/sidebar-index.js";
 import {
   pathSegmentToLabel,
-  sidebarEntryBadge,
   sidebarEntryLabel,
   type TSidebarEntryFrontmatter,
 } from "../utils/sidebar-labels.js";
-import { toSidebarSlug } from "../utils/sidebar-slugs.js";
 import type {
   TSidebarBadge,
   TSidebarGroup,
   TSidebarItem,
 } from "../utils/sidebar-types.js";
+import { isHiddenFromSidebar } from "../utils/sidebar-visibility.js";
 import {
-  hasUnderscoreFileName,
-  isHiddenFromSidebar,
-} from "../utils/sidebar-visibility.js";
-import { isFile } from "../utils/workspace-utils.js";
+  isFile,
+  isOutsideDir,
+  parseSourceDoc,
+  type TSourceDoc,
+  type TSourceDocFrontmatter,
+} from "../utils/workspace-utils.js";
 
-type TFrontmatter = TSidebarEntryFrontmatter & {
-  slug?: string;
-  draft?: boolean;
-  sidebar?: { hidden?: boolean };
-  /** The plugin's own key. `leaf: true` makes a sub-index link to this doc a single entry. */
-  indexSourcedSidebar?: { leaf?: boolean };
-};
+export const PLUGIN_NAME = "starlight-index-sourced-sidebar";
+const LOG_PREFIX = `[${PLUGIN_NAME}]`;
 
-/** A source doc's frontmatter and body, from one read. */
-type TSourceDoc = {
-  frontmatter: TFrontmatter;
-  body: string;
-};
+type TFrontmatter = TSourceDocFrontmatter &
+  TSidebarEntryFrontmatter & {
+    /** The plugin's own key. `leaf: true` makes a sub-index link to this doc a single entry. */
+    indexSourcedSidebar?: { leaf?: boolean };
+  };
 
 /** A sidebar index file and its contents. */
 type TSidebarIndex = {
   dirPath: string;
   indexFilePath: string;
-  indexDoc: TSourceDoc;
+  indexDoc: TSourceDoc<TFrontmatter>;
 };
 
 export type TIndexSourcedSidebarOptions = {
@@ -65,7 +60,8 @@ export type TIndexSourcedSidebarOptions = {
 /** Internal: what each level of the recursion needs on top of the public options. */
 type TBuildItemsOptions = Omit<TIndexSourcedSidebarOptions, "dirPath"> & {
   sidebarIndex: TSidebarIndex;
-  currentDepth: number;
+  /** The group level of the current sidebar index's group; the root group is level 1. */
+  groupLevel: number;
   /** Dirs of the sidebar indexes from the root down to this one, this one included. */
   ancestorDirPaths: Set<string>;
 };
@@ -79,18 +75,25 @@ type TLinkTarget =
   | { kind: "page"; filePath: string }
   | { kind: "skipped"; warning?: string };
 
+/** A link path after step 4 of resolving it. */
+type TResolvedLinkPath = {
+  /** The link path, with `base` stripped when it's root-absolute and starts with it. */
+  linkPath: string;
+  /** The absolute filesystem path the link points at (a file or a folder). */
+  absoluteLinkPath: string;
+};
+
 /** Throws when the file can't be read or its YAML is malformed. */
-function readSourceDoc(filePath: string): TSourceDoc {
-  const content = fs.readFileSync(filePath, "utf-8");
-  try {
-    const { frontmatter, content: body } = astroParseFrontmatter(content);
-    return { frontmatter: frontmatter as TFrontmatter, body };
-  } catch (err) {
-    throw new Error(
-      `[starlight-index-sourced-sidebar] Failed to parse frontmatter in ${filePath}: ${(err as Error).message}`,
-      { cause: err },
-    );
-  }
+function readSourceDoc(filePath: string): TSourceDoc<TFrontmatter> {
+  return parseSourceDoc<TFrontmatter>(filePath);
+}
+
+/**
+ * Whether the file at `filePath` has a `_`-prefixed name, which Astro never turns into a
+ * page. Only the filename counts: `_partials/page.md` is still a page.
+ */
+function hasUnderscoreFileName(filePath: string): boolean {
+  return path.basename(filePath).startsWith("_");
 }
 
 function hasSourceDocExtension(
@@ -167,19 +170,24 @@ function percentDecode(encodedLinkPath: string): string {
 
 /**
  * Step 4 of resolving a link: the absolute path `linkPath` points at. A root-absolute link
- * resolves against the docs root, a relative one against the sidebar index's directory.
+ * has `base` stripped and resolves against the docs root, a relative one against the
+ * sidebar index's directory.
  */
 function resolveLinkPath(
   linkPath: string,
   options: TBuildItemsOptions,
-): string {
+): TResolvedLinkPath {
   if (linkPath.startsWith("/")) {
-    return path.join(
-      options.docsDirPath,
-      stripBase(linkPath, options.base),
-    );
+    const baselessLinkPath = stripBase(linkPath, options.base);
+    return {
+      linkPath: baselessLinkPath,
+      absoluteLinkPath: path.join(options.docsDirPath, baselessLinkPath),
+    };
   }
-  return path.resolve(options.sidebarIndex.dirPath, linkPath);
+  return {
+    linkPath,
+    absoluteLinkPath: path.resolve(options.sidebarIndex.dirPath, linkPath),
+  };
 }
 
 /** `rootAbsoluteLinkPath` without a leading `base`, when it starts with that whole segment. */
@@ -213,12 +221,13 @@ function isSubIndexLinkPath(
 
 /** Step 5 of resolving a link: the sidebar index a sub-index link points at. */
 function resolveSubIndexLink(
-  linkPath: string,
-  resolvedPath: string,
+  { linkPath, absoluteLinkPath }: TResolvedLinkPath,
   options: TBuildItemsOptions,
 ): TLinkTarget {
   const namesFolder = !/(^|\/)index(\.[^/]*)?$/.test(linkPath);
-  const dirPath = namesFolder ? resolvedPath : path.dirname(resolvedPath);
+  const dirPath = namesFolder
+    ? absoluteLinkPath
+    : path.dirname(absoluteLinkPath);
 
   const indexFilePath = findSidebarIndexFile(
     dirPath,
@@ -238,8 +247,7 @@ function resolveSubIndexLink(
 
 /** Steps 6-7 of resolving a link: the page a link that isn't a sub-index link points at. */
 function resolvePageLink(
-  linkPath: string,
-  resolvedPath: string,
+  { linkPath, absoluteLinkPath }: TResolvedLinkPath,
   options: TBuildItemsOptions,
 ): TLinkTarget {
   const { sourceDocExtensions } = options;
@@ -247,11 +255,12 @@ function resolvePageLink(
   let filePath: string | null;
   if (hasSourceDocExtension(linkPath, sourceDocExtensions)) {
     // A link that already carries a source doc extension names that exact file
-    filePath = isFile(resolvedPath) ? resolvedPath : null;
+    filePath = isFile(absoluteLinkPath) ? absoluteLinkPath : null;
+  } else if (path.extname(linkPath)) {
+    // Some other extension (`./manual.pdf`, `./v1.2`): a docs asset, never a source doc
+    return { kind: "skipped" };
   } else {
-    filePath = findSourceDoc(resolvedPath, sourceDocExtensions);
-    // Some other extension (`./manual.pdf`) and no `manual.pdf.md`: a docs asset
-    if (!filePath && path.extname(linkPath)) return { kind: "skipped" };
+    filePath = findSourceDoc(absoluteLinkPath, sourceDocExtensions);
   }
   if (!filePath) {
     return { kind: "skipped", warning: "no source doc exists there" };
@@ -271,11 +280,17 @@ function resolveLink(href: string, options: TBuildItemsOptions): TLinkTarget {
   const linkPath = toLinkPath(href);
   if (!linkPath) return { kind: "skipped" };
 
-  const resolvedPath = resolveLinkPath(linkPath, options);
-  if (isSubIndexLinkPath(linkPath, options.sourceDocExtensions)) {
-    return resolveSubIndexLink(linkPath, resolvedPath, options);
+  const resolvedLinkPath = resolveLinkPath(linkPath, options);
+  if (isOutsideDir(options.docsDirPath, resolvedLinkPath.absoluteLinkPath)) {
+    return { kind: "skipped", warning: "it resolves outside the docs root" };
   }
-  return resolvePageLink(linkPath, resolvedPath, options);
+  // Test the base-stripped path, so `/docs` with base `/docs` is a link to the docs root
+  if (
+    isSubIndexLinkPath(resolvedLinkPath.linkPath, options.sourceDocExtensions)
+  ) {
+    return resolveSubIndexLink(resolvedLinkPath, options);
+  }
+  return resolvePageLink(resolvedLinkPath, options);
 }
 
 /** Warns that `href`, as written in the current sidebar index, gives no entry. */
@@ -288,13 +303,8 @@ function warnSkippedLink(
     .relative(options.docsDirPath, options.sidebarIndex.indexFilePath)
     .replace(/\\/g, "/");
   options.logger.warn(
-    `[starlight-index-sourced-sidebar] Skipped link "${href}" in ${docsRelativeIndexFilePath}: ${reason}`,
+    `${LOG_PREFIX} Skipped link "${href}" in ${docsRelativeIndexFilePath}: ${reason}`,
   );
-}
-
-/** `{ badge }` to spread into an entry, or nothing when there's no badge. */
-function badgeProperty(badge: TSidebarBadge | undefined) {
-  return badge ? { badge } : {};
 }
 
 /**
@@ -306,20 +316,16 @@ function toIndexEntry(
   options: Pick<TIndexSourcedSidebarOptions, "docsDirPath" | "indexMarker">,
 ): TSidebarItem {
   const { dirPath, indexFilePath, indexDoc } = sidebarIndex;
-  return {
+  return buildSidebarEntry({
     label: sidebarEntryLabel(
       indexDoc.frontmatter,
       pathSegmentToLabel(path.basename(dirPath)),
     ),
-    slug: toSidebarSlug({
-      docsDirPath: options.docsDirPath,
-      sourceDocFilePath: indexFilePath,
-      frontmatterSlug: indexDoc.frontmatter.slug,
-    }),
-    ...badgeProperty(
-      options.indexMarker ?? sidebarEntryBadge(indexDoc.frontmatter),
-    ),
-  };
+    docsDirPath: options.docsDirPath,
+    sourceDocFilePath: indexFilePath,
+    frontmatter: indexDoc.frontmatter,
+    badgeOverride: options.indexMarker,
+  });
 }
 
 /** The entries a sub-index link adds: a nested group, its flattened items, or a leaf entry. */
@@ -338,15 +344,17 @@ function buildSubIndexItems(
     return [toIndexEntry(subIndex, options)];
   }
 
+  // Past the limit, the sub-index's entries are flattened into the current group
+  const subGroupLevel = options.groupLevel + 1;
+  const isFlattened = subGroupLevel > options.maxGroupLevels;
   const subItems = buildItems({
     ...options,
     sidebarIndex: subIndex,
-    currentDepth: options.currentDepth + 1,
+    groupLevel: isFlattened ? options.groupLevel : subGroupLevel,
     ancestorDirPaths: new Set([...options.ancestorDirPaths, subIndex.dirPath]),
   });
 
-  // The root group is level 1, so the sub-index group would be level currentDepth + 2
-  if (options.currentDepth + 2 > options.maxGroupLevels) return subItems;
+  if (isFlattened) return subItems;
   return [
     {
       label: pathSegmentToLabel(path.basename(subIndex.dirPath)),
@@ -366,18 +374,15 @@ function buildPageItems(
   if (isHiddenFromSidebar(linkedDoc.frontmatter)) return [];
 
   return [
-    {
+    buildSidebarEntry({
       label: sidebarEntryLabel(
         linkedDoc.frontmatter,
         pathSegmentToLabel(path.basename(filePath, path.extname(filePath))),
       ),
-      slug: toSidebarSlug({
-        docsDirPath: options.docsDirPath,
-        sourceDocFilePath: filePath,
-        frontmatterSlug: linkedDoc.frontmatter.slug,
-      }),
-      ...badgeProperty(sidebarEntryBadge(linkedDoc.frontmatter)),
-    },
+      docsDirPath: options.docsDirPath,
+      sourceDocFilePath: filePath,
+      frontmatter: linkedDoc.frontmatter,
+    }),
   ];
 }
 
@@ -402,16 +407,21 @@ function buildItems(options: TBuildItemsOptions): TSidebarItem[] {
 /**
  * The root group for `options.dirPath`, built from the links in its sidebar index, or
  * undefined when its sidebar index is hidden from sidebar. A root sidebar index always
- * expands, whatever its leaf key says.
+ * expands, whatever its leaf key says. Expects options already checked by
+ * `validateSidebarOptions`.
  */
 export function getIndexSourcedSidebarGroup(
   options: TIndexSourcedSidebarOptions,
 ): TSidebarGroup | undefined {
   const { dirPath, sourceDocExtensions } = options;
   const indexFilePath = findSidebarIndexFile(dirPath, sourceDocExtensions);
+  // Unreachable after validateSidebarOptions, which fails startup on a missing sidebar index
   if (!indexFilePath) {
+    const indexFileNames = sourceDocExtensions
+      .map((extension) => `index${extension}`)
+      .join(" or ");
     throw new Error(
-      `[starlight-index-sourced-sidebar] No sidebar index (index${sourceDocExtensions.join(", index")}) found in "${dirPath}"`,
+      `${LOG_PREFIX} No sidebar index (${indexFileNames}) for directory: ${dirPath}`,
     );
   }
 
@@ -421,7 +431,7 @@ export function getIndexSourcedSidebarGroup(
   const items = buildItems({
     ...options,
     sidebarIndex: { dirPath, indexFilePath, indexDoc },
-    currentDepth: 0,
+    groupLevel: 1,
     ancestorDirPaths: new Set([dirPath]),
   });
 

@@ -56,3 +56,8 @@ export function sidebarEntryBadge(
   if (typeof badge === "string") return { text: badge, variant: "default" };
   return { text: badge.text, variant: badge.variant ?? "default" };
 }
+
+/** `{ badge }` to spread into a sidebar entry, or nothing when there's no badge. */
+export function badgeProperty(badge: TSidebarBadge | undefined) {
+  return badge ? { badge } : {};
+}
