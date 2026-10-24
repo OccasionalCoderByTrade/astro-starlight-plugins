@@ -81,9 +81,7 @@ Generates a Starlight sidebar by parsing markdown links out of `index.md` files.
 - Source docs (sidebar indexes and linked pages) are `.md`, `.mdx`, and `.mdoc` when `@astrojs/markdoc` is in Astro's `integrations`. Without Markdoc, a `.mdoc` file is a docs asset and a link to it is skipped like a link to a PDF.
 - Respects frontmatter: `draft: true` and `sidebar.hidden: true` hide an entry, in `astro dev` and `astro build` alike. Drafts are hidden in dev on purpose, unlike Starlight, which renders draft pages in dev: the dev sidebar shows what the build will show. A hidden sidebar index drops its whole group, and a hidden root sidebar index drops its root group without an error. `pagefind: false` only affects search and doesn't hide anything.
 - A link to a `_`-prefixed file (like `./_partial.md`) gives no entry, since Astro never makes it a page, and logs a warning naming the sidebar index and the link. Only the filename counts: a page in a `_`-prefixed folder (like `./_partials/shared`) still gets an entry.
-- Links to non-markdown files (images, PDFs, etc.) are silently skipped
-- Links to markdown files that do not exist on disk are silently skipped
-- External links and same-page anchor links (`#section`) are silently skipped
+- A link to a source doc that doesn't exist logs a warning naming the sidebar index and the link, so typos don't go unnoticed (see **Link conventions** below)
 - Fails `astro dev` and `astro build` at startup when an option is bad (see **Startup errors**), or an index or linked page can't be read or its frontmatter can't be parsed
 
 **Options:**
@@ -118,8 +116,37 @@ Each entry links to the page Starlight serves for its source doc. The slug is th
 
 - Links to sub-sections are sub-index links: they end in `/index` (with or without an extension) or `/`, e.g. `[Subtopic](./subtopic/index)` or `[Subtopic](./subtopic/)`. The plugin recurses into the target's sidebar index unless it's a leaf index.
 - A folder link (`./subtopic/`) whose folder has no sidebar index logs a warning and adds nothing. It doesn't fall back to a sibling `subtopic.md`.
-- All other relative links become flat leaf items
-- External URLs are ignored
+- All other links to source docs become flat leaf items
+- Links are found by parsing the markdown body, whatever the sidebar index's extension
+
+Link forms that count:
+
+- Relative file-form links, with or without the extension: `./setup`, `./setup.md`, `../other/page`
+- Root-absolute links, resolved against the docs root: `/guides/setup`. On a site with a `base` (say `/docs`), a link that starts with it has it stripped first, so `/docs/guides/setup` works too.
+- Percent-encoded links, which are decoded: `./my%20page` reaches `my page.md`
+- Reference-style links, through their definitions: `[Setup][setup]`, `[Setup][]` or `[Setup]` with `[setup]: ./setup` somewhere in the file. Entries follow the order the references appear, not the definitions.
+- Query strings and anchors are stripped: `./setup#intro` reaches `setup.md`
+
+Link forms that don't count:
+
+- JSX and HTML links, like `<Card href="./setup">` or `<a href="./setup">`. In an MDX index, write a markdown link instead.
+- Page-form links, like `./my-page/` for `My Page.md`. A link ending in `/` is always a sub-index link. Write the file-form link `./My%20Page` (or `<./My Page>`) instead.
+
+Skipped silently:
+
+- External links: any `scheme:` link (`https:`, `mailto:`, `tel:`, `ftp:`, ...) and protocol-relative `//` links
+- Same-page anchors (`#section`)
+- Links to docs assets: files with an extension that isn't a source doc extension (images, PDFs, etc.)
+- Links to pages hidden from sidebar (`draft: true` or `sidebar.hidden: true`)
+
+Skipped with a warning naming the sidebar index and the link:
+
+- A link to a source doc that doesn't exist
+- A link to a `_`-prefixed file
+- A folder link whose folder has no sidebar index
+- A sub-index link back to an ancestor sidebar index
+
+These are only warnings. If you also use [`astroLocalLinks`](#local-links), broken links keep failing there, on the final HTML.
 
 **Usage:**
 

@@ -46,7 +46,10 @@ type TOptions = {
  * sidebar index's extension, creating nested groups up to maxGroupLevels levels of groups,
  * unless the target's frontmatter has `indexSourcedSidebar: { leaf: true }`, which makes it a
  * single entry. A link back to an ancestor sidebar index is skipped with a warning. All other
- * links become leaf items. Entries are labelled `sidebar.label`, then `title`, then the
+ * links become leaf items. Inline and reference-style markdown links count, relative or
+ * root-absolute (with Astro's `base` stripped), percent-decoded; JSX and HTML links don't.
+ * External (`scheme:` or `//`) links, anchors and docs assets are skipped silently, and a
+ * link to a missing source doc is skipped with a warning. Entries are labelled `sidebar.label`, then `title`, then the
  * filename, and show `sidebar.badge` (an index entry shows `indexMarker` instead, when set);
  * groups take their directory name. The docs root is `content/docs/` under Astro's
  * `srcDir`.
@@ -93,6 +96,7 @@ export function starlightIndexSourcedSidebar(options: TOptions) {
               indexMarker,
               collapsed,
               sourceDocExtensions,
+              base: astroConfig.base,
               logger,
             }),
           )

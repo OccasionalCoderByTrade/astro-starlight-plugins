@@ -15,13 +15,13 @@ See the spec: User Stories 36-47; Implementation Decisions › Building a group 
 
 **Blocked by:** 07
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] `/guides/setup` resolves to the doc under the docs root, with `base: "/"` and with `base: "/docs"` (written as `/docs/guides/setup`)
-- [ ] `./my%20page` resolves to `my page.md`
-- [ ] `tel:` and `ftp:` links give no entry and no warning
-- [ ] Reference-style links give entries, in the order the references appear
-- [ ] A link to a missing file warns once and adds nothing
-- [ ] A link to a PDF adds nothing, with no warning
-- [ ] README updated
-- [ ] `npm run lib:build` and `npm test` pass
+- [x] `/guides/setup` resolves to the doc under the docs root, with `base: "/"` and with `base: "/docs"` (written as `/docs/guides/setup`)
+- [x] `./my%20page` resolves to `my page.md`
+- [x] `tel:` and `ftp:` links give no entry and no warning
+- [x] Reference-style links give entries, in the order the references appear
+- [x] A link to a missing file warns once and adds nothing
+- [x] A link to a PDF adds nothing, with no warning
+- [x] README updated
+- [x] `npm run lib:build` and `npm test` pass

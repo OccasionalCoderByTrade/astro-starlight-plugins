@@ -56,6 +56,8 @@ export type TIndexSourcedSidebarOptions = {
   collapsed: boolean;
   /** Extensions that make a file a source doc, from `getSourceDocExtensions`. */
   sourceDocExtensions: string[];
+  /** Astro's `base`, stripped from root-absolute links that start with it. */
+  base: string;
   /** Where skipped-link warnings go: the logger Starlight passes to `config:setup`. */
   logger: AstroIntegrationLogger;
 };
@@ -109,23 +111,37 @@ function findSourceDoc(
   return null;
 }
 
+/**
+ * The hrefs of the inline and reference-style links in `body`, in the order written. A
+ * reference-style link takes its href from its definition.
+ */
 function extractMarkdownLinks(body: string): string[] {
   const tree = unified().use(remarkParse).parse(body);
-  const hrefs: string[] = [];
 
-  visit(tree, "link", (node) => {
-    hrefs.push(node.url);
+  // The first definition of an identifier wins, as in CommonMark
+  const definitionUrls = new Map<string, string>();
+  visit(tree, "definition", (node) => {
+    if (!definitionUrls.has(node.identifier)) {
+      definitionUrls.set(node.identifier, node.url);
+    }
+  });
+
+  const hrefs: string[] = [];
+  visit(tree, (node) => {
+    if (node.type === "link") {
+      hrefs.push(node.url);
+    } else if (node.type === "linkReference") {
+      const definitionUrl = definitionUrls.get(node.identifier);
+      if (definitionUrl !== undefined) hrefs.push(definitionUrl);
+    }
   });
 
   return hrefs;
 }
 
+/** Whether `href` has a URL scheme (`https:`, `tel:`, ...) or is protocol-relative (`//`). */
 function isExternal(href: string): boolean {
-  return (
-    /^https?:\/\//.test(href) ||
-    href.startsWith("//") ||
-    href.startsWith("mailto:")
-  );
+  return /^[a-z][a-z0-9+.-]*:/i.test(href) || href.startsWith("//");
 }
 
 /**
@@ -135,13 +151,46 @@ function isExternal(href: string): boolean {
 function toLinkPath(href: string): string | null {
   if (isExternal(href)) return null;
 
-  const linkPath = href.split("?")[0].split("#")[0].trim();
-  return linkPath || null;
+  const encodedLinkPath = href.split("?")[0].split("#")[0].trim();
+  if (!encodedLinkPath) return null;
+  return percentDecode(encodedLinkPath);
 }
 
-/** Step 4 of resolving a link: the absolute path `linkPath` points at. */
-function resolveLinkPath(linkPath: string, indexDirPath: string): string {
-  return path.resolve(indexDirPath, linkPath);
+/** `encodedLinkPath` percent-decoded, or as written when its `%` escapes are malformed. */
+function percentDecode(encodedLinkPath: string): string {
+  try {
+    return decodeURIComponent(encodedLinkPath);
+  } catch {
+    return encodedLinkPath;
+  }
+}
+
+/**
+ * Step 4 of resolving a link: the absolute path `linkPath` points at. A root-absolute link
+ * resolves against the docs root, a relative one against the sidebar index's directory.
+ */
+function resolveLinkPath(
+  linkPath: string,
+  options: TBuildItemsOptions,
+): string {
+  if (linkPath.startsWith("/")) {
+    return path.join(
+      options.docsDirPath,
+      stripBase(linkPath, options.base),
+    );
+  }
+  return path.resolve(options.sidebarIndex.dirPath, linkPath);
+}
+
+/** `rootAbsoluteLinkPath` without a leading `base`, when it starts with that whole segment. */
+function stripBase(rootAbsoluteLinkPath: string, base: string): string {
+  const basePrefix = base.replace(/\/+$/, "");
+  if (!basePrefix) return rootAbsoluteLinkPath;
+  if (rootAbsoluteLinkPath === basePrefix) return "/";
+  if (rootAbsoluteLinkPath.startsWith(`${basePrefix}/`)) {
+    return rootAbsoluteLinkPath.slice(basePrefix.length);
+  }
+  return rootAbsoluteLinkPath;
 }
 
 /**
@@ -201,8 +250,12 @@ function resolvePageLink(
     filePath = isFile(resolvedPath) ? resolvedPath : null;
   } else {
     filePath = findSourceDoc(resolvedPath, sourceDocExtensions);
+    // Some other extension (`./manual.pdf`) and no `manual.pdf.md`: a docs asset
+    if (!filePath && path.extname(linkPath)) return { kind: "skipped" };
   }
-  if (!filePath) return { kind: "skipped" };
+  if (!filePath) {
+    return { kind: "skipped", warning: "no source doc exists there" };
+  }
 
   if (hasUnderscoreFileName(filePath)) {
     return {
@@ -218,10 +271,7 @@ function resolveLink(href: string, options: TBuildItemsOptions): TLinkTarget {
   const linkPath = toLinkPath(href);
   if (!linkPath) return { kind: "skipped" };
 
-  const resolvedPath = resolveLinkPath(
-    linkPath,
-    options.sidebarIndex.dirPath,
-  );
+  const resolvedPath = resolveLinkPath(linkPath, options);
   if (isSubIndexLinkPath(linkPath, options.sourceDocExtensions)) {
     return resolveSubIndexLink(linkPath, resolvedPath, options);
   }
