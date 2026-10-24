@@ -107,3 +107,25 @@ _Avoid_: public collision, shadowed asset
 **Page-form link**:
 A local link to a source doc written as its page path.
 _Avoid_: slug link, URL link
+
+### Sidebars
+
+**Sidebar index**:
+The index source doc of a directory (`index.md`, `index.mdx` or `index.mdoc`) whose links define that directory's sidebar group, in the order they're written.
+_Avoid_: index file, index page, index.md
+
+**Index entry**:
+The sidebar entry for a sidebar index itself. It comes first in its group and carries the index marker, if one is set.
+_Avoid_: index item, overview entry
+
+**Sub-index link**:
+A link in a sidebar index to another directory's sidebar index, written as `./sub/index` or `./sub/`. It becomes a nested group, unless the target is a leaf index or the group would go past the maximum number of group levels.
+_Avoid_: index link, nested link
+
+**Leaf index**:
+A sidebar index whose frontmatter opts it out of being expanded. A sub-index link to it becomes a single entry instead of a nested group, so its own links don't affect the sidebar.
+_Avoid_: mdx index, landing page
+
+**Hidden from sidebar**:
+A source doc with `draft: true` or `sidebar.hidden: true` in its frontmatter. It gets no sidebar entry in dev or build. A sidebar index that's hidden from sidebar takes its whole group with it.
+_Avoid_: excluded, unlisted
