@@ -1121,6 +1121,116 @@ describe("starlightIndexSourcedSidebar link forms", () => {
   });
 });
 
+describe("starlightIndexSourcedSidebar linkScope", () => {
+  const SCOPED_DOCS_FILES = {
+    "guides/index.md": [
+      "---\ntitle: Guides\n---\n",
+      "- [Setup](./setup)",
+      "- [Advanced](./advanced/)",
+      "- [Also Setup](/guides/setup)",
+      "- [Reference](../reference/)",
+      "- [Faq](/reference/faq)",
+      "",
+    ].join("\n"),
+    "guides/setup.md": "---\ntitle: Setup\n---\n",
+    "guides/advanced/index.md":
+      "---\ntitle: Advanced\n---\n\n[Tips](./tips) [Setup](../setup)\n",
+    "guides/advanced/tips.md": "---\ntitle: Tips\n---\n",
+    "reference/index.md": "---\ntitle: Reference\n---\n",
+    "reference/faq.md": "---\ntitle: Faq\n---\n",
+  };
+
+  it('drops links outside the linking sidebar index\'s directory with a warning when "below"', async () => {
+    const { setup } = runSetup(SCOPED_DOCS_FILES, {
+      directories: ["guides"],
+      linkScope: "below",
+    });
+
+    const { sidebar, warnings } = await setup();
+
+    expect(sidebar).toEqual([
+      {
+        label: "Guides",
+        collapsed: true,
+        items: [
+          { label: "Guides", slug: "guides" },
+          { label: "Setup", slug: "guides/setup" },
+          {
+            label: "Advanced",
+            collapsed: true,
+            items: [
+              { label: "Advanced", slug: "guides/advanced" },
+              { label: "Tips", slug: "guides/advanced/tips" },
+            ],
+          },
+          { label: "Setup", slug: "guides/setup" },
+        ],
+      },
+    ]);
+    expect(warnings).toHaveLength(3);
+    expect(warnings[0]).toContain("guides/advanced/index.md");
+    expect(warnings[0]).toContain('"../setup"');
+    expect(warnings[1]).toContain("guides/index.md");
+    expect(warnings[1]).toContain('"../reference/"');
+    expect(warnings[2]).toContain('"/reference/faq"');
+    for (const warning of warnings) expect(warning).toContain("linkScope");
+  });
+
+  it.each([undefined, "anywhere" as const])(
+    "keeps links anywhere in the docs root when linkScope is %s",
+    async (linkScope) => {
+      const { setup } = runSetup(SCOPED_DOCS_FILES, {
+        directories: ["guides"],
+        linkScope,
+      });
+
+      const { sidebar, warnings } = await setup();
+
+      expect(sidebar).toEqual([
+        {
+          label: "Guides",
+          collapsed: true,
+          items: [
+            { label: "Guides", slug: "guides" },
+            { label: "Setup", slug: "guides/setup" },
+            {
+              label: "Advanced",
+              collapsed: true,
+              items: [
+                { label: "Advanced", slug: "guides/advanced" },
+                { label: "Tips", slug: "guides/advanced/tips" },
+                { label: "Setup", slug: "guides/setup" },
+              ],
+            },
+            { label: "Setup", slug: "guides/setup" },
+            {
+              label: "Reference",
+              collapsed: true,
+              items: [{ label: "Reference", slug: "reference" }],
+            },
+            { label: "Faq", slug: "reference/faq" },
+          ],
+        },
+      ]);
+      expect(warnings).toEqual([]);
+    },
+  );
+
+  it.each(["above", "", null, 1])(
+    "throws at startup when linkScope is %s",
+    async (linkScope) => {
+      const { setup } = runSetup(SCOPED_DOCS_FILES, {
+        directories: ["guides"],
+        linkScope: linkScope as unknown as "below",
+      });
+
+      await expect(setup()).rejects.toThrow(
+        `${PLUGIN_PREFIX} linkScope must be "anywhere" or "below", got ${JSON.stringify(linkScope)}`,
+      );
+    },
+  );
+});
+
 describe("starlightIndexSourcedSidebar ancestor links", () => {
   /** guides/advanced/index.md whose only link is `href`, next to docs it could reach. */
   function ancestorLinkDocsFiles(href: string) {

@@ -3,7 +3,12 @@ import { fileURLToPath } from "node:url";
 import { validateSidebarOptions } from "../utils/sidebar-options.js";
 import { getSourceDocExtensions } from "../utils/workspace-utils.js";
 import type { TSidebarBadge, TSidebarGroup } from "../utils/sidebar-types.js";
-import { getIndexSourcedSidebarGroup, PLUGIN_NAME } from "./utils.js";
+import {
+  getIndexSourcedSidebarGroup,
+  PLUGIN_NAME,
+  validateLinkScope,
+  type TLinkScope,
+} from "./utils.js";
 
 type TOptions = {
   /**
@@ -41,6 +46,16 @@ type TOptions = {
    * @default true
    */
   collapsed?: boolean;
+
+  /**
+   * Where a sidebar index's links may point. `"anywhere"` keeps links to anywhere in the
+   * docs root. `"below"` keeps only links inside the linking sidebar index's own directory
+   * (`./setup`, `./sub/`, `/guides/setup` from `guides/index.md`), and skips any other link
+   * with a warning. Links to the sidebar index's own directory or an ancestor directory are
+   * skipped with a warning either way. Any other value fails startup.
+   * @default "anywhere"
+   */
+  linkScope?: TLinkScope;
 };
 
 /**
@@ -58,11 +73,14 @@ type TOptions = {
  * Inline and reference-style markdown links count: relative file-form links, root-absolute
  * links (resolved against the docs root, with Astro's `base` stripped) and percent-encoded
  * links, with query strings and anchors stripped. JSX and HTML links and page-form links
- * don't. External (`scheme:` or `//`) links, same-page anchors, docs assets (any link with
- * an extension that isn't a source doc extension, so `./v1.2.md`, not `./v1.2`) and pages
- * hidden from sidebar are skipped silently. A link to a missing source doc, a path outside
- * the docs root, a `_`-prefixed file, a folder with no sidebar index, or an ancestor sidebar
- * index is skipped with a warning naming the sidebar index and the link.
+ * don't. External (`scheme:` or `//`) links, same-page anchors, docs assets (a link with an
+ * extension that isn't a source doc extension, when that exact file exists) and pages hidden
+ * from sidebar are skipped silently. A dotted link with no such file has each source doc
+ * extension tried, so `./v1.2` reaches `v1.2.md`. A link to a missing source doc, a path
+ * outside the docs root, a `_`-prefixed file, a folder with no sidebar index, the sidebar
+ * index's own directory or an ancestor directory (`.`, `..`, `../index.md`, `/`), an
+ * ancestor sidebar index, or (with `linkScope: "below"`) anything outside the sidebar index's
+ * directory is skipped with a warning naming the sidebar index and the link.
  *
  * A source doc is hidden from sidebar when its frontmatter has `draft: true` or
  * `sidebar.hidden: true`, in dev and build alike (on purpose, unlike Starlight's dev
@@ -112,6 +130,7 @@ export function starlightIndexSourcedSidebar(options: TOptions) {
           maxGroupLevels: options.maxGroupLevels,
           sourceDocExtensions,
         });
+        const linkScope = validateLinkScope(options.linkScope);
 
         const sidebarGroups = dirPaths
           .map((dirPath) =>
@@ -122,6 +141,7 @@ export function starlightIndexSourcedSidebar(options: TOptions) {
               indexMarker,
               collapsed,
               sourceDocExtensions,
+              linkScope,
               base: astroConfig.base,
               logger,
             }),

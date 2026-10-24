@@ -40,6 +40,30 @@ type TSidebarIndex = {
   indexDoc: TSourceDoc<TFrontmatter>;
 };
 
+/**
+ * Where a sidebar index's links may point. `"anywhere"`: anywhere in the docs root.
+ * `"below"`: only inside the linking sidebar index's own directory.
+ */
+export type TLinkScope = "anywhere" | "below";
+
+function isLinkScope(value: unknown): value is TLinkScope {
+  return value === "anywhere" || value === "below";
+}
+
+/**
+ * The `linkScope` option, `"anywhere"` when undefined. Throws at startup (ADR 0008) on any
+ * other value.
+ */
+export function validateLinkScope(linkScope: unknown): TLinkScope {
+  if (linkScope === undefined) return "anywhere";
+  if (!isLinkScope(linkScope)) {
+    throw new Error(
+      `${LOG_PREFIX} linkScope must be "anywhere" or "below", got ${JSON.stringify(linkScope)}`,
+    );
+  }
+  return linkScope;
+}
+
 export type TIndexSourcedSidebarOptions = {
   /** Absolute path of Starlight's docs root (`content/docs/` under Astro's `srcDir`). */
   docsDirPath: string;
@@ -51,6 +75,8 @@ export type TIndexSourcedSidebarOptions = {
   collapsed: boolean;
   /** Extensions that make a file a source doc, from `getSourceDocExtensions`. */
   sourceDocExtensions: string[];
+  /** Where links may point: anywhere in the docs root, or only below the linking doc's directory. */
+  linkScope: TLinkScope;
   /** Astro's `base`, stripped from root-absolute links that start with it. */
   base: string;
   /** Where skipped-link warnings go: the logger Starlight passes to `config:setup`. */
@@ -333,6 +359,18 @@ function resolveLink(href: string, options: TBuildItemsOptions): TLinkTarget {
       kind: "skipped",
       warning:
         "it links to the sidebar index's own directory or an ancestor directory",
+    };
+  }
+  if (
+    options.linkScope === "below" &&
+    isOutsideDir(
+      options.sidebarIndex.dirPath,
+      resolvedLinkPath.absoluteLinkPath,
+    )
+  ) {
+    return {
+      kind: "skipped",
+      warning: `it's outside the sidebar index's directory (linkScope: "below")`,
     };
   }
   if (
