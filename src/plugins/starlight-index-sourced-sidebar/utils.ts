@@ -1,12 +1,43 @@
-import * as fs from "fs";
-import * as path from "path";
+import { parseFrontmatter as astroParseFrontmatter } from "@astrojs/markdown-remark";
+import * as fs from "node:fs";
+import * as path from "node:path";
 import remarkParse from "remark-parse";
 import { unified } from "unified";
 import { visit } from "unist-util-visit";
-import { isFile, parseFrontmatter } from "../utils/workspace-utils";
-import type { TIndexMarker, TSidebarItem } from "./types";
+import { isFile } from "../utils/workspace-utils.js";
+import type { TGroupedItem, TIndexMarker, TSidebarItem } from "./types.js";
 
-const SITE_DOCS_ROOT = "./src/content/docs";
+const SOURCE_DOC_EXTENSIONS = [".md", ".mdx"];
+
+type TFrontmatter = {
+  title?: string;
+  draft?: boolean;
+  pagefind?: boolean;
+  sidebar?: { hidden?: boolean };
+};
+
+/** A source doc's frontmatter and body, from one read. */
+type TSourceDoc = {
+  frontmatter: TFrontmatter;
+  body: string;
+};
+
+export type TIndexSourcedSidebarOptions = {
+  /** Absolute path of Starlight's docs root (`content/docs/` under Astro's `srcDir`). */
+  docsDirPath: string;
+  /** Absolute path of the directory whose sidebar index defines the root group. */
+  dirPath: string;
+  /** Depth at which sub-index groups are flattened into their parent; the root is 0. */
+  maxDepthNesting: number;
+  indexMarker: TIndexMarker | undefined;
+  collapsed: boolean;
+};
+
+/** Internal: what each level of the recursion needs on top of the public options. */
+type TBuildItemsOptions = TIndexSourcedSidebarOptions & {
+  currentDepth: number;
+  visitedDirPaths: Set<string>;
+};
 
 function pathSegmentToLabel(segment: string): string {
   let label = segment
@@ -23,52 +54,58 @@ function pathSegmentToLabel(segment: string): string {
   return label;
 }
 
-function findIndexMd(dirPath: string): string | null {
-  for (const name of ["index.md", "index.mdx"]) {
-    const indexFilePath = path.join(dirPath, name);
-    if (isFile(indexFilePath)) return path.resolve(indexFilePath);
+/** Throws when the file can't be read or its YAML is malformed. */
+function readSourceDoc(filePath: string): TSourceDoc {
+  const content = fs.readFileSync(filePath, "utf-8");
+  try {
+    const { frontmatter, content: body } = astroParseFrontmatter(content);
+    return { frontmatter: frontmatter as TFrontmatter, body };
+  } catch (err) {
+    throw new Error(
+      `[starlight-index-sourced-sidebar] Failed to parse frontmatter in ${filePath}: ${(err as Error).message}`,
+      { cause: err },
+    );
+  }
+}
+
+function isHiddenFromSidebar(frontmatter: TFrontmatter): boolean {
+  return Boolean(
+    frontmatter.draft ||
+      frontmatter.pagefind === false ||
+      frontmatter.sidebar?.hidden,
+  );
+}
+
+function findIndexFile(dirPath: string): string | null {
+  for (const extension of SOURCE_DOC_EXTENSIONS) {
+    const indexFilePath = path.join(dirPath, `index${extension}`);
+    if (isFile(indexFilePath)) return indexFilePath;
   }
   return null;
 }
 
-function findMarkdownFile(extensionlessFilePath: string): string | null {
-  for (const ext of [".md", ".mdx"]) {
-    const markdownFilePath = extensionlessFilePath + ext;
-    if (isFile(markdownFilePath)) return path.resolve(markdownFilePath);
+function findSourceDoc(extensionlessFilePath: string): string | null {
+  for (const extension of SOURCE_DOC_EXTENSIONS) {
+    const sourceDocFilePath = extensionlessFilePath + extension;
+    if (isFile(sourceDocFilePath)) return sourceDocFilePath;
   }
   return null;
 }
 
-function filePathToSlug(absFilePath: string): string {
-  const absDocsRoot = path.resolve(SITE_DOCS_ROOT).replace(/\\/g, "/");
-  const normalized = absFilePath.replace(/\\/g, "/");
-
-  let relative: string;
-  if (normalized.startsWith(absDocsRoot + "/")) {
-    relative = normalized.slice(absDocsRoot.length + 1);
-  } else {
-    relative = path.basename(absFilePath);
-  }
-
-  return relative.replace(/\.(mdx?)$/, "");
+function filePathToSlug(filePath: string, docsDirPath: string): string {
+  const docsRelativeFilePath = path
+    .relative(docsDirPath, filePath)
+    .replace(/\\/g, "/");
+  const slug = docsRelativeFilePath.replace(/\.(mdx?)$/, "");
+  return slug.endsWith("/index") ? slug.slice(0, -"/index".length) : slug;
 }
 
-function normalizeSlug(slug: string): string {
-  return slug.endsWith("/index") ? slug.slice(0, -6) : slug;
-}
-
-function extractMarkdownLinks(filePath: string): string[] {
-  const markdownBody = fs
-    .readFileSync(filePath, "utf-8")
-    .replace(/^---[\s\S]*?---\s*\n/, "");
-
-  const tree = unified().use(remarkParse).parse(markdownBody);
+function extractMarkdownLinks(body: string): string[] {
+  const tree = unified().use(remarkParse).parse(body);
   const hrefs: string[] = [];
 
   visit(tree, "link", (node) => {
-    if ("url" in node && typeof node.url === "string") {
-      hrefs.push(node.url);
-    }
+    hrefs.push(node.url);
   });
 
   return hrefs;
@@ -82,157 +119,134 @@ function isExternal(href: string): boolean {
   );
 }
 
-function tryResolveMarkdownFile(
-  href: string,
-  currentDir: string,
-): string | null {
-  const hrefPath = href.split("?")[0].split("#")[0].trim();
-  const resolved = path.resolve(currentDir, hrefPath);
+/** The source doc `hrefPath` points at from `fromDirPath`, or null when there's none. */
+function resolveSourceDoc(hrefPath: string, fromDirPath: string): string | null {
+  const resolvedFilePath = path.resolve(fromDirPath, hrefPath);
 
-  // If href already carries a markdown extension, check that exact path
+  // An href that already carries a source doc extension names that exact file
   if (/\.(mdx?)$/.test(hrefPath)) {
-    return isFile(resolved) ? resolved : null;
+    return isFile(resolvedFilePath) ? resolvedFilePath : null;
   }
 
-  return findMarkdownFile(resolved);
+  return findSourceDoc(resolvedFilePath);
 }
 
-function buildItems(
-  dirPath: string,
-  currentDepth: number,
-  maxDepth: number,
-  visited: Set<string>,
-  indexMarker: TIndexMarker | undefined,
-  collapsed: boolean,
-): TSidebarItem[] {
-  const absDir = path.resolve(dirPath);
+function buildItems(options: TBuildItemsOptions): TSidebarItem[] {
+  const {
+    docsDirPath,
+    dirPath,
+    currentDepth,
+    maxDepthNesting,
+    visitedDirPaths,
+    indexMarker,
+    collapsed,
+  } = options;
 
-  if (visited.has(absDir)) return [];
-  visited.add(absDir);
+  if (visitedDirPaths.has(dirPath)) return [];
+  visitedDirPaths.add(dirPath);
 
-  const indexFile = findIndexMd(absDir);
-  if (!indexFile) {
+  const indexFilePath = findIndexFile(dirPath);
+  if (!indexFilePath) {
     throw new Error(
-      `[starlight-index-sourced-sidebar] No index.md or index.mdx found in "${absDir}"`,
+      `[starlight-index-sourced-sidebar] No index.md or index.mdx found in "${dirPath}"`,
     );
   }
 
-  const frontmatter = parseFrontmatter(indexFile);
-  if (
-    frontmatter.draft ||
-    frontmatter.pagefind === false ||
-    frontmatter.sidebar?.hidden
-  )
-    return [];
-
-  const items: TSidebarItem[] = [];
+  const indexDoc = readSourceDoc(indexFilePath);
+  if (isHiddenFromSidebar(indexDoc.frontmatter)) return [];
 
   // The index page itself is always the first item in its group
-  const indexBaseLabel =
-    frontmatter.title ?? pathSegmentToLabel(path.basename(absDir));
-  items.push({
-    label: indexBaseLabel,
-    slug: normalizeSlug(filePathToSlug(indexFile)),
-    ...(indexMarker && { badge: indexMarker }),
-  });
+  const items: TSidebarItem[] = [
+    {
+      label:
+        indexDoc.frontmatter.title ?? pathSegmentToLabel(path.basename(dirPath)),
+      slug: filePathToSlug(indexFilePath, docsDirPath),
+      ...(indexMarker && { badge: indexMarker }),
+    },
+  ];
 
-  for (const href of extractMarkdownLinks(indexFile)) {
+  for (const href of extractMarkdownLinks(indexDoc.body)) {
     if (isExternal(href)) continue;
 
-    // Pure anchor links (#section) resolve to nothing — skip
+    // Pure anchor links (#section) resolve to nothing, so skip them
     const hrefPath = href.split("?")[0].split("#")[0].trim();
     if (!hrefPath) continue;
 
-    const resolvedFile = tryResolveMarkdownFile(href, path.dirname(indexFile));
-    if (!resolvedFile) continue;
+    const resolvedFilePath = resolveSourceDoc(hrefPath, dirPath);
+    if (!resolvedFilePath) continue;
 
     const isSubIndex =
       hrefPath.endsWith("/index") ||
       hrefPath.endsWith("/index.md") ||
       hrefPath.endsWith("/index.mdx");
 
-    if (isSubIndex) {
-      const subDirPath = path.dirname(resolvedFile);
+    if (isSubIndex && !resolvedFilePath.endsWith(".mdx")) {
+      // index.md: recurse and build a group, or flatten it at the depth limit
+      const subDirPath = path.dirname(resolvedFilePath);
+      const subItems = buildItems({
+        ...options,
+        dirPath: subDirPath,
+        currentDepth: currentDepth + 1,
+      });
+      if (subItems.length === 0) continue;
 
-      if (resolvedFile.endsWith(".mdx")) {
-        // index.mdx: add as a leaf item only — do not recurse into it
-        const subFrontmatter = parseFrontmatter(resolvedFile);
-        if (
-          subFrontmatter.draft ||
-          subFrontmatter.pagefind === false ||
-          subFrontmatter.sidebar?.hidden
-        )
-          continue;
-        const subBaseLabel =
-          subFrontmatter.title ?? pathSegmentToLabel(path.basename(subDirPath));
-        items.push({
-          label: subBaseLabel,
-          slug: normalizeSlug(filePathToSlug(resolvedFile)),
-          ...(indexMarker && { badge: indexMarker }),
-        });
+      if (currentDepth + 1 >= maxDepthNesting) {
+        items.push(...subItems);
       } else {
-        // index.md: recurse and build a group (or flatten if at max depth)
-        const subItems = buildItems(
-          subDirPath,
-          currentDepth + 1,
-          maxDepth,
-          visited,
-          indexMarker,
+        items.push({
+          label: pathSegmentToLabel(path.basename(subDirPath)),
+          items: subItems,
           collapsed,
-        );
-        if (subItems.length === 0) continue;
-
-        if (currentDepth + 1 >= maxDepth) {
-          items.push(...subItems);
-        } else {
-          items.push({
-            label: pathSegmentToLabel(path.basename(subDirPath)),
-            items: subItems,
-            collapsed,
-          });
-        }
+        });
       }
-    } else {
-      const leafFrontmatter = parseFrontmatter(resolvedFile);
-      if (
-        leafFrontmatter.draft ||
-        leafFrontmatter.pagefind === false ||
-        leafFrontmatter.sidebar?.hidden
-      )
-        continue;
+      continue;
+    }
 
+    const linkedDoc = readSourceDoc(resolvedFilePath);
+    if (isHiddenFromSidebar(linkedDoc.frontmatter)) continue;
+
+    if (isSubIndex) {
+      // index.mdx: add as a single entry only, without recursing into it
       items.push({
         label:
-          leafFrontmatter.title ??
-          pathSegmentToLabel(
-            path.basename(resolvedFile, path.extname(resolvedFile)),
-          ),
-        slug: normalizeSlug(filePathToSlug(resolvedFile)),
+          linkedDoc.frontmatter.title ??
+          pathSegmentToLabel(path.basename(path.dirname(resolvedFilePath))),
+        slug: filePathToSlug(resolvedFilePath, docsDirPath),
+        ...(indexMarker && { badge: indexMarker }),
       });
+      continue;
     }
+
+    items.push({
+      label:
+        linkedDoc.frontmatter.title ??
+        pathSegmentToLabel(
+          path.basename(resolvedFilePath, path.extname(resolvedFilePath)),
+        ),
+      slug: filePathToSlug(resolvedFilePath, docsDirPath),
+    });
   }
 
   return items;
 }
 
-export function getIndexSourcedSidebarItems(
-  directory: string,
-  maxDepthNesting: number = 100,
-  indexMarker?: TIndexMarker,
-  collapsed: boolean = true,
-): TSidebarItem[] {
-  const absDir = path.resolve(directory);
-  const rootGroupLabel = pathSegmentToLabel(path.basename(absDir));
-  const items = buildItems(
-    absDir,
-    0,
-    maxDepthNesting,
-    new Set<string>(),
-    indexMarker,
-    collapsed,
-  );
+/**
+ * The root group for `options.dirPath`, built from the links in its sidebar index, or
+ * undefined when it has no entries (e.g. its sidebar index is hidden from sidebar).
+ */
+export function getIndexSourcedSidebarGroup(
+  options: TIndexSourcedSidebarOptions,
+): TGroupedItem | undefined {
+  const items = buildItems({
+    ...options,
+    currentDepth: 0,
+    visitedDirPaths: new Set<string>(),
+  });
+  if (items.length === 0) return undefined;
 
-  if (items.length === 0) return [];
-
-  return [{ label: rootGroupLabel, items, collapsed }];
+  return {
+    label: pathSegmentToLabel(path.basename(options.dirPath)),
+    items,
+    collapsed: options.collapsed,
+  };
 }

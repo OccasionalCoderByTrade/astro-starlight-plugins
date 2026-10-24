@@ -11,8 +11,6 @@ export type TIndexMarker = {
   variant: TBadgeVariant;
 };
 
-export type TSidebar = TSidebarItem[];
-
 export type TSidebarItem =
   | {
       label: string;
