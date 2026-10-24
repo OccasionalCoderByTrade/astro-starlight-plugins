@@ -13,7 +13,8 @@ import { isHiddenFromSidebar } from "../utils/sidebar-visibility.js";
 import { parseFrontmatter } from "../utils/workspace-utils.js";
 
 type TOptions = {
-  maxDepthNesting?: number;
+  /** Levels of groups allowed, the root group included. @default Infinity */
+  maxGroupLevels?: number;
   dirnameDeterminesLabels?: boolean;
   /** Extensions that make a file a source doc, from `getSourceDocExtensions`. */
   sourceDocExtensions: string[];
@@ -211,12 +212,8 @@ export function getIndexMdSidebarItems(
   directory: string,
   options: TOptions,
 ): TSidebarItem[] {
-  if (!isDir(directory)) {
-    throw new Error(
-      `[starlight-index-only-sidebar] Directory not found: "${path.resolve(directory)}"`,
-    );
-  }
-  const maxDepth = options.maxDepthNesting ?? 100;
+  // The root directory is depth 0 and its group is level 1
+  const maxDepth = (options.maxGroupLevels ?? Infinity) - 1;
   const dirnameDeterminesLabels = options.dirnameDeterminesLabels ?? true;
   const { sourceDocExtensions } = options;
   const rootGroupLabel = pathSegmentToLabel(path.basename(directory));

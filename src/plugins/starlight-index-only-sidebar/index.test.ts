@@ -61,6 +61,15 @@ const NESTED_SIDEBAR = [
   },
 ];
 
+/** guides -> setup -> linux-101, each with an index. */
+const DEEP_DOCS_FILES = {
+  "guides/index.md": "---\ntitle: Guides\n---\n",
+  "guides/setup/index.md": "---\ntitle: Setup\n---\n",
+  "guides/setup/linux-101/index.md": "---\ntitle: Linux\n---\n",
+};
+
+const PLUGIN_PREFIX = "[starlight-index-only-sidebar]";
+
 describe("starlightIndexOnlySidebar", () => {
   it("builds a group per subdirectory that has an index", async () => {
     const { setup } = runSetup(NESTED_DOCS_FILES, { directories: ["guides"] });
@@ -157,7 +166,7 @@ describe("starlightIndexOnlySidebar", () => {
         "guides/setup/linux-101/index.md":
           "---\ntitle: Linux\nsidebar:\n  badge: Deep\n---\n",
       },
-      { directories: ["guides"], maxDepthNesting: 1 },
+      { directories: ["guides"], maxGroupLevels: 2 },
     );
 
     expect((await setup()).sidebar).toEqual([
@@ -189,15 +198,29 @@ describe("starlightIndexOnlySidebar", () => {
     ]);
   });
 
-  it("flattens directories past maxDepthNesting into their parent", async () => {
-    const { setup } = runSetup(
+  it("flattens every directory under the root group when maxGroupLevels is 1", async () => {
+    const { setup } = runSetup(DEEP_DOCS_FILES, {
+      directories: ["guides"],
+      maxGroupLevels: 1,
+    });
+
+    expect((await setup()).sidebar).toEqual([
       {
-        "guides/index.md": "---\ntitle: Guides\n---\n",
-        "guides/setup/index.md": "---\ntitle: Setup\n---\n",
-        "guides/setup/linux-101/index.md": "---\ntitle: Linux\n---\n",
+        label: "Guides",
+        items: [
+          { label: "Overview", slug: "guides" },
+          { label: "Setup", slug: "guides/setup" },
+          { label: "LINUX 101", slug: "guides/setup/linux-101" },
+        ],
       },
-      { directories: ["guides"], maxDepthNesting: 1 },
-    );
+    ]);
+  });
+
+  it("keeps one level of nested groups when maxGroupLevels is 2", async () => {
+    const { setup } = runSetup(DEEP_DOCS_FILES, {
+      directories: ["guides"],
+      maxGroupLevels: 2,
+    });
 
     expect((await setup()).sidebar).toEqual([
       {
@@ -209,6 +232,29 @@ describe("starlightIndexOnlySidebar", () => {
             items: [
               { label: "setup", slug: "guides/setup" },
               { label: "LINUX 101", slug: "guides/setup/linux-101" },
+            ],
+          },
+        ],
+      },
+    ]);
+  });
+
+  it("nests without limit when maxGroupLevels is unset", async () => {
+    const { setup } = runSetup(DEEP_DOCS_FILES, { directories: ["guides"] });
+
+    expect((await setup()).sidebar).toEqual([
+      {
+        label: "Guides",
+        items: [
+          { label: "Overview", slug: "guides" },
+          {
+            label: "Setup",
+            items: [
+              { label: "Overview", slug: "guides/setup" },
+              {
+                label: "LINUX 101",
+                items: [{ label: "Overview", slug: "guides/setup/linux-101" }],
+              },
             ],
           },
         ],
@@ -265,13 +311,60 @@ describe("starlightIndexOnlySidebar", () => {
     ]);
   });
 
-  it("throws when a directory doesn't exist", async () => {
+  it.each([0, 1.5, -1])(
+    "throws at startup when maxGroupLevels is %s",
+    async (maxGroupLevels) => {
+      const { setup } = runSetup(NESTED_DOCS_FILES, {
+        directories: ["guides"],
+        maxGroupLevels,
+      });
+
+      await expect(setup()).rejects.toThrow(
+        `${PLUGIN_PREFIX} maxGroupLevels must be an integer of at least 1, got ${maxGroupLevels}`,
+      );
+    },
+  );
+
+  it("throws when a directories entry is outside the docs root", async () => {
+    const { setup, docsDirPath } = runSetup(NESTED_DOCS_FILES, {
+      directories: ["../outside"],
+    });
+
+    await expect(setup()).rejects.toThrow(
+      `${PLUGIN_PREFIX} directories entry "../outside" is outside the docs root ${docsDirPath}`,
+    );
+  });
+
+  it("throws directory not found when a directories entry doesn't exist", async () => {
     const { setup, docsDirPath } = runSetup(
       { "reference/index.md": "---\ntitle: Reference\n---\n" },
       { directories: ["guides"] },
     );
 
-    await expect(setup()).rejects.toThrow(join(docsDirPath, "guides"));
+    await expect(setup()).rejects.toThrow(
+      `${PLUGIN_PREFIX} Directory not found for directories entry "guides": ${join(docsDirPath, "guides")}`,
+    );
+  });
+
+  it("throws when the same directory is listed twice", async () => {
+    const { setup } = runSetup(NESTED_DOCS_FILES, {
+      directories: ["guides", "./guides/"],
+    });
+
+    await expect(setup()).rejects.toThrow(
+      `${PLUGIN_PREFIX} directories entry "./guides/" is the same directory as "guides"`,
+    );
+  });
+
+  it("throws when a root directory has no sidebar index", async () => {
+    const { setup, docsDirPath } = runSetup(
+      { "guides/setup/index.md": "---\ntitle: Setup\n---\n" },
+      { directories: ["guides"] },
+    );
+
+    await expect(setup()).rejects.toThrow(
+      `${PLUGIN_PREFIX} No sidebar index (index.md or index.mdx) for directories entry "guides": ${join(docsDirPath, "guides")}`,
+    );
   });
 
   it.skipIf(isRunningAsRoot)(
@@ -325,7 +418,10 @@ describe("starlightIndexOnlySidebar source docs", () => {
   it("ignores .mdoc sidebar indexes without Markdoc", async () => {
     const { setup } = runSetup(MDOC_DOCS_FILES, { directories: ["guides"] });
 
-    expect((await setup()).sidebar).toEqual([]);
+    // The root's only index is an index.mdoc, so without Markdoc it has no sidebar index
+    await expect(setup()).rejects.toThrow(
+      `${PLUGIN_PREFIX} No sidebar index (index.md or index.mdx) for directories entry "guides"`,
+    );
   });
 
   it("counts a _-prefixed folder", async () => {

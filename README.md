@@ -19,13 +19,23 @@ Automatically generates a nested Starlight sidebar by recursively scanning direc
 - Two labeling modes: directory names, or Starlight's `sidebar.label` then `title` from frontmatter
 - Shows Starlight's `sidebar.badge` frontmatter on entries (a string gets the `default` variant)
 - Ignores `assets` directories entirely
-- Fails `astro dev` and `astro build` at startup when an index file's frontmatter can't be parsed, a configured directory doesn't exist, or a directory under it can't be read
+- Fails `astro dev` and `astro build` at startup when an option is bad (see **Startup errors**), an index file's frontmatter can't be parsed, or a directory under it can't be read
 
 **Options:**
 
 - `directories` (required): Array of directory names to scan, relative to the docs root (`content/docs/` under Astro's `srcDir`, so `src/content/docs` by default), e.g. `["guides", "api"]`
-- `maxDepthNesting` (optional, default: `100`): Maximum nesting depth. Root is level 0. At max depth, deeper index files are flattened as sibling items.
+- `maxGroupLevels` (optional, default: unlimited): The most levels of groups, the root group included. `1` puts everything flat under the root group, `2` keeps one level of nested groups, and so on. At the limit, deeper index files are flattened into the deepest group. Must be an integer of at least 1.
 - `dirnameDeterminesLabels` (optional, default: `true`): When `true`, all labels use raw directory names. When `false`, slug item labels come from frontmatter `sidebar.label`, then `title`, then `"Overview"`; group labels still use directory names. `sidebar.badge` shows on entries either way.
+
+**Startup errors:**
+
+These fail `astro dev` and `astro build` at startup, with a message naming the plugin and the bad value:
+
+- a `directories` entry that resolves outside the docs root (e.g. `"../x"`)
+- a `directories` entry that doesn't exist ("Directory not found")
+- the same directory listed twice (e.g. `"guides"` and `"./guides/"`)
+- a `directories` entry with no sidebar index (`index.md`, `index.mdx`, or `index.mdoc` when Markdoc is installed)
+- a `maxGroupLevels` that isn't an integer of at least 1
 
 **Slugs:**
 
@@ -46,7 +56,7 @@ export default defineConfig({
       plugins: [
         starlightIndexOnlySidebar({
           directories: ["guides", "api", "tutorials"],
-          maxDepthNesting: 2, // optional
+          maxGroupLevels: 2, // optional
           dirnameDeterminesLabels: false, // optional
         }),
       ],
@@ -64,7 +74,7 @@ Generates a Starlight sidebar by parsing markdown links out of `index.md` files.
 - Builds sidebar entries from the links written in each directory's `index.md`
 - Links ending in `/index` pointing to an `index.md` create nested sub-groups (recursed automatically)
 - Links ending in `/index` pointing to an `index.mdx` add it as a single leaf item without recursing into it
-- Sub-group depth limited by `maxDepthNesting`; deeper items are flattened
+- Group levels limited by `maxGroupLevels`; deeper items are flattened
 - Each index page itself appears as the first leaf item in its group
 - Labels and badges come from Starlight's sidebar frontmatter (see [Labels and badges](#labels-and-badges))
 - Source docs (sidebar indexes and linked pages) are `.md`, `.mdx`, and `.mdoc` when `@astrojs/markdoc` is in Astro's `integrations`. Without Markdoc, a `.mdoc` file is a docs asset and a link to it is skipped like a link to a PDF.
@@ -73,14 +83,24 @@ Generates a Starlight sidebar by parsing markdown links out of `index.md` files.
 - Links to non-markdown files (images, PDFs, etc.) are silently skipped
 - Links to markdown files that do not exist on disk are silently skipped
 - External links and same-page anchor links (`#section`) are silently skipped
-- Fails `astro dev` and `astro build` at startup when an index or linked page can't be read or its frontmatter can't be parsed
+- Fails `astro dev` and `astro build` at startup when an option is bad (see **Startup errors**), or an index or linked page can't be read or its frontmatter can't be parsed
 
 **Options:**
 
 - `directories` (required): Array of directory names to scan, relative to the docs root (`content/docs/` under Astro's `srcDir`, so `src/content/docs` by default)
-- `maxDepthNesting` (optional, default: `100`): Maximum nesting depth. At this depth, sub-index groups are not created and their items are flattened into the current level instead. With `maxDepthNesting: 1`, all items are flat under the root group.
+- `maxGroupLevels` (optional, default: unlimited): The most levels of groups, the root group included. `1` puts everything flat under the root group, `2` keeps one level of nested groups, and so on. A sub-index link whose group would go past the limit has its entries flattened into the parent group. Must be an integer of at least 1.
 - `indexMarker` (optional, default: `undefined`): A Starlight badge (`{ text, variant }`) shown on every index entry to tell it apart from regular sidebar entries. When set, it replaces an index entry's own `sidebar.badge`. `variant` is one of `"note"`, `"tip"`, `"caution"`, `"danger"`, `"success"` or `"default"`. Example: `{ text: "Index", variant: "note" }`.
 - `collapsed` (optional, default: `true`): Whether sidebar groups start collapsed. Starlight still expands the group holding the current page.
+
+**Startup errors:**
+
+These fail `astro dev` and `astro build` at startup, with a message naming the plugin and the bad value:
+
+- a `directories` entry that resolves outside the docs root (e.g. `"../x"`)
+- a `directories` entry that doesn't exist ("Directory not found")
+- the same directory listed twice (e.g. `"guides"` and `"./guides/"`)
+- a `directories` entry with no sidebar index (`index.md`, `index.mdx`, or `index.mdoc` when Markdoc is installed)
+- a `maxGroupLevels` that isn't an integer of at least 1
 
 **Labels and badges:**
 
@@ -114,7 +134,7 @@ export default defineConfig({
       plugins: [
         starlightIndexSourcedSidebar({
           directories: ["guides", "reference"],
-          maxDepthNesting: 2, // optional
+          maxGroupLevels: 2, // optional
           indexMarker: { text: "Index", variant: "note" }, // optional
           collapsed: false, // optional
         }),

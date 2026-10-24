@@ -12,12 +12,12 @@ See the spec: User Stories 9-16, 61-62; Implementation Decisions › Options.
 
 **Blocked by:** 03
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Each of the four directory errors throws from `config:setup` with a distinct message, in both plugins
-- [ ] `maxGroupLevels: 1` flattens everything under the root group, and `2` keeps one level of nested groups
-- [ ] Unset `maxGroupLevels` nests without limit
-- [ ] `0`, `1.5` and `-1` throw at startup
-- [ ] `maxDepthNesting` no longer appears in the code, types or README
-- [ ] README updated for both sidebar plugins
-- [ ] `npm run lib:build` and `npm test` pass
+- [x] Each of the four directory errors throws from `config:setup` with a distinct message, in both plugins
+- [x] `maxGroupLevels: 1` flattens everything under the root group, and `2` keeps one level of nested groups
+- [x] Unset `maxGroupLevels` nests without limit
+- [x] `0`, `1.5` and `-1` throw at startup
+- [x] `maxDepthNesting` no longer appears in the code, types or README
+- [x] README updated for both sidebar plugins
+- [x] `npm run lib:build` and `npm test` pass

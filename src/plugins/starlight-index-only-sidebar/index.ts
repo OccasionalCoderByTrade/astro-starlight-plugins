@@ -1,6 +1,6 @@
 import type { HookParameters } from "@astrojs/starlight/types";
-import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { validateSidebarOptions } from "../utils/sidebar-options.js";
 import type { TSidebarGroup } from "../utils/sidebar-types.js";
 import { getSourceDocExtensions } from "../utils/workspace-utils.js";
 import { getIndexMdSidebarItems } from "./utils.js";
@@ -10,12 +10,13 @@ import { getIndexMdSidebarItems } from "./utils.js";
  */
 type TOptions = {
   /**
-   * Controls how deep the nested group structure can go, where the root directory is level 0.
-   * Once this depth is reached, no further child groups are created; instead, any index.md or index.mdx
-   * files found deeper in the subtree are flattened and included as slug items directly at the current level.
-   * @default 100
+   * The most levels of groups the sidebar can have, the root group included, so `1` puts
+   * every entry flat under the root group. Once the limit is reached, no further child groups
+   * are created; index.md or index.mdx files deeper in the subtree are flattened into the
+   * deepest group instead. Must be an integer of at least 1. When undefined, groups nest
+   * without limit.
    */
-  maxDepthNesting?: number;
+  maxGroupLevels?: number;
 
   /**
    * When true, all labels (both group labels and slug item labels) are derived from the raw directory name.
@@ -48,7 +49,7 @@ type TIndexOnlySidebarPluginOptions = TOptions & {
  * @returns A Starlight plugin object
  * @example
  * starlightIndexOnlySidebar({
- *   maxDepthNesting: 1,
+ *   maxGroupLevels: 2,
  *   dirnameDeterminesLabels: true,
  *   directories: ["reference", "guides"],
  * })
@@ -61,21 +62,29 @@ export function starlightIndexOnlySidebar(
     hooks: {
       "config:setup": (hookOptions: HookParameters<"config:setup">) => {
         const { updateConfig, astroConfig } = hookOptions;
-        const { directories, maxDepthNesting, dirnameDeterminesLabels } =
-          pluginOptions;
-        const functionOptions = {
-          maxDepthNesting,
-          dirnameDeterminesLabels,
-          sourceDocExtensions: getSourceDocExtensions(astroConfig.integrations),
-        };
+        const { directories, dirnameDeterminesLabels } = pluginOptions;
+        const sourceDocExtensions = getSourceDocExtensions(
+          astroConfig.integrations,
+        );
 
         const docsDirPath = fileURLToPath(
           new URL("content/docs/", astroConfig.srcDir),
         );
+        const { dirPaths, maxGroupLevels } = validateSidebarOptions({
+          pluginName: "starlight-index-only-sidebar",
+          docsDirPath,
+          directories,
+          maxGroupLevels: pluginOptions.maxGroupLevels,
+          sourceDocExtensions,
+        });
+        const functionOptions = {
+          maxGroupLevels,
+          dirnameDeterminesLabels,
+          sourceDocExtensions,
+        };
 
-        const sidebarItems = directories
-          .map((directory) => {
-            const dirPath = join(docsDirPath, directory);
+        const sidebarItems = dirPaths
+          .map((dirPath) => {
             const rawItems = getIndexMdSidebarItems(
               docsDirPath,
               dirPath,
