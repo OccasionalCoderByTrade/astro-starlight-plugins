@@ -299,10 +299,11 @@ function resolvePageLink(
   if (hasSourceDocExtension(baselessLinkPath, sourceDocExtensions)) {
     // A link that already carries a source doc extension names that exact file
     filePath = isFile(absoluteLinkPath) ? absoluteLinkPath : null;
-  } else if (path.extname(baselessLinkPath)) {
-    // Some other extension (`./manual.pdf`, `./v1.2`): a docs asset, never a source doc
+  } else if (path.extname(baselessLinkPath) && isFile(absoluteLinkPath)) {
+    // Some other extension, and that exact file exists (`./manual.pdf`): a docs asset
     return { kind: "skipped" };
   } else {
+    // No extension, or a dotted name with no such file (`./v1.2` reaches `v1.2.md`)
     filePath = findSourceDoc(absoluteLinkPath, sourceDocExtensions);
   }
   if (!filePath) {

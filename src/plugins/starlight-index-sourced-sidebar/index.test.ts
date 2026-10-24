@@ -968,12 +968,12 @@ describe("starlightIndexSourcedSidebar link forms", () => {
     },
   );
 
-  it("skips a link with a non-source-doc extension without trying source doc extensions", async () => {
+  it("skips a link with a non-source-doc extension silently when that exact file exists", async () => {
     const { setup } = runSetup(
       {
         "guides/index.md":
-          "---\ntitle: Guides\n---\n\n[Old](./v1.2) [Manual](./manual.pdf) [New](./v2.0.md)\n",
-        "guides/v1.2.md": "---\ntitle: V1.2\n---\n",
+          "---\ntitle: Guides\n---\n\n[Manual](./manual.pdf) [New](./v2.0.md)\n",
+        "guides/manual.pdf": "pdf",
         "guides/manual.pdf.md": "---\ntitle: Manual\n---\n",
         "guides/v2.0.md": "---\ntitle: V2.0\n---\n",
       },
@@ -993,6 +993,33 @@ describe("starlightIndexSourcedSidebar link forms", () => {
       },
     ]);
     expect(warnings).toEqual([]);
+  });
+
+  it("tries source doc extensions on a link with a non-source-doc extension and no such file", async () => {
+    const { setup } = runSetup(
+      {
+        "guides/index.md":
+          "---\ntitle: Guides\n---\n\n[Old](./v1.2) [Gone](./v3.1)\n",
+        "guides/v1.2.md": "---\ntitle: V1.2\n---\n",
+      },
+      { directories: ["guides"] },
+    );
+
+    const { sidebar, warnings } = await setup();
+
+    expect(sidebar).toEqual([
+      {
+        label: "Guides",
+        collapsed: true,
+        items: [
+          { label: "Guides", slug: "guides" },
+          { label: "V1.2", slug: "guides/v12" },
+        ],
+      },
+    ]);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain('"./v3.1"');
+    expect(warnings[0]).toContain("no source doc exists there");
   });
 
   it("percent-decodes a link", async () => {
