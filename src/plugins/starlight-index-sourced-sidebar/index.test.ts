@@ -211,3 +211,161 @@ describe("starlightIndexSourcedSidebar", () => {
     },
   );
 });
+
+const MARKDOC_INTEGRATION = { name: "@astrojs/markdoc", hooks: {} };
+
+describe("starlightIndexSourcedSidebar source docs", () => {
+  it("counts .mdoc sidebar indexes and pages when Markdoc is installed", async () => {
+    const { setup } = runSetup(
+      {
+        "guides/index.mdoc":
+          "---\ntitle: Guides\n---\n\n- [Setup](./setup)\n- [Tips](./tips.mdoc)\n",
+        "guides/setup.mdoc": "---\ntitle: Setup\n---\n",
+        "guides/tips.mdoc": "---\ntitle: Tips\n---\n",
+      },
+      { directories: ["guides"] },
+      { integrations: [MARKDOC_INTEGRATION] },
+    );
+
+    expect((await setup()).sidebar).toEqual([
+      {
+        label: "Guides",
+        collapsed: true,
+        items: [
+          { label: "Guides", slug: "guides" },
+          { label: "Setup", slug: "guides/setup" },
+          { label: "Tips", slug: "guides/tips" },
+        ],
+      },
+    ]);
+  });
+
+  it("treats .mdoc files as docs assets without Markdoc", async () => {
+    const { setup } = runSetup(
+      {
+        "guides/index.md":
+          "---\ntitle: Guides\n---\n\n- [Setup](./setup)\n- [Tips](./tips.mdoc)\n",
+        "guides/setup.mdoc": "---\ntitle: Setup\n---\n",
+        "guides/tips.mdoc": "---\ntitle: Tips\n---\n",
+      },
+      { directories: ["guides"] },
+    );
+
+    expect((await setup()).sidebar).toEqual([
+      {
+        label: "Guides",
+        collapsed: true,
+        items: [{ label: "Guides", slug: "guides" }],
+      },
+    ]);
+  });
+
+  it("leaves out a link to a _-prefixed file with a warning", async () => {
+    const { setup } = runSetup(
+      {
+        "guides/index.md":
+          "---\ntitle: Guides\n---\n\n[Partial](./_partial.md)\n",
+        "guides/_partial.md": "---\ntitle: Partial\n---\n",
+      },
+      { directories: ["guides"] },
+    );
+
+    const { sidebar, warnings } = await setup();
+
+    expect(sidebar).toEqual([
+      {
+        label: "Guides",
+        collapsed: true,
+        items: [{ label: "Guides", slug: "guides" }],
+      },
+    ]);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain("guides/index.md");
+    expect(warnings[0]).toContain("./_partial.md");
+  });
+
+  it("counts a page in a _-prefixed folder", async () => {
+    const { setup } = runSetup(
+      {
+        "guides/index.md":
+          "---\ntitle: Guides\n---\n\n[Shared](./_partials/shared)\n",
+        "guides/_partials/shared.md": "---\ntitle: Shared\n---\n",
+      },
+      { directories: ["guides"] },
+    );
+
+    const { sidebar, warnings } = await setup();
+
+    expect(sidebar).toEqual([
+      {
+        label: "Guides",
+        collapsed: true,
+        items: [
+          { label: "Guides", slug: "guides" },
+          { label: "Shared", slug: "guides/_partials/shared" },
+        ],
+      },
+    ]);
+    expect(warnings).toEqual([]);
+  });
+});
+
+describe("starlightIndexSourcedSidebar hidden from sidebar", () => {
+  const HIDDEN_DOCS_FILES = {
+    "guides/index.md":
+      "---\ntitle: Guides\n---\n\n- [Draft](./draft)\n- [Hidden](./hidden)\n- [Unsearchable](./unsearchable)\n- [Section](./section/index)\n",
+    "guides/draft.md": "---\ntitle: Draft\ndraft: true\n---\n",
+    "guides/hidden.md": "---\ntitle: Hidden\nsidebar:\n  hidden: true\n---\n",
+    "guides/unsearchable.md": "---\ntitle: Unsearchable\npagefind: false\n---\n",
+    "guides/section/index.md":
+      "---\ntitle: Section\ndraft: true\n---\n\n[Inside](./inside)\n",
+    "guides/section/inside.md": "---\ntitle: Inside\n---\n",
+  };
+
+  const VISIBLE_SIDEBAR = [
+    {
+      label: "Guides",
+      collapsed: true,
+      items: [
+        { label: "Guides", slug: "guides" },
+        { label: "Unsearchable", slug: "guides/unsearchable" },
+      ],
+    },
+  ];
+
+  it.each(["dev", "build"] as const)(
+    "hides draft and sidebar.hidden entries and hidden sidebar index groups in %s, but not pagefind: false",
+    async (command) => {
+      const { setup } = runSetup(
+        HIDDEN_DOCS_FILES,
+        { directories: ["guides"] },
+        { command },
+      );
+
+      expect((await setup()).sidebar).toEqual(VISIBLE_SIDEBAR);
+    },
+  );
+
+  it("drops the root group of a hidden root sidebar index without an error", async () => {
+    const { setup } = runSetup(
+      {
+        "guides/index.md": "---\ntitle: Guides\ndraft: true\n---\n\n[Setup](./setup)\n",
+        "guides/setup.md": "---\ntitle: Setup\n---\n",
+        "reference/index.md": "---\ntitle: Reference\n---\n",
+      },
+      { directories: ["guides", "reference"] },
+    );
+
+    const { sidebar, warnings, errors } = await setup();
+
+    expect(sidebar).toEqual([
+      {
+        label: "Reference",
+        collapsed: true,
+        items: [{ label: "Reference", slug: "reference" }],
+      },
+    ]);
+    expect(warnings).toEqual([]);
+    expect(errors).toEqual([]);
+  });
+});

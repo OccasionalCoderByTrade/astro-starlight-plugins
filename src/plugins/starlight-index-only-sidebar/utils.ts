@@ -6,11 +6,11 @@ import type { TSidebarItem } from "../utils/sidebar-types.js";
 import { isHiddenFromSidebar } from "../utils/sidebar-visibility.js";
 import { parseFrontmatter } from "../utils/workspace-utils.js";
 
-const SOURCE_DOC_EXTENSIONS = [".md", ".mdx"];
-
 type TOptions = {
   maxDepthNesting?: number;
   dirnameDeterminesLabels?: boolean;
+  /** Extensions that make a file a source doc, from `getSourceDocExtensions`. */
+  sourceDocExtensions: string[];
 };
 
 /** False when nothing is at `dirPath`; throws on any other stat error, such as EACCES. */
@@ -30,8 +30,11 @@ function getSlug(dirPath: string, rootDir: string): string {
   return slug + "/index";
 }
 
-function hasIndexMdInSubtree(dirPath: string): boolean {
-  const indexFilePath = findSidebarIndexFile(dirPath, SOURCE_DOC_EXTENSIONS);
+function hasIndexMdInSubtree(
+  dirPath: string,
+  sourceDocExtensions: string[],
+): boolean {
+  const indexFilePath = findSidebarIndexFile(dirPath, sourceDocExtensions);
   if (indexFilePath) {
     const frontmatter = parseFrontmatter(indexFilePath);
     return !isHiddenFromSidebar(frontmatter);
@@ -41,7 +44,7 @@ function hasIndexMdInSubtree(dirPath: string): boolean {
   for (const entry of entries) {
     if (entry === "assets") continue;
     const entryPath = path.join(dirPath, entry);
-    if (isDir(entryPath) && hasIndexMdInSubtree(entryPath)) {
+    if (isDir(entryPath) && hasIndexMdInSubtree(entryPath, sourceDocExtensions)) {
       return true;
     }
   }
@@ -58,12 +61,13 @@ function buildSidebarItems(
   currentDepth: number,
   maxDepth: number,
   dirnameDeterminesLabels: boolean,
+  sourceDocExtensions: string[],
   parentDirName: string = "",
 ): TSidebarItem[] {
   const items: TSidebarItem[] = [];
 
   // Add index.md of current directory if it exists
-  const indexFilePath = findSidebarIndexFile(dirPath, SOURCE_DOC_EXTENSIONS);
+  const indexFilePath = findSidebarIndexFile(dirPath, sourceDocExtensions);
   if (indexFilePath) {
     const frontmatter = parseFrontmatter(indexFilePath);
     if (!isHiddenFromSidebar(frontmatter)) {
@@ -90,6 +94,7 @@ function buildSidebarItems(
       dirPath,
       rootDir,
       dirnameDeterminesLabels,
+      sourceDocExtensions,
     );
     items.push(...flattenedItems);
     return items;
@@ -104,7 +109,7 @@ function buildSidebarItems(
     if (!isDir(entryPath)) continue;
 
     // Skip if this directory has no index.md in its subtree
-    if (!hasIndexMdInSubtree(entryPath)) continue;
+    if (!hasIndexMdInSubtree(entryPath, sourceDocExtensions)) continue;
 
     // Recursively build items for this subdirectory
     const subItems = buildSidebarItems(
@@ -113,12 +118,13 @@ function buildSidebarItems(
       currentDepth + 1,
       maxDepth,
       dirnameDeterminesLabels,
+      sourceDocExtensions,
       entry,
     );
 
     // Apply truncation: if no index.md in this dir, promote children instead of wrapping
     const hasIndex =
-      findSidebarIndexFile(entryPath, SOURCE_DOC_EXTENSIONS) !== null;
+      findSidebarIndexFile(entryPath, sourceDocExtensions) !== null;
     if (!hasIndex) {
       const allGroups = subItems.length > 0 && subItems.every(isGroupItem);
       if (allGroups || (subItems.length === 1 && isGroupItem(subItems[0]))) {
@@ -146,6 +152,7 @@ function flattenIndexFilesAtDepth(
   dirPath: string,
   rootDir: string,
   dirnameDeterminesLabels: boolean,
+  sourceDocExtensions: string[],
 ): TSidebarItem[] {
   const items: TSidebarItem[] = [];
 
@@ -156,10 +163,7 @@ function flattenIndexFilesAtDepth(
     const entryPath = path.join(dirPath, entry);
     if (!isDir(entryPath)) continue;
 
-    const indexFilePath = findSidebarIndexFile(
-      entryPath,
-      SOURCE_DOC_EXTENSIONS,
-    );
+    const indexFilePath = findSidebarIndexFile(entryPath, sourceDocExtensions);
     if (indexFilePath) {
       const frontmatter = parseFrontmatter(indexFilePath);
       if (!isHiddenFromSidebar(frontmatter)) {
@@ -172,7 +176,12 @@ function flattenIndexFilesAtDepth(
 
     // Recursively search deeper directories
     items.push(
-      ...flattenIndexFilesAtDepth(entryPath, rootDir, dirnameDeterminesLabels),
+      ...flattenIndexFilesAtDepth(
+        entryPath,
+        rootDir,
+        dirnameDeterminesLabels,
+        sourceDocExtensions,
+      ),
     );
   }
 
@@ -181,7 +190,7 @@ function flattenIndexFilesAtDepth(
 
 export function getIndexMdSidebarItems(
   directory: string,
-  options: TOptions = {},
+  options: TOptions,
 ): TSidebarItem[] {
   if (!isDir(directory)) {
     throw new Error(
@@ -190,7 +199,17 @@ export function getIndexMdSidebarItems(
   }
   const maxDepth = options.maxDepthNesting ?? 100;
   const dirnameDeterminesLabels = options.dirnameDeterminesLabels ?? true;
+  const { sourceDocExtensions } = options;
   const rootGroupLabel = pathSegmentToLabel(path.basename(directory));
+
+  // A hidden root sidebar index takes its whole root group with it, like any other
+  const rootIndexFilePath = findSidebarIndexFile(directory, sourceDocExtensions);
+  if (
+    rootIndexFilePath &&
+    isHiddenFromSidebar(parseFrontmatter(rootIndexFilePath))
+  ) {
+    return [];
+  }
 
   const items = buildSidebarItems(
     directory,
@@ -198,6 +217,7 @@ export function getIndexMdSidebarItems(
     0,
     maxDepth,
     dirnameDeterminesLabels,
+    sourceDocExtensions,
   );
 
   return [

@@ -12,7 +12,8 @@ Automatically generates a nested Starlight sidebar by recursively scanning direc
 
 - Recursively scans directories for `index.md` or `index.mdx` files
 - Creates sidebar entries only for pages with index files
-- Respects frontmatter: `draft: true` and `sidebar.hidden: true` hide entries
+- Respects frontmatter: `draft: true` and `sidebar.hidden: true` hide an index and its whole subtree, in `astro dev` and `astro build` alike. Drafts are hidden in dev on purpose, unlike Starlight, which renders draft pages in dev: the dev sidebar shows what the build will show. A hidden root index drops its root group. `pagefind: false` only affects search and doesn't hide anything.
+- Index files can be `index.md`, `index.mdx`, or `index.mdoc` when `@astrojs/markdoc` is in Astro's `integrations`. Without Markdoc, an `index.mdoc` doesn't count. A `_`-prefixed file is never an index, but a `_`-prefixed folder (like `_partials/index.md`) still counts, as in Astro.
 - Automatically collapses single-child groups (no intermediate wrappers)
 - Configurable depth limiting to flatten deeply nested content
 - Two labeling modes: directory names or frontmatter titles
@@ -61,7 +62,9 @@ Generates a Starlight sidebar by parsing markdown links out of `index.md` files.
 - Sub-group depth limited by `maxDepthNesting`; deeper items are flattened
 - Each index page itself appears as the first leaf item in its group
 - Labels for leaf items come from the linked page's frontmatter `title`
-- Respects frontmatter: `draft: true`, `pagefind: false`, and `sidebar.hidden: true` hide entries
+- Source docs (sidebar indexes and linked pages) are `.md`, `.mdx`, and `.mdoc` when `@astrojs/markdoc` is in Astro's `integrations`. Without Markdoc, a `.mdoc` file is a docs asset and a link to it is skipped like a link to a PDF.
+- Respects frontmatter: `draft: true` and `sidebar.hidden: true` hide an entry, in `astro dev` and `astro build` alike. Drafts are hidden in dev on purpose, unlike Starlight, which renders draft pages in dev: the dev sidebar shows what the build will show. A hidden sidebar index drops its whole group, and a hidden root sidebar index drops its root group without an error. `pagefind: false` only affects search and doesn't hide anything.
+- A link to a `_`-prefixed file (like `./_partial.md`) gives no entry, since Astro never makes it a page, and logs a warning naming the sidebar index and the link. Only the filename counts: a page in a `_`-prefixed folder (like `./_partials/shared`) still gets an entry.
 - Links to non-markdown files (images, PDFs, etc.) are silently skipped
 - Links to markdown files that do not exist on disk are silently skipped
 - External links and same-page anchor links (`#section`) are silently skipped
