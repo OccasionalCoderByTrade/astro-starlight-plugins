@@ -11,13 +11,13 @@ See the spec: User Stories 28-35, 54-56; Implementation Decisions › Building a
 
 **Blocked by:** 05
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] `./sub/index` to an `index.mdx` (and to an `index.mdoc` with Markdoc) gives a nested group
-- [ ] A sub-index with the leaf key gives one entry carrying the index marker, and its links don't appear
-- [ ] The leaf key on a root sidebar index is ignored
-- [ ] `./sub/` gives the same group as `./sub/index`. With no `sub/index.*` but a `sub.md`, it warns and adds nothing
-- [ ] A link back to an ancestor sidebar index warns and doesn't recurse
-- [ ] A directory linked from two sidebar indexes appears under both
-- [ ] README updated
-- [ ] `npm run lib:build` and `npm test` pass
+- [x] `./sub/index` to an `index.mdx` (and to an `index.mdoc` with Markdoc) gives a nested group
+- [x] A sub-index with the leaf key gives one entry carrying the index marker, and its links don't appear
+- [x] The leaf key on a root sidebar index is ignored
+- [x] `./sub/` gives the same group as `./sub/index`. With no `sub/index.*` but a `sub.md`, it warns and adds nothing
+- [x] A link back to an ancestor sidebar index warns and doesn't recurse
+- [x] A directory linked from two sidebar indexes appears under both
+- [x] README updated
+- [x] `npm run lib:build` and `npm test` pass

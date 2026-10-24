@@ -28,12 +28,21 @@ type TFrontmatter = TSidebarEntryFrontmatter & {
   slug?: string;
   draft?: boolean;
   sidebar?: { hidden?: boolean };
+  /** The plugin's own key. `leaf: true` makes a sub-index link to this doc a single entry. */
+  indexSourcedSidebar?: { leaf?: boolean };
 };
 
 /** A source doc's frontmatter and body, from one read. */
 type TSourceDoc = {
   frontmatter: TFrontmatter;
   body: string;
+};
+
+/** A sidebar index file and its contents. */
+type TSidebarIndex = {
+  dirPath: string;
+  indexFilePath: string;
+  indexDoc: TSourceDoc;
 };
 
 export type TIndexSourcedSidebarOptions = {
@@ -52,10 +61,21 @@ export type TIndexSourcedSidebarOptions = {
 };
 
 /** Internal: what each level of the recursion needs on top of the public options. */
-type TBuildItemsOptions = TIndexSourcedSidebarOptions & {
+type TBuildItemsOptions = Omit<TIndexSourcedSidebarOptions, "dirPath"> & {
+  sidebarIndex: TSidebarIndex;
   currentDepth: number;
-  visitedDirPaths: Set<string>;
+  /** Dirs of the sidebar indexes from the root down to this one, this one included. */
+  ancestorDirPaths: Set<string>;
 };
+
+/**
+ * What a link in a sidebar index resolves to: another directory's sidebar index, a page, or
+ * nothing. A skipped link carries a warning when the author should hear about it.
+ */
+type TLinkTarget =
+  | { kind: "sub-index"; dirPath: string; indexFilePath: string }
+  | { kind: "page"; filePath: string }
+  | { kind: "skipped"; warning?: string };
 
 /** Throws when the file can't be read or its YAML is malformed. */
 function readSourceDoc(filePath: string): TSourceDoc {
@@ -108,31 +128,114 @@ function isExternal(href: string): boolean {
   );
 }
 
-/** The source doc `hrefPath` points at from `fromDirPath`, or null when there's none. */
-function resolveSourceDoc(
-  hrefPath: string,
-  fromDirPath: string,
-  sourceDocExtensions: string[],
-): string | null {
-  const resolvedFilePath = path.resolve(fromDirPath, hrefPath);
+/**
+ * Steps 1-3 of resolving a link: the path part of `href`, or null when the link is skipped
+ * silently (external links and same-page anchors).
+ */
+function toLinkPath(href: string): string | null {
+  if (isExternal(href)) return null;
 
-  // An href that already carries a source doc extension names that exact file
-  if (hasSourceDocExtension(hrefPath, sourceDocExtensions)) {
-    return isFile(resolvedFilePath) ? resolvedFilePath : null;
-  }
-
-  return findSourceDoc(resolvedFilePath, sourceDocExtensions);
+  const linkPath = href.split("?")[0].split("#")[0].trim();
+  return linkPath || null;
 }
 
-/** Warns that `href`, as written in the sidebar index at `indexFilePath`, gives no entry. */
+/** Step 4 of resolving a link: the absolute path `linkPath` points at. */
+function resolveLinkPath(linkPath: string, indexDirPath: string): string {
+  return path.resolve(indexDirPath, linkPath);
+}
+
+/**
+ * Whether `linkPath` is a sub-index link: it names a folder (`./sub/`, `.`, `..`) or a
+ * directory's `index`, with or without a source doc extension.
+ */
+function isSubIndexLinkPath(
+  linkPath: string,
+  sourceDocExtensions: string[],
+): boolean {
+  const lastSegment = linkPath.split("/").pop() ?? "";
+  return (
+    linkPath.endsWith("/") ||
+    lastSegment === "." ||
+    lastSegment === ".." ||
+    lastSegment === "index" ||
+    sourceDocExtensions.some((extension) => lastSegment === `index${extension}`)
+  );
+}
+
+/** Step 5 of resolving a link: the sidebar index a sub-index link points at. */
+function resolveSubIndexLink(
+  linkPath: string,
+  resolvedPath: string,
+  options: TBuildItemsOptions,
+): TLinkTarget {
+  const namesFolder = !/(^|\/)index(\.[^/]*)?$/.test(linkPath);
+  const dirPath = namesFolder ? resolvedPath : path.dirname(resolvedPath);
+
+  const indexFilePath = findSidebarIndexFile(
+    dirPath,
+    options.sourceDocExtensions,
+  );
+  if (!indexFilePath) {
+    return { kind: "skipped", warning: "the directory has no sidebar index" };
+  }
+  if (options.ancestorDirPaths.has(dirPath)) {
+    return {
+      kind: "skipped",
+      warning: "it links back to an ancestor sidebar index",
+    };
+  }
+  return { kind: "sub-index", dirPath, indexFilePath };
+}
+
+/** Steps 6-7 of resolving a link: the page a link that isn't a sub-index link points at. */
+function resolvePageLink(
+  linkPath: string,
+  resolvedPath: string,
+  options: TBuildItemsOptions,
+): TLinkTarget {
+  const { sourceDocExtensions } = options;
+
+  let filePath: string | null;
+  if (hasSourceDocExtension(linkPath, sourceDocExtensions)) {
+    // A link that already carries a source doc extension names that exact file
+    filePath = isFile(resolvedPath) ? resolvedPath : null;
+  } else {
+    filePath = findSourceDoc(resolvedPath, sourceDocExtensions);
+  }
+  if (!filePath) return { kind: "skipped" };
+
+  if (hasUnderscoreFileName(filePath)) {
+    return {
+      kind: "skipped",
+      warning: "files whose names start with `_` aren't pages",
+    };
+  }
+  return { kind: "page", filePath };
+}
+
+/** What `href`, written in the current sidebar index, points at. */
+function resolveLink(href: string, options: TBuildItemsOptions): TLinkTarget {
+  const linkPath = toLinkPath(href);
+  if (!linkPath) return { kind: "skipped" };
+
+  const resolvedPath = resolveLinkPath(
+    linkPath,
+    options.sidebarIndex.dirPath,
+  );
+  if (isSubIndexLinkPath(linkPath, options.sourceDocExtensions)) {
+    return resolveSubIndexLink(linkPath, resolvedPath, options);
+  }
+  return resolvePageLink(linkPath, resolvedPath, options);
+}
+
+/** Warns that `href`, as written in the current sidebar index, gives no entry. */
 function warnSkippedLink(
   options: TBuildItemsOptions,
-  indexFilePath: string,
   href: string,
   reason: string,
 ): void {
   const docsRelativeIndexFilePath = path
-    .relative(options.docsDirPath, indexFilePath)
+    .relative(options.docsDirPath, options.sidebarIndex.indexFilePath)
     .replace(/\\/g, "/");
   options.logger.warn(
     `[starlight-index-sourced-sidebar] Skipped link "${href}" in ${docsRelativeIndexFilePath}: ${reason}`,
@@ -144,21 +247,117 @@ function badgeProperty(badge: TSidebarBadge | undefined) {
   return badge ? { badge } : {};
 }
 
+/**
+ * The entry for a sidebar index's own page. It shows the index marker when one is set, and
+ * otherwise its `sidebar.badge`.
+ */
+function toIndexEntry(
+  sidebarIndex: TSidebarIndex,
+  options: Pick<TIndexSourcedSidebarOptions, "docsDirPath" | "indexMarker">,
+): TSidebarItem {
+  const { dirPath, indexFilePath, indexDoc } = sidebarIndex;
+  return {
+    label: sidebarEntryLabel(
+      indexDoc.frontmatter,
+      pathSegmentToLabel(path.basename(dirPath)),
+    ),
+    slug: toSidebarSlug({
+      docsDirPath: options.docsDirPath,
+      sourceDocFilePath: indexFilePath,
+      frontmatterSlug: indexDoc.frontmatter.slug,
+    }),
+    ...badgeProperty(
+      options.indexMarker ?? sidebarEntryBadge(indexDoc.frontmatter),
+    ),
+  };
+}
+
+/** The entries a sub-index link adds: a nested group, its flattened items, or a leaf entry. */
+function buildSubIndexItems(
+  target: Extract<TLinkTarget, { kind: "sub-index" }>,
+  options: TBuildItemsOptions,
+): TSidebarItem[] {
+  const subIndex: TSidebarIndex = {
+    dirPath: target.dirPath,
+    indexFilePath: target.indexFilePath,
+    indexDoc: readSourceDoc(target.indexFilePath),
+  };
+  if (isHiddenFromSidebar(subIndex.indexDoc.frontmatter)) return [];
+
+  if (subIndex.indexDoc.frontmatter.indexSourcedSidebar?.leaf === true) {
+    return [toIndexEntry(subIndex, options)];
+  }
+
+  const subItems = buildItems({
+    ...options,
+    sidebarIndex: subIndex,
+    currentDepth: options.currentDepth + 1,
+    ancestorDirPaths: new Set([...options.ancestorDirPaths, subIndex.dirPath]),
+  });
+
+  // The root group is level 1, so the sub-index group would be level currentDepth + 2
+  if (options.currentDepth + 2 > options.maxGroupLevels) return subItems;
+  return [
+    {
+      label: pathSegmentToLabel(path.basename(subIndex.dirPath)),
+      items: subItems,
+      collapsed: options.collapsed,
+    },
+  ];
+}
+
+/** The entry a page link adds, or none when the page is hidden from sidebar. */
+function buildPageItems(
+  target: Extract<TLinkTarget, { kind: "page" }>,
+  options: TBuildItemsOptions,
+): TSidebarItem[] {
+  const { filePath } = target;
+  const linkedDoc = readSourceDoc(filePath);
+  if (isHiddenFromSidebar(linkedDoc.frontmatter)) return [];
+
+  return [
+    {
+      label: sidebarEntryLabel(
+        linkedDoc.frontmatter,
+        pathSegmentToLabel(path.basename(filePath, path.extname(filePath))),
+      ),
+      slug: toSidebarSlug({
+        docsDirPath: options.docsDirPath,
+        sourceDocFilePath: filePath,
+        frontmatterSlug: linkedDoc.frontmatter.slug,
+      }),
+      ...badgeProperty(sidebarEntryBadge(linkedDoc.frontmatter)),
+    },
+  ];
+}
+
+/** A visible sidebar index's entries: its index entry, then one per link, in order. */
 function buildItems(options: TBuildItemsOptions): TSidebarItem[] {
-  const {
-    docsDirPath,
-    dirPath,
-    currentDepth,
-    maxGroupLevels,
-    visitedDirPaths,
-    indexMarker,
-    collapsed,
-    sourceDocExtensions,
-  } = options;
+  const items: TSidebarItem[] = [toIndexEntry(options.sidebarIndex, options)];
 
-  if (visitedDirPaths.has(dirPath)) return [];
-  visitedDirPaths.add(dirPath);
+  for (const href of extractMarkdownLinks(options.sidebarIndex.indexDoc.body)) {
+    const target = resolveLink(href, options);
+    if (target.kind === "skipped") {
+      if (target.warning) warnSkippedLink(options, href, target.warning);
+    } else if (target.kind === "sub-index") {
+      items.push(...buildSubIndexItems(target, options));
+    } else {
+      items.push(...buildPageItems(target, options));
+    }
+  }
 
+  return items;
+}
+
+/**
+ * The root group for `options.dirPath`, built from the links in its sidebar index, or
+ * undefined when its sidebar index is hidden from sidebar. A root sidebar index always
+ * expands, whatever its leaf key says.
+ */
+export function getIndexSourcedSidebarGroup(
+  options: TIndexSourcedSidebarOptions,
+): TSidebarGroup | undefined {
+  const { dirPath, sourceDocExtensions } = options;
   const indexFilePath = findSidebarIndexFile(dirPath, sourceDocExtensions);
   if (!indexFilePath) {
     throw new Error(
@@ -167,134 +366,17 @@ function buildItems(options: TBuildItemsOptions): TSidebarItem[] {
   }
 
   const indexDoc = readSourceDoc(indexFilePath);
-  if (isHiddenFromSidebar(indexDoc.frontmatter)) return [];
+  if (isHiddenFromSidebar(indexDoc.frontmatter)) return undefined;
 
-  // The index page itself is always the first item in its group
-  const items: TSidebarItem[] = [
-    {
-      label: sidebarEntryLabel(
-        indexDoc.frontmatter,
-        pathSegmentToLabel(path.basename(dirPath)),
-      ),
-      slug: toSidebarSlug({
-        docsDirPath,
-        sourceDocFilePath: indexFilePath,
-        frontmatterSlug: indexDoc.frontmatter.slug,
-      }),
-      ...badgeProperty(indexMarker ?? sidebarEntryBadge(indexDoc.frontmatter)),
-    },
-  ];
-
-  for (const href of extractMarkdownLinks(indexDoc.body)) {
-    if (isExternal(href)) continue;
-
-    // Pure anchor links (#section) resolve to nothing, so skip them
-    const hrefPath = href.split("?")[0].split("#")[0].trim();
-    if (!hrefPath) continue;
-
-    const resolvedFilePath = resolveSourceDoc(
-      hrefPath,
-      dirPath,
-      sourceDocExtensions,
-    );
-    if (!resolvedFilePath) continue;
-
-    if (hasUnderscoreFileName(resolvedFilePath)) {
-      warnSkippedLink(
-        options,
-        indexFilePath,
-        href,
-        "files whose names start with `_` aren't pages",
-      );
-      continue;
-    }
-
-    const isSubIndex =
-      hrefPath.endsWith("/index") ||
-      sourceDocExtensions.some((extension) =>
-        hrefPath.endsWith(`/index${extension}`),
-      );
-
-    if (isSubIndex && !resolvedFilePath.endsWith(".mdx")) {
-      // index.md: recurse and build a group, or flatten it at the depth limit
-      const subDirPath = path.dirname(resolvedFilePath);
-      const subItems = buildItems({
-        ...options,
-        dirPath: subDirPath,
-        currentDepth: currentDepth + 1,
-      });
-      if (subItems.length === 0) continue;
-
-      // The root group is level 1, so the sub-index group would be level currentDepth + 2
-      if (currentDepth + 2 > maxGroupLevels) {
-        items.push(...subItems);
-      } else {
-        items.push({
-          label: pathSegmentToLabel(path.basename(subDirPath)),
-          items: subItems,
-          collapsed,
-        });
-      }
-      continue;
-    }
-
-    const linkedDoc = readSourceDoc(resolvedFilePath);
-    if (isHiddenFromSidebar(linkedDoc.frontmatter)) continue;
-
-    if (isSubIndex) {
-      // index.mdx: add as a single entry only, without recursing into it
-      items.push({
-        label: sidebarEntryLabel(
-          linkedDoc.frontmatter,
-          pathSegmentToLabel(path.basename(path.dirname(resolvedFilePath))),
-        ),
-        slug: toSidebarSlug({
-        docsDirPath,
-        sourceDocFilePath: resolvedFilePath,
-        frontmatterSlug: linkedDoc.frontmatter.slug,
-      }),
-        ...badgeProperty(
-          indexMarker ?? sidebarEntryBadge(linkedDoc.frontmatter),
-        ),
-      });
-      continue;
-    }
-
-    items.push({
-      label: sidebarEntryLabel(
-        linkedDoc.frontmatter,
-        pathSegmentToLabel(
-          path.basename(resolvedFilePath, path.extname(resolvedFilePath)),
-        ),
-      ),
-      slug: toSidebarSlug({
-        docsDirPath,
-        sourceDocFilePath: resolvedFilePath,
-        frontmatterSlug: linkedDoc.frontmatter.slug,
-      }),
-      ...badgeProperty(sidebarEntryBadge(linkedDoc.frontmatter)),
-    });
-  }
-
-  return items;
-}
-
-/**
- * The root group for `options.dirPath`, built from the links in its sidebar index, or
- * undefined when it has no entries (e.g. its sidebar index is hidden from sidebar).
- */
-export function getIndexSourcedSidebarGroup(
-  options: TIndexSourcedSidebarOptions,
-): TSidebarGroup | undefined {
   const items = buildItems({
     ...options,
+    sidebarIndex: { dirPath, indexFilePath, indexDoc },
     currentDepth: 0,
-    visitedDirPaths: new Set<string>(),
+    ancestorDirPaths: new Set([dirPath]),
   });
-  if (items.length === 0) return undefined;
 
   return {
-    label: pathSegmentToLabel(path.basename(options.dirPath)),
+    label: pathSegmentToLabel(path.basename(dirPath)),
     items,
     collapsed: options.collapsed,
   };

@@ -72,8 +72,9 @@ Generates a Starlight sidebar by parsing markdown links out of `index.md` files.
 **Features:**
 
 - Builds sidebar entries from the links written in each directory's `index.md`
-- Links ending in `/index` pointing to an `index.md` create nested sub-groups (recursed automatically)
-- Links ending in `/index` pointing to an `index.mdx` add it as a single leaf item without recursing into it
+- Sub-index links (`./sub/index` or `./sub/`) create nested sub-groups, recursed automatically, whatever the target sidebar index's extension (`index.md`, `index.mdx` or `index.mdoc`)
+- Leaf indexes: a sidebar index with `indexSourcedSidebar: { leaf: true }` in its frontmatter becomes a single entry carrying the index marker, and its own links don't affect the sidebar. The leaf key is ignored on a root sidebar index, so a listed directory always expands.
+- A directory or page linked from several sidebar indexes appears under each of them. A sub-index link back to an ancestor sidebar index is skipped with a warning, so a loop can't hang startup.
 - Group levels limited by `maxGroupLevels`; deeper items are flattened
 - Each index page itself appears as the first leaf item in its group
 - Labels and badges come from Starlight's sidebar frontmatter (see [Labels and badges](#labels-and-badges))
@@ -115,7 +116,8 @@ Each entry links to the page Starlight serves for its source doc. The slug is th
 
 **Link conventions in `index.md`:**
 
-- Links to sub-sections must end in `/index` (e.g. `[Subtopic](./subtopic/index)`) — the plugin recurses into those if the target is an `index.md`, or adds a leaf item if the target is an `index.mdx`
+- Links to sub-sections are sub-index links: they end in `/index` (with or without an extension) or `/`, e.g. `[Subtopic](./subtopic/index)` or `[Subtopic](./subtopic/)`. The plugin recurses into the target's sidebar index unless it's a leaf index.
+- A folder link (`./subtopic/`) whose folder has no sidebar index logs a warning and adds nothing. It doesn't fall back to a sibling `subtopic.md`.
 - All other relative links become flat leaf items
 - External URLs are ignored
 
@@ -154,7 +156,20 @@ title: Guides
 - [Getting Started](./getting-started)
 - [Configuration](./configuration)
 - [Advanced Topics](./advanced/index)
+- [Showcase](./showcase/)
 ```
+
+**Leaf index:** a landing page full of components can opt out of driving navigation:
+
+```markdown
+---
+title: Showcase
+indexSourcedSidebar:
+  leaf: true
+---
+```
+
+**Upgrading from 3.x:** `index.mdx` sub-indexes used to become a single entry and now expand into a nested group like `index.md`. To keep the old behaviour, add `indexSourcedSidebar: { leaf: true }` to the `index.mdx` frontmatter.
 
 ### LaTeX Compile
 
