@@ -20,6 +20,11 @@ import {
 import type { ServedFileRule } from "../utils/served-file-rule.js";
 import { SERVE_DOCS_FILES_INTEGRATION_NAME } from "../utils/serve-docs-files-integration.js";
 import { STARLIGHT_CONTENT_CLASS } from "../utils/starlight-selectors.js";
+import {
+  removeExtension,
+  toPagePath,
+  toSourceDocPagePath,
+} from "../utils/page-paths.js";
 import { STARLIGHT_DOC_ROUTE } from "../utils/starlight-routes.js";
 import { isFile } from "../utils/workspace-utils.js";
 
@@ -566,27 +571,6 @@ function collectSourceDocFilePaths(
       sourceDocExtensions.includes(extname(entryName));
     return isSourceDoc ? [entryFileOrDirPath] : [];
   });
-}
-
-/**
- * `My Guide/List Syntax.md` → `my-guide/list-syntax`, `reference/Index.md` → `reference`.
- * Unlike Astro's ID, the home page's `index.md` → ``, to match the decoded pathname `/`.
- */
-function toSourceDocPagePath(docsRelativeFilePath: string): string {
-  return toPagePath(removeExtension(docsRelativeFilePath).split(sep));
-}
-
-/** `["My Guide", "List Syntax"]` → `my-guide/list-syntax`, `["guide", "Index"]` → `guide`. */
-function toPagePath(segments: string[]): string {
-  return segments
-    .map((segment) => slug(segment))
-    .join("/")
-    .replace(/(^|\/)index$/, "");
-}
-
-/** `guide/v1.2-notes.md` → `guide/v1.2-notes`. */
-function removeExtension(filePath: string): string {
-  return filePath.slice(0, filePath.length - extname(filePath).length);
 }
 
 /** `/guide/my%20notes/` → `guide/my notes`; null if the URL encoding is malformed. */

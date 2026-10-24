@@ -26,6 +26,10 @@ Automatically generates a nested Starlight sidebar by recursively scanning direc
 - `maxDepthNesting` (optional, default: `100`): Maximum nesting depth. Root is level 0. At max depth, deeper index files are flattened as sibling items.
 - `dirnameDeterminesLabels` (optional, default: `true`): When `true`, all labels use raw directory names. When `false`, slug item labels come from frontmatter `sidebar.label`, then `title`, then `"Overview"`; group labels still use directory names. `sidebar.badge` shows on entries either way.
 
+**Slugs:**
+
+Each entry links to the page Starlight serves for its index file. The slug is the index's frontmatter `slug:` when it has one. Otherwise it's the file's page path, relative to the docs root: each path segment is slugified the way Starlight does it, the extension is dropped, and a trailing `/index` is dropped. So `guides/Getting Started/index.md` gets the slug `guides/getting-started`, also when `directories` lists `"guides/Getting Started"`.
+
 **Usage:**
 
 ```ts
@@ -81,6 +85,10 @@ Generates a Starlight sidebar by parsing markdown links out of `index.md` files.
 - Groups, the root group included, are always labelled from their directory name (e.g. `csci-316` becomes `CSCI 316`)
 - A page entry shows its `sidebar.badge`. A string badge gets the `default` variant
 - An index entry shows `indexMarker` when one is set, and otherwise its own `sidebar.badge`
+
+**Slugs:**
+
+Each entry links to the page Starlight serves for its source doc. The slug is the doc's frontmatter `slug:` when it has one. Otherwise it's the doc's page path, relative to the docs root: each path segment is slugified the way Starlight does it, the extension is dropped, and a trailing `/index` is dropped. So `reference/My Page.md` gets the slug `reference/my-page`, and `reference/advanced/index.md` gets `reference/advanced`.
 
 **Link conventions in `index.md`:**
 

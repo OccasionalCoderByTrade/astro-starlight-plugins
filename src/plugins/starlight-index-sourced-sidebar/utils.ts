@@ -11,7 +11,7 @@ import {
   sidebarEntryLabel,
   type TSidebarEntryFrontmatter,
 } from "../utils/sidebar-labels.js";
-import { normalizeSidebarSlug } from "../utils/sidebar-slugs.js";
+import { toSidebarSlug } from "../utils/sidebar-slugs.js";
 import type {
   TSidebarBadge,
   TSidebarGroup,
@@ -23,6 +23,7 @@ import { isFile } from "../utils/workspace-utils.js";
 const SOURCE_DOC_EXTENSIONS = [".md", ".mdx"];
 
 type TFrontmatter = TSidebarEntryFrontmatter & {
+  slug?: string;
   draft?: boolean;
   pagefind?: boolean;
   sidebar?: { hidden?: boolean };
@@ -78,13 +79,6 @@ function findSourceDoc(extensionlessFilePath: string): string | null {
     if (isFile(sourceDocFilePath)) return sourceDocFilePath;
   }
   return null;
-}
-
-function filePathToSlug(filePath: string, docsDirPath: string): string {
-  const docsRelativeFilePath = path
-    .relative(docsDirPath, filePath)
-    .replace(/\\/g, "/");
-  return normalizeSidebarSlug(docsRelativeFilePath.replace(/\.(mdx?)$/, ""));
 }
 
 function extractMarkdownLinks(body: string): string[] {
@@ -157,7 +151,11 @@ function buildItems(options: TBuildItemsOptions): TSidebarItem[] {
         indexDoc.frontmatter,
         pathSegmentToLabel(path.basename(dirPath)),
       ),
-      slug: filePathToSlug(indexFilePath, docsDirPath),
+      slug: toSidebarSlug({
+        docsDirPath,
+        sourceDocFilePath: indexFilePath,
+        frontmatterSlug: indexDoc.frontmatter.slug,
+      }),
       ...badgeProperty(indexMarker ?? sidebarEntryBadge(indexDoc.frontmatter)),
     },
   ];
@@ -209,7 +207,11 @@ function buildItems(options: TBuildItemsOptions): TSidebarItem[] {
           linkedDoc.frontmatter,
           pathSegmentToLabel(path.basename(path.dirname(resolvedFilePath))),
         ),
-        slug: filePathToSlug(resolvedFilePath, docsDirPath),
+        slug: toSidebarSlug({
+        docsDirPath,
+        sourceDocFilePath: resolvedFilePath,
+        frontmatterSlug: linkedDoc.frontmatter.slug,
+      }),
         ...badgeProperty(
           indexMarker ?? sidebarEntryBadge(linkedDoc.frontmatter),
         ),
@@ -224,7 +226,11 @@ function buildItems(options: TBuildItemsOptions): TSidebarItem[] {
           path.basename(resolvedFilePath, path.extname(resolvedFilePath)),
         ),
       ),
-      slug: filePathToSlug(resolvedFilePath, docsDirPath),
+      slug: toSidebarSlug({
+        docsDirPath,
+        sourceDocFilePath: resolvedFilePath,
+        frontmatterSlug: linkedDoc.frontmatter.slug,
+      }),
       ...badgeProperty(sidebarEntryBadge(linkedDoc.frontmatter)),
     });
   }
