@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 import { validateSidebarOptions } from "../utils/sidebar-options.js";
 import { getSourceDocExtensions } from "../utils/workspace-utils.js";
 import type { TSidebarBadge, TSidebarGroup } from "../utils/sidebar-types.js";
-import { getIndexSourcedSidebarGroup } from "./utils.js";
+import { getIndexSourcedSidebarGroup, PLUGIN_NAME } from "./utils.js";
 
 type TOptions = {
   /**
@@ -21,8 +21,8 @@ type TOptions = {
    * The most levels of groups the sidebar can have, the root group included. `1` puts every
    * entry flat under the root group, `2` keeps one level of nested groups, and so on. A
    * sub-index link whose group would go past the limit has its entries flattened into the
-   * parent group. Must be an integer of at least 1, or startup fails. When undefined, groups
-   * nest without limit.
+   * parent group. Must be an integer of at least 1 (`Infinity` and `null` fail too), or
+   * startup fails. When undefined, groups nest without limit.
    */
   maxGroupLevels?: number;
 
@@ -58,10 +58,11 @@ type TOptions = {
  * Inline and reference-style markdown links count: relative file-form links, root-absolute
  * links (resolved against the docs root, with Astro's `base` stripped) and percent-encoded
  * links, with query strings and anchors stripped. JSX and HTML links and page-form links
- * don't. External (`scheme:` or `//`) links, same-page anchors, docs assets and pages hidden
- * from sidebar are skipped silently. A link to a missing source doc, a `_`-prefixed file, a
- * folder with no sidebar index, or an ancestor sidebar index is skipped with a warning naming
- * the sidebar index and the link.
+ * don't. External (`scheme:` or `//`) links, same-page anchors, docs assets (any link with
+ * an extension that isn't a source doc extension, so `./v1.2.md`, not `./v1.2`) and pages
+ * hidden from sidebar are skipped silently. A link to a missing source doc, a path outside
+ * the docs root, a `_`-prefixed file, a folder with no sidebar index, or an ancestor sidebar
+ * index is skipped with a warning naming the sidebar index and the link.
  *
  * A source doc is hidden from sidebar when its frontmatter has `draft: true` or
  * `sidebar.hidden: true`, in dev and build alike (on purpose, unlike Starlight's dev
@@ -105,7 +106,7 @@ export function starlightIndexSourcedSidebar(options: TOptions) {
         );
 
         const { dirPaths, maxGroupLevels } = validateSidebarOptions({
-          pluginName: "starlight-index-sourced-sidebar",
+          pluginName: PLUGIN_NAME,
           docsDirPath,
           directories,
           maxGroupLevels: options.maxGroupLevels,

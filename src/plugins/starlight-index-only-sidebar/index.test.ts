@@ -311,7 +311,8 @@ describe("starlightIndexOnlySidebar", () => {
     ]);
   });
 
-  it.each([0, 1.5, -1])(
+  // Only undefined means unlimited: an explicit Infinity or null is a bad value too
+  it.each([0, 1.5, -1, Infinity, null as unknown as number])(
     "throws at startup when maxGroupLevels is %s",
     async (maxGroupLevels) => {
       const { setup } = runSetup(NESTED_DOCS_FILES, {

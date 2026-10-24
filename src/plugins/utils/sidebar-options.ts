@@ -1,6 +1,6 @@
-import * as fs from "node:fs";
 import * as path from "node:path";
 import { findSidebarIndexFile } from "./sidebar-index.js";
+import { isDir, isOutsideDir } from "./workspace-utils.js";
 
 export type TSidebarOptionsToValidate = {
   /** Plugin name used to prefix error messages, e.g. `starlight-index-sourced-sidebar`. */
@@ -35,25 +35,21 @@ export function validateSidebarOptions(
   const docsDirPath = path.resolve(options.docsDirPath);
   const errorPrefix = `[${pluginName}]`;
 
-  const maxGroupLevels = options.maxGroupLevels ?? Infinity;
+  // Only undefined means unlimited: an explicit `Infinity` or `null` is a bad value too
   if (
-    maxGroupLevels !== Infinity &&
-    !(Number.isInteger(maxGroupLevels) && maxGroupLevels >= 1)
+    options.maxGroupLevels !== undefined &&
+    !(Number.isInteger(options.maxGroupLevels) && options.maxGroupLevels >= 1)
   ) {
     throw new Error(
       `${errorPrefix} maxGroupLevels must be an integer of at least 1, got ${options.maxGroupLevels}`,
     );
   }
+  const maxGroupLevels = options.maxGroupLevels ?? Infinity;
 
   const directoryByDirPath = new Map<string, string>();
   for (const directory of directories) {
     const dirPath = path.resolve(docsDirPath, directory);
-    const docsRelativeDirPath = path.relative(docsDirPath, dirPath);
-    if (
-      docsRelativeDirPath === ".." ||
-      docsRelativeDirPath.startsWith(`..${path.sep}`) ||
-      path.isAbsolute(docsRelativeDirPath)
-    ) {
+    if (isOutsideDir(docsDirPath, dirPath)) {
       throw new Error(
         `${errorPrefix} directories entry "${directory}" is outside the docs root ${docsDirPath}`,
       );
@@ -67,9 +63,7 @@ export function validateSidebarOptions(
     }
     directoryByDirPath.set(dirPath, directory);
 
-    const isDir =
-      fs.statSync(dirPath, { throwIfNoEntry: false })?.isDirectory() ?? false;
-    if (!isDir) {
+    if (!isDir(dirPath)) {
       throw new Error(
         `${errorPrefix} Directory not found for directories entry "${directory}": ${dirPath}`,
       );
