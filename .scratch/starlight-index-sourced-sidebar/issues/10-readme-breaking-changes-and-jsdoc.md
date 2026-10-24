@@ -16,9 +16,9 @@ See the spec: Implementation Decisions › Docs; Further Notes.
 
 **Blocked by:** 04, 05, 06, 07, 08, 09
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] The README has one breaking-changes list covering every item above
-- [ ] The JSDoc for both sidebar plugins' options and functions matches the README
-- [ ] `npm run lib:build` and `npm test` pass
-- [ ] The demo site's sidebar renders in dev with no console errors or plugin warnings that aren't expected
+- [x] The README has one breaking-changes list covering every item above
+- [x] The JSDoc for both sidebar plugins' options and functions matches the README
+- [x] `npm run lib:build` and `npm test` pass
+- [x] The demo site's sidebar renders in dev with no console errors or plugin warnings that aren't expected

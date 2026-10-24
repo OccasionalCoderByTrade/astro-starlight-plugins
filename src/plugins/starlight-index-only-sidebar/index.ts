@@ -1,24 +1,27 @@
 import type { HookParameters } from "@astrojs/starlight/types";
-import { join } from "path";
-import { getIndexMdSidebarItems } from "./utils";
-import type { TGroupedItem } from "./types";
+import { fileURLToPath } from "node:url";
+import { validateSidebarOptions } from "../utils/sidebar-options.js";
+import type { TSidebarGroup } from "../utils/sidebar-types.js";
+import { getSourceDocExtensions } from "../utils/workspace-utils.js";
+import { getIndexOnlySidebarGroup } from "./utils.js";
 
 /**
  * Configuration options for sidebar generation behavior.
  */
 type TOptions = {
   /**
-   * Controls how deep the nested group structure can go, where the root directory is level 0.
-   * Once this depth is reached, no further child groups are created; instead, any index.md or index.mdx
-   * files found deeper in the subtree are flattened and included as slug items directly at the current level.
-   * @default 100
+   * The most levels of groups the sidebar can have, the root group included. `1` puts every
+   * entry flat under the root group, `2` keeps one level of nested groups, and so on. At the
+   * limit, deeper sidebar indexes are flattened into the deepest group. Must be an integer of at
+   * least 1 (`Infinity` and `null` fail too), or startup fails. When undefined, groups nest without limit.
    */
-  maxDepthNesting?: number;
+  maxGroupLevels?: number;
 
   /**
-   * When true, all labels (both group labels and slug item labels) are derived from the raw directory name.
-   * When false, the label for a slug item is read from the title field in the index.md or index.mdx file's
-   * frontmatter; group labels are still derived from the raw directory name.
+   * When true, all labels (both group labels and slug item labels) are derived from the raw
+   * directory name. When false, a slug item's label comes from its sidebar index's frontmatter
+   * `sidebar.label`, then `title`, then `"Overview"`; group labels still come from the
+   * directory name. Either way, a slug item shows its frontmatter `sidebar.badge`.
    * @default true
    */
   dirnameDeterminesLabels?: boolean;
@@ -26,57 +29,42 @@ type TOptions = {
 
 /**
  * Options for the starlightIndexOnlySidebar plugin.
- * Automatically generates a sidebar configuration by scanning for index.md/index.mdx files in specified directories.
  */
 type TIndexOnlySidebarPluginOptions = TOptions & {
   /**
-   * Array of directory names (relative to src/content/docs) to scan for sidebar generation.
-   * Each directory will become a top-level group in the sidebar.
+   * Array of directory names, relative to the docs root (`content/docs/` under Astro's
+   * `srcDir`, so `src/content/docs` by default), to scan. Each directory becomes a top-level
+   * group in the sidebar. An entry that resolves outside the docs root, doesn't exist, has no
+   * sidebar index, or is listed twice fails startup.
    * @example ["reference", "guides", "api-docs"]
    */
   directories: string[];
 };
 
-type TSidebarItem =
-  | { label: string; slug: string }
-  | { label: string; items: TSidebarItem[] };
-
-const SITE_DOCS_ROOT = "./src/content/docs";
-
-function normalizeSlug(slug: string): string {
-  // Starlight expects slugs without "/index" suffix
-  return slug.endsWith("/index") ? slug.slice(0, -6) : slug;
-}
-
-function normalizeItems(items: TSidebarItem[]): TSidebarItem[] {
-  return items.map((item) => {
-    if ("items" in item) {
-      return {
-        label: item.label,
-        items: normalizeItems(item.items),
-      };
-    }
-    if ("slug" in item) {
-      return {
-        label: item.label,
-        slug: normalizeSlug(item.slug),
-      };
-    }
-    return item;
-  });
-}
-
 /**
- * Starlight plugin that automatically generates a sidebar configuration by scanning the filesystem
- * for index.md/index.mdx files in specified directories.
+ * Starlight plugin that builds a nested sidebar by recursively scanning the listed directories
+ * for sidebar indexes (`index.md`, `index.mdx`, or `index.mdoc` when `@astrojs/markdoc` is
+ * installed). Only directories with sidebar indexes appear. A `_`-prefixed file is never a
+ * sidebar index, but a `_`-prefixed folder still counts. `assets` directories are ignored.
+ *
+ * `draft: true` and `sidebar.hidden: true` hide an index and its whole subtree, in dev and
+ * build alike (on purpose, unlike Starlight's dev rendering of drafts). `pagefind: false`
+ * hides nothing.
+ *
+ * Each entry's slug is the sidebar index's `slug:` frontmatter, or else its page path (each
+ * segment slugified the way Starlight does, trailing `/index` dropped).
+ *
+ * Bad options and missing directories fail `astro dev` and `astro build` at startup.
  *
  * @param pluginOptions - Configuration options for the sidebar generation
  * @returns A Starlight plugin object
  * @example
+ * import { starlightIndexOnlySidebar } from "starlight-cannoli-plugins/starlight-index-only-sidebar";
+ *
  * starlightIndexOnlySidebar({
- *   maxDepthNesting: 1,
- *   dirnameDeterminesLabels: true,
  *   directories: ["reference", "guides"],
+ *   maxGroupLevels: 2,
+ *   dirnameDeterminesLabels: false,
  * })
  */
 export function starlightIndexOnlySidebar(
@@ -86,39 +74,38 @@ export function starlightIndexOnlySidebar(
     name: "index-only-sidebar",
     hooks: {
       "config:setup": (hookOptions: HookParameters<"config:setup">) => {
-        const { updateConfig } = hookOptions;
-        const { directories, maxDepthNesting, dirnameDeterminesLabels } =
-          pluginOptions;
-        const functionOptions: TOptions = {
-          maxDepthNesting,
-          dirnameDeterminesLabels,
-        };
+        const { updateConfig, astroConfig } = hookOptions;
+        const { directories, dirnameDeterminesLabels } = pluginOptions;
+        const sourceDocExtensions = getSourceDocExtensions(
+          astroConfig.integrations,
+        );
 
-        const sidebarItems = directories
-          .map((directory) => {
-            const dirPath = join(SITE_DOCS_ROOT, directory);
-            const rawItems = getIndexMdSidebarItems(dirPath, functionOptions);
-            // Remove the root group wrapper that getIndexMdSidebarItems adds
-            const rootGroup = rawItems[0];
-            if (!rootGroup || !("items" in rootGroup)) {
-              return undefined;
-            }
-            const items = rootGroup.items || [];
-            // Normalize slugs for Starlight
-            const normalizedItems = normalizeItems(items);
-
-            return {
-              label: rootGroup.label,
-              items: normalizedItems,
-            };
-          })
+        const docsDirPath = fileURLToPath(
+          new URL("content/docs/", astroConfig.srcDir),
+        );
+        const { dirPaths, maxGroupLevels } = validateSidebarOptions({
+          pluginName: "starlight-index-only-sidebar",
+          docsDirPath,
+          directories,
+          maxGroupLevels: pluginOptions.maxGroupLevels,
+          sourceDocExtensions,
+        });
+        const sidebarGroups = dirPaths
+          .map((dirPath) =>
+            getIndexOnlySidebarGroup(dirPath, {
+              docsDirPath,
+              maxGroupLevels,
+              dirnameDeterminesLabels,
+              sourceDocExtensions,
+            }),
+          )
           .filter(
-            (group): group is TGroupedItem =>
+            (group): group is TSidebarGroup =>
               group !== undefined && group.items.length > 0,
           ); // remove empty groups
 
         updateConfig({
-          sidebar: sidebarItems,
+          sidebar: sidebarGroups,
         });
       },
     },

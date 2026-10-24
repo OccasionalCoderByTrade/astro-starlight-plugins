@@ -1,8 +1,11 @@
 import { parseFrontmatter as astroParseFrontmatter } from "@astrojs/markdown-remark";
 import * as fs from "fs";
+import * as path from "path";
 
-type TFrontmatter = {
+/** The frontmatter fields the plugins read from any source doc. */
+export type TSourceDocFrontmatter = {
   title?: string;
+  slug?: string;
   draft?: boolean;
   pagefind?: boolean;
   sidebar?: {
@@ -10,19 +13,40 @@ type TFrontmatter = {
   };
 };
 
-/** A source doc's frontmatter. Throws when the file can't be read or its YAML is malformed. */
-export function parseFrontmatter(filePath: string): TFrontmatter {
+/** A source doc's frontmatter and body, from one read. */
+export type TSourceDoc<TFrontmatter extends TSourceDocFrontmatter> = {
+  frontmatter: TFrontmatter;
+  body: string;
+};
+
+/**
+ * A source doc's frontmatter and body. `TFrontmatter` names the fields the caller reads; it
+ * isn't checked. Throws when the file can't be read or its YAML is malformed.
+ */
+export function parseSourceDoc<
+  TFrontmatter extends TSourceDocFrontmatter = TSourceDocFrontmatter,
+>(filePath: string): TSourceDoc<TFrontmatter> {
   const content = fs.readFileSync(filePath, "utf-8");
 
   try {
-    const { frontmatter } = astroParseFrontmatter(content);
-    return frontmatter as TFrontmatter;
+    const { frontmatter, content: body } = astroParseFrontmatter(content);
+    return { frontmatter: frontmatter as TFrontmatter, body };
   } catch (err) {
     throw new Error(
       `[parseFrontmatter] Failed to parse frontmatter in ${filePath}: ${(err as Error).message}`,
       { cause: err },
     );
   }
+}
+
+/**
+ * A source doc's frontmatter. `TFrontmatter` names the fields the caller reads; it isn't
+ * checked. Throws when the file can't be read or its YAML is malformed.
+ */
+export function parseFrontmatter<
+  TFrontmatter extends TSourceDocFrontmatter = TSourceDocFrontmatter,
+>(filePath: string): TFrontmatter {
+  return parseSourceDoc<TFrontmatter>(filePath).frontmatter;
 }
 
 const MARKDOC_INTEGRATION_NAME = "@astrojs/markdoc";
@@ -50,4 +74,24 @@ export function getSourceDocExtensions(
  */
 export function isFile(filePath: string): boolean {
   return fs.statSync(filePath, { throwIfNoEntry: false })?.isFile() ?? false;
+}
+
+/**
+ * Whether `dirPath` is a directory. False when nothing is at it (or a parent isn't a dir);
+ * throws on any other stat error, such as EACCES.
+ */
+export function isDir(dirPath: string): boolean {
+  return (
+    fs.statSync(dirPath, { throwIfNoEntry: false })?.isDirectory() ?? false
+  );
+}
+
+/** Whether `targetPath` is outside `dirPath` (`dirPath` itself counts as inside). */
+export function isOutsideDir(dirPath: string, targetPath: string): boolean {
+  const relativeTargetPath = path.relative(dirPath, targetPath);
+  return (
+    relativeTargetPath === ".." ||
+    relativeTargetPath.startsWith(`..${path.sep}`) ||
+    path.isAbsolute(relativeTargetPath)
+  );
 }

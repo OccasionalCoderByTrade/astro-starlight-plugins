@@ -1,53 +1,109 @@
 import type { HookParameters } from "@astrojs/starlight/types";
-import { join } from "path";
-import { getIndexSourcedSidebarItems } from "./utils";
-import type { TGroupedItem, TIndexMarker } from "./types";
+import { fileURLToPath } from "node:url";
+import { validateSidebarOptions } from "../utils/sidebar-options.js";
+import { getSourceDocExtensions } from "../utils/workspace-utils.js";
+import type { TSidebarBadge, TSidebarGroup } from "../utils/sidebar-types.js";
+import {
+  getIndexSourcedSidebarGroup,
+  PLUGIN_NAME,
+  validateLinkScope,
+  type TLinkScope,
+} from "./utils.js";
 
 type TOptions = {
   /**
-   * Controls how deep the nested group structure can go, where the root directory is level 0.
-   * At depth >= maxDepthNesting, sub-index groups are not created; their items are flattened
-   * directly into the current level instead.
-   * @default 100
-   */
-  maxDepthNesting?: number;
-
-  /**
-   * Array of directory names (relative to src/content/docs) to generate sidebar groups for.
-   * Each directory must contain an index.md or index.mdx whose links define the sidebar content.
+   * Array of directory names, relative to the docs root (`content/docs/` under Astro's
+   * `srcDir`, so `src/content/docs` by default), to generate sidebar groups for. Each
+   * directory must contain a sidebar index (`index.md`, `index.mdx`, or `index.mdoc` when
+   * `@astrojs/markdoc` is installed) whose links define the group's entries. An entry that
+   * resolves outside the docs root, doesn't exist, has no sidebar index, or is listed twice
+   * fails startup.
    * @example ["guides", "reference"]
    */
   directories: string[];
 
   /**
-   * A string prepended to the label of every index entry to visually distinguish it from
-   * regular sidebar entries. When undefined, no marker is added.
-   * @example "★"
+   * The most levels of groups the sidebar can have, the root group included. `1` puts every
+   * entry flat under the root group, `2` keeps one level of nested groups, and so on. A
+   * sub-index link whose group would go past the limit has its entries flattened into the
+   * parent group. Must be an integer of at least 1 (`Infinity` and `null` fail too), or
+   * startup fails. When undefined, groups nest without limit.
    */
-  indexMarker?: TIndexMarker;
+  maxGroupLevels?: number;
 
   /**
-   * Whether sidebar groups should be collapsed by default. Starlight automatically expands
-   * the group containing the current page regardless of this setting.
+   * A Starlight badge (`{ text, variant }`) shown on every index entry to tell it apart from
+   * regular sidebar entries. When set, it replaces an index entry's own `sidebar.badge`.
+   * `variant` is one of `"note"`, `"tip"`, `"caution"`, `"danger"`, `"success"` or
+   * `"default"`. When undefined, index entries show their own `sidebar.badge`, if any.
+   * @example { text: "Index", variant: "note" }
+   */
+  indexMarker?: TSidebarBadge;
+
+  /**
+   * Whether sidebar groups start collapsed. Starlight still expands the group holding the
+   * current page.
    * @default true
    */
   collapsed?: boolean;
+
+  /**
+   * Where a sidebar index's links may point. `"anywhere"` keeps links to anywhere in the
+   * docs root. `"below"` keeps only links inside the linking sidebar index's own directory
+   * (`./setup`, `./sub/`, `/guides/setup` from `guides/index.md`), and skips any other link
+   * with a warning. Links to the sidebar index's own directory or an ancestor directory are
+   * skipped with a warning either way. Any other value fails startup.
+   * @default "anywhere"
+   */
+  linkScope?: TLinkScope;
 };
 
-const SITE_DOCS_ROOT = "./src/content/docs";
-
 /**
- * Starlight plugin that generates a sidebar by parsing markdown links from index.md files.
+ * Starlight plugin that builds a sidebar from the markdown links written in each listed
+ * directory's sidebar index (`index.md`, `index.mdx`, or `index.mdoc` when Markdoc is
+ * installed).
  *
- * For each directory, the plugin reads its index.md and uses the links found there as sidebar
- * entries. Links ending in `/index` are treated as sub-sections and recursed into, creating
- * nested groups up to maxDepthNesting levels deep. All other links become leaf items labeled
- * with the linked page's frontmatter title.
+ * A group's entries are its index entry, then one entry per link, in the order written.
+ * Sub-index links (ending in `/index`, with or without an extension, or `/`) expand into a
+ * nested group whatever the target's extension, up to `maxGroupLevels` levels of groups,
+ * unless the target's frontmatter has `indexSourcedSidebar: { leaf: true }`, which makes it a
+ * single entry with the index marker (ignored on a root sidebar index). Other links to source
+ * docs become page entries.
+ *
+ * Inline and reference-style markdown links count: relative file-form links, root-absolute
+ * links (resolved against the docs root, with Astro's `base` stripped) and percent-encoded
+ * links, with query strings and anchors stripped. JSX and HTML links and page-form links
+ * don't. External (`scheme:` or `//`) links, same-page anchors, docs assets (a link with an
+ * extension that isn't a source doc extension, when that exact file exists) and pages hidden
+ * from sidebar are skipped silently. A dotted link with no such file has each source doc
+ * extension tried, so `./v1.2` reaches `v1.2.md`. A link to a missing source doc, a path
+ * outside the docs root, a `_`-prefixed file, a folder with no sidebar index, the sidebar
+ * index's own directory or an ancestor directory (`.`, `..`, `../index.md`, `/`), a
+ * sidebar index already in the current chain (a loop), or (with `linkScope: "below"`)
+ * anything outside the sidebar index's directory is skipped with a warning naming the
+ * sidebar index and the link.
+ *
+ * A source doc is hidden from sidebar when its frontmatter has `draft: true` or
+ * `sidebar.hidden: true`, in dev and build alike (on purpose, unlike Starlight's dev
+ * rendering of drafts). A hidden sidebar index drops its whole group. `pagefind: false` hides
+ * nothing.
+ *
+ * Each entry's slug is the source doc's `slug:` frontmatter, or else its page path (each
+ * segment slugified the way Starlight does, trailing `/index` dropped). Entries are labelled
+ * `sidebar.label`, then `title`, then the filename, and show `sidebar.badge` (an index entry
+ * shows `indexMarker` instead, when set). Groups take their directory name.
+ *
+ * Bad options, missing directories and missing root sidebar indexes fail `astro dev` and
+ * `astro build` at startup.
  *
  * @example
+ * import { starlightIndexSourcedSidebar } from "starlight-cannoli-plugins/starlight-index-sourced-sidebar";
+ *
  * starlightIndexSourcedSidebar({
- *   maxDepthNesting: 2,
  *   directories: ["guides", "reference"],
+ *   maxGroupLevels: 2,
+ *   indexMarker: { text: "Index", variant: "note" },
+ *   collapsed: false,
  * })
  */
 export function starlightIndexSourcedSidebar(options: TOptions) {
@@ -55,28 +111,45 @@ export function starlightIndexSourcedSidebar(options: TOptions) {
     name: "index-sourced-sidebar",
     hooks: {
       "config:setup": (hookOptions: HookParameters<"config:setup">) => {
-        const { updateConfig } = hookOptions;
-        const { directories, maxDepthNesting = 100, indexMarker, collapsed = true } = options;
+        const { updateConfig, astroConfig, logger } = hookOptions;
+        const {
+          directories,
+          indexMarker,
+          collapsed = true,
+        } = options;
+        const docsDirPath = fileURLToPath(
+          new URL("content/docs/", astroConfig.srcDir),
+        );
+        const sourceDocExtensions = getSourceDocExtensions(
+          astroConfig.integrations,
+        );
 
-        const sidebarItems = directories
-          .map((directory) => {
-            const dirPath = join(SITE_DOCS_ROOT, directory);
-            const rawItems = getIndexSourcedSidebarItems(
+        const { dirPaths, maxGroupLevels } = validateSidebarOptions({
+          pluginName: PLUGIN_NAME,
+          docsDirPath,
+          directories,
+          maxGroupLevels: options.maxGroupLevels,
+          sourceDocExtensions,
+        });
+        const linkScope = validateLinkScope(options.linkScope);
+
+        const sidebarGroups = dirPaths
+          .map((dirPath) =>
+            getIndexSourcedSidebarGroup({
+              docsDirPath,
               dirPath,
-              maxDepthNesting,
+              maxGroupLevels,
               indexMarker,
               collapsed,
-            );
-            const rootGroup = rawItems[0];
-            if (!rootGroup || !("items" in rootGroup)) return undefined;
-            return rootGroup as TGroupedItem;
-          })
-          .filter(
-            (group): group is TGroupedItem =>
-              group !== undefined && group.items.length > 0,
-          );
+              sourceDocExtensions,
+              linkScope,
+              base: astroConfig.base,
+              logger,
+            }),
+          )
+          .filter((group): group is TSidebarGroup => group !== undefined);
 
-        updateConfig({ sidebar: sidebarItems });
+        updateConfig({ sidebar: sidebarGroups });
       },
     },
   };

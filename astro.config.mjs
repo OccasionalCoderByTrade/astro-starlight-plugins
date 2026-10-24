@@ -19,7 +19,7 @@ import {
 // Common Config Items
 const SITE_NAME = "My Grand Amazing Site";
 // const STARLIGHT_SIDEBAR_CONFIG = starlightIndexOnlySidebar({
-//   maxDepthNesting: 1,
+//   maxGroupLevels: 2,
 //   dirnameDeterminesLabels: false,
 //   directories: [
 //     "reference",
@@ -29,7 +29,6 @@ const SITE_NAME = "My Grand Amazing Site";
 //   ],
 // });
 const STARLIGHT_SOURCED_SIDEBAR_CONFIG = starlightIndexSourcedSidebar({
-  maxDepthNesting: 100,
   indexMarker: { text: "★", variant: "default" },
   directories: [
     "reference",

@@ -23,7 +23,7 @@ tsup.config.ts        # build entries, kept in sync with package.json exports
 dist/                 # lib build output; app:build also writes here
 ```
 
-- A plugin's exported API is public; changing it is a breaking change. Plugins may also have their own subpath export.
+- A plugin's exported API is public; changing it is a breaking change. Every plugin must have its own subpath export (`./<name>` in `package.json` matching the `plugins/<name>` tsup entry), see `docs/adr/0013-every-plugin-has-a-subpath-export.md`. Internal sibling modules (page scripts, middleware, routes) get a tsup entry but no export. `src/plugins/tests/subpath-export-drift.test.ts` checks this.
 - New or renamed plugin: update the `tsup.config.ts` `entry`, `package.json` `exports`, `src/index.ts` and `README.md` together.
 - Only move code into `utils/` once 2+ plugins need it. Plugin-specific helpers stay in that plugin's `utils.ts`.
 
