@@ -183,6 +183,55 @@ describe("starlightIndexOnlySidebar", () => {
     ]);
   });
 
+  it("gives index entries of a nested directory their page path as the slug", async () => {
+    const { setup } = runSetup(
+      {
+        "guides/Getting Started/index.md": "---\ntitle: Start\n---\n",
+        "guides/Getting Started/First Steps/index.md":
+          "---\ntitle: First\n---\n",
+      },
+      { directories: ["guides/Getting Started"] },
+    );
+
+    expect((await setup()).sidebar).toEqual([
+      {
+        label: "Getting Started",
+        items: [
+          { label: "Overview", slug: "guides/getting-started" },
+          {
+            label: "First Steps",
+            items: [
+              {
+                label: "Overview",
+                slug: "guides/getting-started/first-steps",
+              },
+            ],
+          },
+        ],
+      },
+    ]);
+  });
+
+  it("uses an index's slug frontmatter as its entry's slug", async () => {
+    const { setup } = runSetup(
+      {
+        "guides/index.md": "---\ntitle: Guides\nslug: start\n---\n",
+        "guides/setup/index.md": "---\ntitle: Setup\nslug: install\n---\n",
+      },
+      { directories: ["guides"] },
+    );
+
+    expect((await setup()).sidebar).toEqual([
+      {
+        label: "Guides",
+        items: [
+          { label: "Overview", slug: "start" },
+          { label: "Setup", items: [{ label: "Overview", slug: "install" }] },
+        ],
+      },
+    ]);
+  });
+
   it.each([0, 1.5, -1])(
     "throws at startup when maxGroupLevels is %s",
     async (maxGroupLevels) => {
@@ -267,4 +316,108 @@ describe("starlightIndexOnlySidebar", () => {
       await expect(setup()).rejects.toThrow(/EACCES/);
     },
   );
+});
+
+const MARKDOC_INTEGRATION = { name: "@astrojs/markdoc", hooks: {} };
+
+describe("starlightIndexOnlySidebar source docs", () => {
+  const MDOC_DOCS_FILES = {
+    "guides/index.mdoc": "---\ntitle: Guides\n---\n",
+    "guides/setup/index.mdoc": "---\ntitle: Setup\n---\n",
+  };
+
+  it("counts .mdoc sidebar indexes when Markdoc is installed", async () => {
+    const { setup } = runSetup(
+      MDOC_DOCS_FILES,
+      { directories: ["guides"] },
+      { integrations: [MARKDOC_INTEGRATION] },
+    );
+
+    expect((await setup()).sidebar).toEqual(NESTED_SIDEBAR);
+  });
+
+  it("ignores .mdoc sidebar indexes without Markdoc", async () => {
+    const { setup } = runSetup(MDOC_DOCS_FILES, { directories: ["guides"] });
+
+    // The root's only index is an index.mdoc, so without Markdoc it has no sidebar index
+    await expect(setup()).rejects.toThrow(
+      `${PLUGIN_PREFIX} No sidebar index (index.md or index.mdx) for directories entry "guides"`,
+    );
+  });
+
+  it("counts a _-prefixed folder", async () => {
+    const { setup } = runSetup(
+      {
+        "guides/index.md": "---\ntitle: Guides\n---\n",
+        "guides/_partials/index.md": "---\ntitle: Partials\n---\n",
+      },
+      { directories: ["guides"] },
+    );
+
+    expect((await setup()).sidebar).toEqual([
+      {
+        label: "Guides",
+        items: [
+          { label: "Overview", slug: "guides" },
+          {
+            label: "_partials",
+            items: [{ label: "Overview", slug: "guides/_partials" }],
+          },
+        ],
+      },
+    ]);
+  });
+});
+
+describe("starlightIndexOnlySidebar hidden from sidebar", () => {
+  it.each(["dev", "build"] as const)(
+    "hides draft and sidebar.hidden indexes in %s, but not pagefind: false",
+    async (command) => {
+      const { setup } = runSetup(
+        {
+          "guides/index.md": "---\ntitle: Guides\n---\n",
+          "guides/drafts/index.md": "---\ndraft: true\n---\n",
+          "guides/hidden/index.md": "---\nsidebar:\n  hidden: true\n---\n",
+          "guides/hidden/inside/index.md": "---\ntitle: Inside\n---\n",
+          "guides/unsearchable/index.md": "---\npagefind: false\n---\n",
+        },
+        { directories: ["guides"] },
+        { command },
+      );
+
+      expect((await setup()).sidebar).toEqual([
+        {
+          label: "Guides",
+          items: [
+            { label: "Overview", slug: "guides" },
+            {
+              label: "Unsearchable",
+              items: [{ label: "Overview", slug: "guides/unsearchable" }],
+            },
+          ],
+        },
+      ]);
+    },
+  );
+
+  it("drops the root group of a hidden root sidebar index without an error", async () => {
+    const { setup } = runSetup(
+      {
+        "guides/index.md": "---\ntitle: Guides\ndraft: true\n---\n",
+        "guides/setup/index.md": "---\ntitle: Setup\n---\n",
+        "reference/index.md": "---\ntitle: Reference\n---\n",
+      },
+      { directories: ["guides", "reference"] },
+    );
+
+    const { sidebar, errors } = await setup();
+
+    expect(sidebar).toEqual([
+      {
+        label: "Reference",
+        items: [{ label: "Overview", slug: "reference" }],
+      },
+    ]);
+    expect(errors).toEqual([]);
+  });
 });

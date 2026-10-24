@@ -1,11 +1,9 @@
 import type { HookParameters } from "@astrojs/starlight/types";
 import { fileURLToPath } from "node:url";
 import { validateSidebarOptions } from "../utils/sidebar-options.js";
+import { getSourceDocExtensions } from "../utils/workspace-utils.js";
 import type { TSidebarBadge, TSidebarGroup } from "../utils/sidebar-types.js";
-import {
-  getIndexSourcedSidebarGroup,
-  SOURCE_DOC_EXTENSIONS,
-} from "./utils.js";
+import { getIndexSourcedSidebarGroup } from "./utils.js";
 
 type TOptions = {
   /**
@@ -61,7 +59,7 @@ export function starlightIndexSourcedSidebar(options: TOptions) {
     name: "index-sourced-sidebar",
     hooks: {
       "config:setup": (hookOptions: HookParameters<"config:setup">) => {
-        const { updateConfig, astroConfig } = hookOptions;
+        const { updateConfig, astroConfig, logger } = hookOptions;
         const {
           directories,
           indexMarker,
@@ -70,13 +68,16 @@ export function starlightIndexSourcedSidebar(options: TOptions) {
         const docsDirPath = fileURLToPath(
           new URL("content/docs/", astroConfig.srcDir),
         );
+        const sourceDocExtensions = getSourceDocExtensions(
+          astroConfig.integrations,
+        );
 
         const { dirPaths, maxGroupLevels } = validateSidebarOptions({
           pluginName: "starlight-index-sourced-sidebar",
           docsDirPath,
           directories,
           maxGroupLevels: options.maxGroupLevels,
-          sourceDocExtensions: SOURCE_DOC_EXTENSIONS,
+          sourceDocExtensions,
         });
 
         const sidebarGroups = dirPaths
@@ -87,6 +88,8 @@ export function starlightIndexSourcedSidebar(options: TOptions) {
               maxGroupLevels,
               indexMarker,
               collapsed,
+              sourceDocExtensions,
+              logger,
             }),
           )
           .filter((group): group is TSidebarGroup => group !== undefined);

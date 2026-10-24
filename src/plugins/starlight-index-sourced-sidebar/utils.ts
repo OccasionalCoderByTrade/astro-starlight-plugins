@@ -1,4 +1,5 @@
 import { parseFrontmatter as astroParseFrontmatter } from "@astrojs/markdown-remark";
+import type { AstroIntegrationLogger } from "astro";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import remarkParse from "remark-parse";
@@ -6,21 +7,22 @@ import { unified } from "unified";
 import { visit } from "unist-util-visit";
 import { findSidebarIndexFile } from "../utils/sidebar-index.js";
 import { pathSegmentToLabel } from "../utils/sidebar-labels.js";
-import { normalizeSidebarSlug } from "../utils/sidebar-slugs.js";
+import { toSidebarSlug } from "../utils/sidebar-slugs.js";
 import type {
   TSidebarBadge,
   TSidebarGroup,
   TSidebarItem,
 } from "../utils/sidebar-types.js";
-import { isHiddenFromSidebar as hasHiddenFromSidebarFlag } from "../utils/sidebar-visibility.js";
+import {
+  hasUnderscoreFileName,
+  isHiddenFromSidebar,
+} from "../utils/sidebar-visibility.js";
 import { isFile } from "../utils/workspace-utils.js";
-
-export const SOURCE_DOC_EXTENSIONS = [".md", ".mdx"];
 
 type TFrontmatter = {
   title?: string;
+  slug?: string;
   draft?: boolean;
-  pagefind?: boolean;
   sidebar?: { hidden?: boolean };
 };
 
@@ -39,6 +41,10 @@ export type TIndexSourcedSidebarOptions = {
   maxGroupLevels: number;
   indexMarker: TSidebarBadge | undefined;
   collapsed: boolean;
+  /** Extensions that make a file a source doc, from `getSourceDocExtensions`. */
+  sourceDocExtensions: string[];
+  /** Where skipped-link warnings go: the logger Starlight passes to `config:setup`. */
+  logger: AstroIntegrationLogger;
 };
 
 /** Internal: what each level of the recursion needs on top of the public options. */
@@ -61,26 +67,22 @@ function readSourceDoc(filePath: string): TSourceDoc {
   }
 }
 
-// TODO(05): `pagefind: false` stops hiding entries, leaving the shared check alone
-function isHiddenFromSidebar(frontmatter: TFrontmatter): boolean {
-  return (
-    hasHiddenFromSidebarFlag(frontmatter) || frontmatter.pagefind === false
-  );
+function hasSourceDocExtension(
+  filePath: string,
+  sourceDocExtensions: string[],
+): boolean {
+  return sourceDocExtensions.includes(path.extname(filePath));
 }
 
-function findSourceDoc(extensionlessFilePath: string): string | null {
-  for (const extension of SOURCE_DOC_EXTENSIONS) {
+function findSourceDoc(
+  extensionlessFilePath: string,
+  sourceDocExtensions: string[],
+): string | null {
+  for (const extension of sourceDocExtensions) {
     const sourceDocFilePath = extensionlessFilePath + extension;
     if (isFile(sourceDocFilePath)) return sourceDocFilePath;
   }
   return null;
-}
-
-function filePathToSlug(filePath: string, docsDirPath: string): string {
-  const docsRelativeFilePath = path
-    .relative(docsDirPath, filePath)
-    .replace(/\\/g, "/");
-  return normalizeSidebarSlug(docsRelativeFilePath.replace(/\.(mdx?)$/, ""));
 }
 
 function extractMarkdownLinks(body: string): string[] {
@@ -106,15 +108,31 @@ function isExternal(href: string): boolean {
 function resolveSourceDoc(
   hrefPath: string,
   fromDirPath: string,
+  sourceDocExtensions: string[],
 ): string | null {
   const resolvedFilePath = path.resolve(fromDirPath, hrefPath);
 
   // An href that already carries a source doc extension names that exact file
-  if (/\.(mdx?)$/.test(hrefPath)) {
+  if (hasSourceDocExtension(hrefPath, sourceDocExtensions)) {
     return isFile(resolvedFilePath) ? resolvedFilePath : null;
   }
 
-  return findSourceDoc(resolvedFilePath);
+  return findSourceDoc(resolvedFilePath, sourceDocExtensions);
+}
+
+/** Warns that `href`, as written in the sidebar index at `indexFilePath`, gives no entry. */
+function warnSkippedLink(
+  options: TBuildItemsOptions,
+  indexFilePath: string,
+  href: string,
+  reason: string,
+): void {
+  const docsRelativeIndexFilePath = path
+    .relative(options.docsDirPath, indexFilePath)
+    .replace(/\\/g, "/");
+  options.logger.warn(
+    `[starlight-index-sourced-sidebar] Skipped link "${href}" in ${docsRelativeIndexFilePath}: ${reason}`,
+  );
 }
 
 function buildItems(options: TBuildItemsOptions): TSidebarItem[] {
@@ -126,15 +144,16 @@ function buildItems(options: TBuildItemsOptions): TSidebarItem[] {
     visitedDirPaths,
     indexMarker,
     collapsed,
+    sourceDocExtensions,
   } = options;
 
   if (visitedDirPaths.has(dirPath)) return [];
   visitedDirPaths.add(dirPath);
 
-  const indexFilePath = findSidebarIndexFile(dirPath, SOURCE_DOC_EXTENSIONS);
+  const indexFilePath = findSidebarIndexFile(dirPath, sourceDocExtensions);
   if (!indexFilePath) {
     throw new Error(
-      `[starlight-index-sourced-sidebar] No index.md or index.mdx found in "${dirPath}"`,
+      `[starlight-index-sourced-sidebar] No sidebar index (index${sourceDocExtensions.join(", index")}) found in "${dirPath}"`,
     );
   }
 
@@ -147,7 +166,11 @@ function buildItems(options: TBuildItemsOptions): TSidebarItem[] {
       label:
         indexDoc.frontmatter.title ??
         pathSegmentToLabel(path.basename(dirPath)),
-      slug: filePathToSlug(indexFilePath, docsDirPath),
+      slug: toSidebarSlug({
+        docsDirPath,
+        sourceDocFilePath: indexFilePath,
+        frontmatterSlug: indexDoc.frontmatter.slug,
+      }),
       ...(indexMarker && { badge: indexMarker }),
     },
   ];
@@ -159,13 +182,28 @@ function buildItems(options: TBuildItemsOptions): TSidebarItem[] {
     const hrefPath = href.split("?")[0].split("#")[0].trim();
     if (!hrefPath) continue;
 
-    const resolvedFilePath = resolveSourceDoc(hrefPath, dirPath);
+    const resolvedFilePath = resolveSourceDoc(
+      hrefPath,
+      dirPath,
+      sourceDocExtensions,
+    );
     if (!resolvedFilePath) continue;
+
+    if (hasUnderscoreFileName(resolvedFilePath)) {
+      warnSkippedLink(
+        options,
+        indexFilePath,
+        href,
+        "files whose names start with `_` aren't pages",
+      );
+      continue;
+    }
 
     const isSubIndex =
       hrefPath.endsWith("/index") ||
-      hrefPath.endsWith("/index.md") ||
-      hrefPath.endsWith("/index.mdx");
+      sourceDocExtensions.some((extension) =>
+        hrefPath.endsWith(`/index${extension}`),
+      );
 
     if (isSubIndex && !resolvedFilePath.endsWith(".mdx")) {
       // index.md: recurse and build a group, or flatten it at the depth limit
@@ -199,7 +237,11 @@ function buildItems(options: TBuildItemsOptions): TSidebarItem[] {
         label:
           linkedDoc.frontmatter.title ??
           pathSegmentToLabel(path.basename(path.dirname(resolvedFilePath))),
-        slug: filePathToSlug(resolvedFilePath, docsDirPath),
+        slug: toSidebarSlug({
+        docsDirPath,
+        sourceDocFilePath: resolvedFilePath,
+        frontmatterSlug: linkedDoc.frontmatter.slug,
+      }),
         ...(indexMarker && { badge: indexMarker }),
       });
       continue;
@@ -211,7 +253,11 @@ function buildItems(options: TBuildItemsOptions): TSidebarItem[] {
         pathSegmentToLabel(
           path.basename(resolvedFilePath, path.extname(resolvedFilePath)),
         ),
-      slug: filePathToSlug(resolvedFilePath, docsDirPath),
+      slug: toSidebarSlug({
+        docsDirPath,
+        sourceDocFilePath: resolvedFilePath,
+        frontmatterSlug: linkedDoc.frontmatter.slug,
+      }),
     });
   }
 

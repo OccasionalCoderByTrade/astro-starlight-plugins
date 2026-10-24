@@ -1,9 +1,9 @@
 import type { HookParameters } from "@astrojs/starlight/types";
 import { fileURLToPath } from "node:url";
 import { validateSidebarOptions } from "../utils/sidebar-options.js";
-import { normalizeSidebarSlug } from "../utils/sidebar-slugs.js";
-import type { TSidebarGroup, TSidebarItem } from "../utils/sidebar-types.js";
-import { getIndexMdSidebarItems, SOURCE_DOC_EXTENSIONS } from "./utils.js";
+import type { TSidebarGroup } from "../utils/sidebar-types.js";
+import { getSourceDocExtensions } from "../utils/workspace-utils.js";
+import { getIndexMdSidebarItems } from "./utils.js";
 
 /**
  * Configuration options for sidebar generation behavior.
@@ -40,24 +40,6 @@ type TIndexOnlySidebarPluginOptions = TOptions & {
   directories: string[];
 };
 
-function normalizeItems(items: TSidebarItem[]): TSidebarItem[] {
-  return items.map((item) => {
-    if ("items" in item) {
-      return {
-        label: item.label,
-        items: normalizeItems(item.items),
-      };
-    }
-    if ("slug" in item) {
-      return {
-        label: item.label,
-        slug: normalizeSidebarSlug(item.slug),
-      };
-    }
-    return item;
-  });
-}
-
 /**
  * Starlight plugin that automatically generates a sidebar configuration by scanning the filesystem
  * for index.md/index.mdx files in specified directories.
@@ -80,6 +62,9 @@ export function starlightIndexOnlySidebar(
       "config:setup": (hookOptions: HookParameters<"config:setup">) => {
         const { updateConfig, astroConfig } = hookOptions;
         const { directories, dirnameDeterminesLabels } = pluginOptions;
+        const sourceDocExtensions = getSourceDocExtensions(
+          astroConfig.integrations,
+        );
 
         const docsDirPath = fileURLToPath(
           new URL("content/docs/", astroConfig.srcDir),
@@ -89,28 +74,29 @@ export function starlightIndexOnlySidebar(
           docsDirPath,
           directories,
           maxGroupLevels: pluginOptions.maxGroupLevels,
-          sourceDocExtensions: SOURCE_DOC_EXTENSIONS,
+          sourceDocExtensions,
         });
-        const functionOptions: TOptions = {
+        const functionOptions = {
           maxGroupLevels,
           dirnameDeterminesLabels,
+          sourceDocExtensions,
         };
 
         const sidebarItems = dirPaths
           .map((dirPath) => {
-            const rawItems = getIndexMdSidebarItems(dirPath, functionOptions);
+            const rawItems = getIndexMdSidebarItems(
+              docsDirPath,
+              dirPath,
+              functionOptions,
+            );
             // Remove the root group wrapper that getIndexMdSidebarItems adds
             const rootGroup = rawItems[0];
             if (!rootGroup || !("items" in rootGroup)) {
               return undefined;
             }
-            const items = rootGroup.items || [];
-            // Normalize slugs for Starlight
-            const normalizedItems = normalizeItems(items);
-
             return {
               label: rootGroup.label,
-              items: normalizedItems,
+              items: rootGroup.items,
             };
           })
           .filter(
