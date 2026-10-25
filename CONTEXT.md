@@ -159,13 +159,17 @@ A piece of styled markup that two or more plugins emit, so its styles belong to 
 _Avoid_: shared class, common component
 
 **Design token**:
-A `--cannoli-*` custom property holding a value shared by plugin styles, plugin scripts and the utility stylesheet, such as an error colour.
+A `--cannoli-*` custom property holding a value shared by plugin styles, plugin scripts and opt-in stylesheets, such as an error colour.
 _Avoid_: CSS variable, theme variable, Sass variable
 
-**Utility stylesheet**:
-The package's opt-in stylesheet of utility classes that a site may add to its own styles. No plugin depends on it.
+**Opt-in stylesheet**:
+A stylesheet the package exports for a site to add to its own styles: the utility stylesheet or the Starlight theme stylesheet. No plugin depends on one.
 _Avoid_: shared stylesheet, main stylesheet, `main.scss`, `index.scss`
 
-**Demo site styles**:
-The styling the package's own docs site applies to itself. They are never shipped.
-_Avoid_: Starlight overrides, site theme
+**Utility stylesheet**:
+The opt-in stylesheet of utility classes, such as `d-flex` or `pe-1`.
+_Avoid_: Bootstrap stylesheet
+
+**Starlight theme stylesheet**:
+The opt-in stylesheet that changes how Starlight's own markup looks, such as the TOC highlight or the `<details>` background.
+_Avoid_: Starlight overrides, site theme, demo site styles

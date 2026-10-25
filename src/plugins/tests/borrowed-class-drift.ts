@@ -1,9 +1,10 @@
 /**
- * Checks ADR 0015: a plugin never relies on a class that only the utility stylesheet or another
- * plugin's styles define, since a site may not import the first and may not register the second.
- * Classes nobody in this package styles (Starlight's, such as `not-content`) are fine. Only finds
- * classes set as string literals (see EMITTED_CLASS_LIST_PATTERNS), not hast `className` arrays or
- * classes passed through variables. Returns one message per problem.
+ * Checks ADR 0015: a plugin never relies on a class that only an opt-in stylesheet (the utility
+ * stylesheet or the Starlight theme stylesheet) or another plugin's styles define, since a site
+ * may not import the first and may not register the second. Classes nobody in this package styles
+ * (Starlight's, such as `not-content`) are fine. Only finds classes set as string literals (see
+ * EMITTED_CLASS_LIST_PATTERNS), not hast `className` arrays or classes passed through variables.
+ * Returns one message per problem.
  */
 export function findBorrowedClasses(options: {
   plugins: readonly {
@@ -13,11 +14,11 @@ export function findBorrowedClasses(options: {
     /** The plugin's own SCSS. */
     stylesheetSource: string;
   }[];
-  utilityStylesheetSource: string;
+  optInStylesheetSource: string;
   /** Design tokens and shared components, which any plugin may import. */
   tokenAndComponentStylesheetSource: string;
 }): string[] {
-  const utilityClasses = findStyledClasses(options.utilityStylesheetSource);
+  const optInClasses = findStyledClasses(options.optInStylesheetSource);
   const tokenAndComponentClasses = findStyledClasses(
     options.tokenAndComponentStylesheetSource,
   );
@@ -38,9 +39,9 @@ export function findBorrowedClasses(options: {
       ) {
         continue;
       }
-      if (utilityClasses.has(emittedClass)) {
+      if (optInClasses.has(emittedClass)) {
         problems.push(
-          `plugin "${plugin.name}" uses class "${emittedClass}" from the utility stylesheet`,
+          `plugin "${plugin.name}" uses class "${emittedClass}" from an opt-in stylesheet`,
         );
         continue;
       }

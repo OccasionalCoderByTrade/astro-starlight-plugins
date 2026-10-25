@@ -695,18 +695,25 @@ Every plugin has its own subpath (`starlight-cannoli-plugins/<plugin-name>`), as
 
 Every plugin ships its own styles and adds them to each page when you register it, so you don't need to add anything to `customCss` or install `sass`. Plugin styles sit in a `cannoli` cascade layer, above Starlight's layers and below unlayered CSS, so any rule in your own `customCss` overrides them, whatever its specificity.
 
-The package also has an optional utility stylesheet: Bootstrap's utility classes (`d-flex`, `pe-1`, `align-middle` and so on) plus a few extra ones (`visibility-hidden`, `visible`, `flex-fill`). No plugin depends on it. Add it if you want to use those classes in your own content:
+The package also has two optional stylesheets. No plugin depends on either, so add only the ones you want:
+
+- **Utility stylesheet** (`styles/utilities.css`): Bootstrap's utility classes (`d-flex`, `pe-1`, `align-middle` and so on) plus a few extra ones (`visibility-hidden`, `visible`, `flex-fill`), for use in your own content.
+- **Starlight theme stylesheet** (`styles/starlight-theme.css`): changes to how Starlight itself looks. It covers a narrower content column, the TOC highlight, the search highlight colour, the `<details>` background, overflow scrolling for KaTeX and MathJax, dark-mode inversion for TikZ diagrams and `img.note-svg`, and the code-block copy button size.
 
 ```ts
 // astro.config.mjs
 starlight({
-  customCss: ["starlight-cannoli-plugins/styles/utilities.css"],
+  customCss: [
+    "starlight-cannoli-plugins/styles/utilities.css",
+    "starlight-cannoli-plugins/styles/starlight-theme.css",
+  ],
 });
 ```
 
 **Upgrading from 3.x:**
 
-- `starlight-cannoli-plugins/styles/main.scss` and the rest of the `styles/*` export are gone. Replace `main.scss` in `customCss` with `starlight-cannoli-plugins/styles/utilities.css`, or remove it if you only had it there for the plugins. It no longer includes the Starlight overrides `main.scss` used to carry, such as the TOC highlight, the `<details>` background and the KaTeX/MathJax overflow rules.
+- `starlight-cannoli-plugins/styles/main.scss` and the rest of the `styles/*` export are gone, and you no longer need `sass` for them. In `customCss`, replace `main.scss` with the two stylesheets above, which together hold what `main.scss` did, minus the plugins' own styles. If you only had `main.scss` there for the plugins, remove it.
+- The Starlight theme stylesheet's `<details>` rule now sets only vertical padding, so `starlightDomPatches`' horizontal padding on `<details>` shows through.
 - Undocumented plugin classes now have a `cannoli-` prefix, so update any CSS of yours that targets them: `details-wrapper` is now `cannoli-details-wrapper` (`starlightDomPatches`), and `page-src-*` is now `cannoli-page-src-*` (`astroServeDocsFiles`). Documented classes keep their names.
 
 ## Peer Dependencies

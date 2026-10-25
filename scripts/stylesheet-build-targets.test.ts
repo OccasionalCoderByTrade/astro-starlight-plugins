@@ -26,7 +26,7 @@ describe("stylesheetBuildTargets", () => {
         "styles/_mixins.scss",
         "plugins/foo/_shared.scss",
         "plugins/foo/index.ts",
-        "demo-styles/site.scss",
+        "content/site.scss",
       ]),
     ).toEqual([]);
   });

@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { findBorrowedClasses } from "./borrowed-class-drift.js";
 
 describe("findBorrowedClasses", () => {
-  it("reports a class the plugin only gets from the utility stylesheet", () => {
+  it("reports a class the plugin only gets from an opt-in stylesheet", () => {
     const borrowedClassProblems = findBorrowedClasses({
       plugins: [
         {
@@ -14,11 +14,11 @@ describe("findBorrowedClasses", () => {
           stylesheetSource: "",
         },
       ],
-      utilityStylesheetSource: ".pe-1 { padding-right: 0.25rem !important; }",
+      optInStylesheetSource: ".pe-1 { padding-right: 0.25rem !important; }",
       tokenAndComponentStylesheetSource: "",
     });
     expect(borrowedClassProblems).toEqual([
-      'plugin "foo" uses class "pe-1" from the utility stylesheet',
+      'plugin "foo" uses class "pe-1" from an opt-in stylesheet',
     ]);
   });
 
@@ -36,7 +36,7 @@ describe("findBorrowedClasses", () => {
           stylesheetSource: ".bar-btn { color: red; }",
         },
       ],
-      utilityStylesheetSource: "",
+      optInStylesheetSource: "",
       tokenAndComponentStylesheetSource: "",
     });
     expect(borrowedClassProblems).toEqual([
@@ -56,7 +56,7 @@ describe("findBorrowedClasses", () => {
           stylesheetSource: ".foo-icon { width: 1em; }",
         },
       ],
-      utilityStylesheetSource: ".foo-icon, .shared-toggle { display: none; }",
+      optInStylesheetSource: ".foo-icon, .shared-toggle { display: none; }",
       tokenAndComponentStylesheetSource: ".shared-toggle { display: flex; }",
     });
     expect(borrowedClassProblems).toEqual([]);
@@ -72,7 +72,7 @@ describe("findBorrowedClasses", () => {
           stylesheetSource: ".foo-banner { position: fixed; }",
         },
       ],
-      utilityStylesheetSource: ".foo-banner--, .variant { display: none; }",
+      optInStylesheetSource: ".foo-banner--, .variant { display: none; }",
       tokenAndComponentStylesheetSource: "",
     });
     expect(borrowedClassProblems).toEqual([]);
@@ -80,7 +80,7 @@ describe("findBorrowedClasses", () => {
 });
 
 describe("this package", () => {
-  it("has no plugin that borrows a class from the utility stylesheet or another plugin", async () => {
+  it("has no plugin that borrows a class from an opt-in stylesheet or another plugin", async () => {
     const srcDirPath = fileURLToPath(new URL("../..", import.meta.url));
     const pluginsDirPath = join(srcDirPath, "plugins");
     const stylesDirPath = join(srcDirPath, "styles");
@@ -139,12 +139,14 @@ describe("this package", () => {
 
     const borrowedClassProblems = findBorrowedClasses({
       plugins,
-      utilityStylesheetSource: await readJoinedFileSources(
+      optInStylesheetSource: await readJoinedFileSources(
         stylesDirPath,
         (relativeFilePath) =>
-          ["utilities.scss", "_bootstrap-utilities.scss"].includes(
-            relativeFilePath,
-          ),
+          [
+            "utilities.scss",
+            "_bootstrap-utilities.scss",
+            "starlight-theme.scss",
+          ].includes(relativeFilePath),
       ),
       tokenAndComponentStylesheetSource: await readJoinedFileSources(
         stylesDirPath,

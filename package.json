@@ -51,7 +51,8 @@
       "import": "./dist/plugins/expressive-code-emphasis.js",
       "types": "./dist/plugins/expressive-code-emphasis.d.ts"
     },
-    "./styles/utilities.css": "./dist/styles/utilities.css"
+    "./styles/utilities.css": "./dist/styles/utilities.css",
+    "./styles/starlight-theme.css": "./dist/styles/starlight-theme.css"
   },
   "files": [
     "dist"

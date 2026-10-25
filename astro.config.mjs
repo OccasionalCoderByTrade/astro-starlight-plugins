@@ -84,7 +84,7 @@ export default defineConfig({
       plugins: [STARLIGHT_SOURCED_SIDEBAR_CONFIG],
       customCss: [
         "/src/styles/utilities.scss",
-        "/src/demo-styles/site.scss",
+        "/src/styles/starlight-theme.scss",
         "katex/dist/katex.min.css",
       ],
       expressiveCode: {

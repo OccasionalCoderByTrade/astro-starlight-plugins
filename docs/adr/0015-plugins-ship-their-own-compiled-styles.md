@@ -9,19 +9,20 @@ A plugin's styles apply as soon as the plugin is registered. The site doesn't ha
 Styles are kept DRY in four ways:
 
 - **Shared partials** (`src/styles/_*.scss`) hold Sass variables, mixins and placeholders. They emit no CSS, so `@use`-ing them from many entries doesn't duplicate output.
-- **Design tokens** are `--cannoli-*` custom properties declared once in `tokens.css`. Plugin styles and plugin scripts (inline styles use `var(--cannoli-...)`) read them, and the utility stylesheet can too. Every plugin that needs them imports `tokens.css`, and Vite emits it once.
+- **Design tokens** are `--cannoli-*` custom properties declared once in `tokens.css`. Plugin styles and plugin scripts (inline styles use `var(--cannoli-...)`) read them, and so does the Starlight theme stylesheet. Every plugin that needs them imports `tokens.css`, and Vite emits it once.
 - **Plugin styles** live next to the plugin that emits the markup. A **shared component** moves to `src/styles/components/` only once a second plugin emits the class. Each plugin imports it, and Vite emits it once.
-- A plugin may use Starlight's classes, but never a class from the utility stylesheet or from another plugin. A drift test enforces this for classes set through `className`, `classList`, `setAttribute("class", ...)` or a `class="..."` attribute.
+- A plugin may use Starlight's classes, but never a class from an opt-in stylesheet or from another plugin. A drift test enforces this for classes set through `className`, `classList`, `setAttribute("class", ...)` or a `class="..."` attribute.
 
 Plugin styles open with `@layer starlight, cannoli;` and sit in `@layer cannoli`. That puts them above every Starlight layer and below any unlayered CSS, so a site's `customCss` always wins, whichever file the bundle puts first.
 
-The utility stylesheet is shipped as compiled CSS through a single `./styles/utilities.css` export and stays unlayered, because its Bootstrap rules use `!important`, which inverts inside layers. Styles the demo site uses only for itself stay out of the package.
+Two opt-in stylesheets ship as compiled CSS, each through its own export: the utility stylesheet (`./styles/utilities.css`) and the Starlight theme stylesheet (`./styles/starlight-theme.css`), which changes how Starlight's own markup looks. Both stay unlayered: they act like the site's own `customCss`, and the utility stylesheet's Bootstrap rules use `!important`, which inverts inside layers. The Starlight theme stylesheet `@use`s the design tokens, so it works without any plugin registered. A site that also registers a plugin gets the token declarations twice, with identical values.
 
 ## Consequences
 
-- Breaking release: `./styles/*` and `main.scss` are gone with no shim, and undocumented plugin classes get a `cannoli-` prefix (`details-wrapper`, `page-src-*`). A class family that README documents keeps its names (`tabbed-content-*`, `toggle-checkbox-btn`, `yt-icon`, `tex-compiled`, `fw-supreme`).
+- Breaking release: `./styles/*` and `main.scss` are gone with no shim (a site lists `utilities.css` and `starlight-theme.css` instead), and undocumented plugin classes get a `cannoli-` prefix (`details-wrapper`, `page-src-*`). A class family that README documents keeps its names (`tabbed-content-*`, `toggle-checkbox-btn`, `yt-icon`, `tex-compiled`, `fw-supreme`).
 - Consumers no longer need `sass`.
 - `tokens.css`, shared components and plugin CSS are build outputs with no export, like `page-script`.
+- Plugin styles now sit in a layer below the Starlight theme stylesheet, so a theme rule that shares a property with a plugin rule wins. The theme's `<details>` rule sets only `padding-block`, so it no longer cancels `starlight-dom-patches`' horizontal padding.
 - `expressive-code-emphasis` keeps its `baseStyles` (ADR 0014).
 - A plugin with options, such as `starlight-dom-patches`, splits its CSS into files and imports only the ones its options call for. A file that two options need (`action-panel`) is imported once, and an option can have a file for when it's off (`details-height-unlimited`).
 - In a production build the minifier merges every plugin's `@layer cannoli` block into one and keeps `starlight` declared ahead of it.

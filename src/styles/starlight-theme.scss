@@ -1,4 +1,7 @@
-// Styles the demo site applies to itself. Never shipped (ADR 0015).
+// The Starlight theme stylesheet: opt-in overrides of Starlight's look. No
+// plugin depends on it. Unlayered, like any site's `customCss` (ADR 0015).
+// It brings its own copy of the design tokens, so it works without a plugin.
+@use "tokens";
 
 .sl-container:where(.astro-7nkwcw3z) {
   max-width: 50rem;
