@@ -29,9 +29,10 @@ export function hideSingleLineGutters() {
     const lineElements = codeElement.querySelectorAll("div.ec-line");
 
     if (lineElements.length === 1) {
-      const gutter = lineElements[0].querySelector("div.gutter");
+      const gutter = lineElements[0].querySelector<HTMLElement>("div.gutter");
       if (gutter) {
-        gutter.classList.add("visually-hidden");
+        // Inline style, since Expressive Code's `all: revert` reset defeats the `hidden` attribute
+        gutter.style.display = "none";
       }
     }
   });
@@ -344,7 +345,7 @@ export function tabbedH2Content() {
 
 export function toggleAllDetails() {
   const detailsElements = document.querySelectorAll(
-    ".main-pane details:not(.visually-hidden)",
+    ".main-pane details:not([hidden])",
   );
   if (detailsElements.length === 0) return;
 
