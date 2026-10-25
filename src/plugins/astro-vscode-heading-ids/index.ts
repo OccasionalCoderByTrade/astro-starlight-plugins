@@ -1,11 +1,6 @@
 import type { AstroIntegration } from "astro";
+import { createProcessorRegistration } from "../utils/processor-registration.js";
 import { remarkVscodeHeadingIds, satteriVscodeHeadingIds } from "./utils.js";
-
-/** What the plugin uses of `config.markdown`, on Astro 7 and on earlier versions. */
-type TMarkdownConfig = {
-  processor?: { name: string; options: Record<string, unknown[] | undefined> };
-  remarkPlugins?: unknown[];
-};
 
 /**
  * Astro integration that gives every Markdown and MDX heading its VS Code heading ID: the id
@@ -17,51 +12,21 @@ type TMarkdownConfig = {
  * `markdown.remarkPlugins` before Astro 7, and fails at startup for any other processor.
  */
 export function astroVscodeHeadingIds(): AstroIntegration {
-  let registeredPlugin: unknown;
-  let registeredPluginListKey: "remarkPlugins" | "mdastPlugins";
+  const processorRegistration = createProcessorRegistration({
+    pluginName: "astro-vscode-heading-ids",
+    remarkPlugin: remarkVscodeHeadingIds,
+    satteriPlugin: satteriVscodeHeadingIds,
+  });
 
   return {
     name: "astro-vscode-heading-ids",
     hooks: {
       "astro:config:setup": ({ config, updateConfig }) => {
-        const { processor } = config.markdown as TMarkdownConfig;
-        if (!processor) {
-          registeredPlugin = remarkVscodeHeadingIds;
-          registeredPluginListKey = "remarkPlugins";
-          updateConfig({
-            markdown: { remarkPlugins: [remarkVscodeHeadingIds] },
-          });
-          return;
-        }
-
-        if (processor.name === "unified") {
-          registeredPlugin = remarkVscodeHeadingIds;
-          registeredPluginListKey = "remarkPlugins";
-        } else if (processor.name === "satteri") {
-          registeredPlugin = satteriVscodeHeadingIds;
-          registeredPluginListKey = "mdastPlugins";
-        } else {
-          throw new Error(
-            `[astro-vscode-heading-ids] The configured \`markdown.processor\` ("${processor.name}") ` +
-              "is not supported. Use `unified()` from `@astrojs/markdown-remark` or " +
-              "`satteri()` from `@astrojs/markdown-satteri`.",
-          );
-        }
-        processor.options[registeredPluginListKey]!.push(registeredPlugin);
+        processorRegistration.register(config, updateConfig);
       },
 
       "astro:config:done": ({ config }) => {
-        const { processor, remarkPlugins } = config.markdown as TMarkdownConfig;
-        const registeredPluginList = processor
-          ? processor.options[registeredPluginListKey]
-          : remarkPlugins;
-        if (!registeredPluginList?.includes(registeredPlugin)) {
-          throw new Error(
-            "[astro-vscode-heading-ids] An integration listed after astroVscodeHeadingIds " +
-              "replaced `markdown.processor`, so headings won't get VS Code heading IDs. " +
-              "Configure the processor in `markdown.processor` instead.",
-          );
-        }
+        processorRegistration.assertStillRegistered(config);
       },
     },
   };

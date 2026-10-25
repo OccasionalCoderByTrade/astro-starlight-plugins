@@ -124,15 +124,36 @@ it("registers through markdown.remarkPlugins when there's no processor (before A
   ).not.toThrow();
 });
 
+it("adds only itself to markdown.remarkPlugins, without repeating the site's own remark plugins", async () => {
+  const { updateConfig, runConfigDone } = await runConfigHooks({
+    remarkPlugins: [remarkMath],
+  });
+  expect(updateConfig).toHaveBeenCalledOnce();
+  const addedRemarkPlugins: unknown[] =
+    updateConfig.mock.calls[0][0].markdown.remarkPlugins;
+  expect(addedRemarkPlugins).toHaveLength(1);
+  expect(addedRemarkPlugins).not.toContain(remarkMath);
+  expect(() =>
+    runConfigDone({ remarkPlugins: [remarkMath, ...addedRemarkPlugins] }),
+  ).not.toThrow();
+});
+
+it("fails at config:done when markdown.remarkPlugins lost it (before Astro 7)", async () => {
+  const { runConfigDone } = await runConfigHooks({ remarkPlugins: [] });
+  expect(() => runConfigDone({ remarkPlugins: [remarkMath] })).toThrow(
+    /\[astro-vscode-heading-ids\].*replaced `markdown.processor`/,
+  );
+});
+
 it("fails at startup on a processor other than unified or satteri", async () => {
   await expect(
     runConfigHooks({ processor: { name: "custom", options: {} } }),
-  ).rejects.toThrow(/"custom".*not supported/);
+  ).rejects.toThrow(/\[astro-vscode-heading-ids\].*"custom".*not supported/);
 });
 
 it("fails at config:done when a later integration replaced the processor", async () => {
   const { runConfigDone } = await runConfigHooks({ processor: unified() });
   expect(() => runConfigDone({ processor: unified() })).toThrow(
-    /replaced `markdown.processor`/,
+    /\[astro-vscode-heading-ids\] An integration listed after astroVscodeHeadingIds replaced `markdown.processor`/,
   );
 });
