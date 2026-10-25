@@ -388,27 +388,36 @@ Each compiled tex diagram's ids, classes and fonts are prefixed with its hash, s
 
 **Migrating to inline SVGs:** every compiled tex diagram's hash changes once, so every block recompiles on the first build. With `removeOrphanedSvgs`, the build removes the old SVGs; otherwise delete them from `svgOutputDir` by hand. If your deploy builds without TeX, run `astro build` locally and commit the new SVGs before deploying.
 
-### Remark GFM Slug
+### VS Code Heading IDs
 
-A remark plugin that assigns heading IDs using the same GFM slug algorithm as VS Code and GitHub, before Astro's internal `rehypeHeadingIds` runs. Since `rehypeHeadingIds` skips headings that already have an `id`, this takes precedence and produces fragment anchors that match what VS Code's markdown link resolver expects.
+An Astro integration that gives each heading in your Markdown and MDX the same id VS Code gives it. A `[text](./other.md#some-heading)` link you can ctrl+click in the editor then lands on the right heading on the site too.
 
-This is especially useful when headings contain inline math or other syntax that Astro/Starlight would otherwise slugify from the rendered HTML output (producing long encoded IDs that differ from VS Code's raw-text slugification).
+Astro builds heading ids from the rendered HTML, so they differ from VS Code's for some headings. The usual case is inline math: with KaTeX, `## Big $O(n^2)$ time` gets an id like `big-on2on2on2-time`, built from KaTeX's output, while VS Code expects `big--time`.
+
+It follows VS Code with its default settings, which include math support:
+
+- The id is built from the heading's text. Bold, inline code and link text count, and so does image alt text.
+- Math and inline HTML tags are left out. A heading that's only math gets an empty id.
+- Ids are lowercased, punctuation is dropped and spaces become `-`. Duplicates get `-1`, `-2` and so on.
+- A heading that already has an id (from another plugin) keeps it.
+
+It works with both of Astro's Markdown processors, `unified()` and `satteri()`, and adds itself to whichever one is configured. With Sätteri, turn on `features.math` if you use math: otherwise `$x$` is plain text and stays in the id. Its position in `integrations` doesn't matter. `astro dev` and `astro build` fail at startup if `markdown.processor` is some other processor, or if an integration listed after it replaces the processor.
+
+Markdoc (`.mdoc`) doesn't run Markdown processor plugins, so its headings keep Markdoc's ids.
 
 **Usage:**
 
 ```ts
 // astro.config.mjs
 import { defineConfig } from "astro/config";
-import remarkGfmSlug from "starlight-cannoli-plugins/remark-gfm-slug";
+import { astroVscodeHeadingIds } from "starlight-cannoli-plugins/astro-vscode-heading-ids";
 
 export default defineConfig({
-  markdown: {
-    remarkPlugins: [
-      remarkGfmSlug, // must come before remark-math or other transforming plugins
-    ],
-  },
+  integrations: [astroVscodeHeadingIds()],
 });
 ```
+
+**Migrating from `remarkGfmSlug`:** the `remark-gfm-slug` export is gone. Remove `remarkGfmSlug` from `markdown.remarkPlugins` and add `astroVscodeHeadingIds()` to `integrations`. Ids now keep image alt text and drop inline HTML, so links to headings like that change.
 
 ### Local Links
 

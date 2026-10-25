@@ -8,7 +8,8 @@ export default defineConfig({
     "plugins/starlight-index-sourced-sidebar":
       "src/plugins/starlight-index-sourced-sidebar/index.ts",
     "plugins/rehype-validate-links": "src/plugins/rehype-validate-links.ts",
-    "plugins/remark-gfm-slug": "src/plugins/remark-gfm-slug.ts",
+    "plugins/astro-vscode-heading-ids":
+      "src/plugins/astro-vscode-heading-ids/index.ts",
     "plugins/astro-latex-compile": "src/plugins/astro-latex-compile/index.ts",
     "plugins/astro-normalize-paths":
       "src/plugins/astro-normalize-paths/index.ts",

@@ -108,6 +108,16 @@ _Avoid_: public collision, shadowed asset
 A local link to a source doc written as its page path.
 _Avoid_: slug link, URL link
 
+### Heading IDs
+
+**Heading ID**:
+The id on a page's heading that a `#fragment` link targets.
+_Avoid_: slug, anchor, heading slug
+
+**VS Code heading ID**:
+A heading ID that matches the fragment VS Code resolves when following the same link in the source doc.
+_Avoid_: GFM slug, GitHub heading ID
+
 ### Sidebars
 
 **Sidebar index**:

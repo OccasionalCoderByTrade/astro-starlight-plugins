@@ -9,7 +9,7 @@ export {
   type AstroServeDocsFilesOptions,
 } from "./plugins/astro-serve-docs-files/index.js";
 export { rehypeValidateLinks } from "./plugins/rehype-validate-links.js";
-export { default as remarkGfmSlug } from "./plugins/remark-gfm-slug.js";
+export { astroVscodeHeadingIds } from "./plugins/astro-vscode-heading-ids/index.js";
 export { astroNormalizePaths } from "./plugins/astro-normalize-paths/index.js";
 export {
   astroLocalLinks,
