@@ -620,13 +620,14 @@ export default defineConfig({
 
 ### Expressive Code Emphasis
 
-An Expressive Code plugin that highlights specific terms inside code blocks using the `emph` meta attribute. Matched terms are wrapped in a `<span class="fw-supreme">` for custom styling.
+An Expressive Code plugin that highlights specific terms inside code blocks using the `emph` meta attribute. Matched terms are wrapped in a `<span class="fw-supreme">` and set in Source Code Pro at weight 900.
 
 **Features:**
 
 - Comma-separated list of terms to emphasize per code block
-- Exact-word matching: terms surrounded by word boundaries or whitespace/string edges are matched; partial substrings are not
-- Supports non-word characters (e.g. `(`, `]`, `;`) as well as identifiers
+- Whole-word matching for letters, combining marks and digits in any script: `foo` doesn't match in `food`, and `na` doesn't match in `naïve`
+- Terms can contain or be made of punctuation (e.g. `()`, `arr[0]`, `;`)
+- Overlapping or duplicate terms never produce nested spans
 
 **Usage:**
 
@@ -660,7 +661,15 @@ function foo() {
 ```
 ````
 
-Multiple terms are separated by commas. Each term is matched as a whole unit — it must be surrounded by whitespace, start/end of line, or (for terms that start/end with word characters) word boundaries.
+Here `foo`, `bar` and all three `()` are emphasized.
+
+Matching rules:
+
+- Terms are comma-separated and trimmed, so a term can't contain a comma. Matching is case-sensitive.
+- An edge of a term that is a word character can't sit against another word character. A word character is a letter, combining mark (such as the accent in a decomposed `é`), digit or `_`, in any script. An edge that is punctuation can sit against anything, so `()` matches in `foo()`, and `-` matches each dash in `--`.
+- Matches never overlap. The one that starts first wins, and at the same start the longer term wins, so `emph="foo,foo.bar"` emphasizes `foo.bar` as one unit.
+
+The plugin ships its own styles, so there's nothing else to import. The font is self-hosted: Source Code Pro at weight 900 is inlined into Expressive Code's stylesheet (about 38 KB), with no request to Google Fonts. It only covers the latin and latin-ext subsets, so other characters in an emphasized term (Greek or Cyrillic, for example) fall back to the browser's monospace font.
 
 ## Installation
 
