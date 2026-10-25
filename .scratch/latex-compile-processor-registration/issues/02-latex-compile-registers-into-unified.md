@@ -19,17 +19,17 @@ The tex inputs hash travels as the options of the `[attacher, options]` tuple, s
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Registration goes only through the helper. There's no `updateConfig` call that copies existing remark plugins.
-- [ ] The core has no knowledge of `unified` or Sätteri, and the remark adapter only walks the tree and splices the core's HTML in.
-- [ ] The existing LaTeX compile tests that call the transformer directly move up to the spec's seam: run the config hooks against a real `unified()` processor, then render through it. Tests that need TeX stay skipped when it's missing.
-- [ ] At that seam, under `unified`: compiled tex diagram, tex compile error with the right `file:line` (frontmatter included), "last `blockid` wins", ledger recording, and the build failing at `astro:build:done` with every tex compile error.
-- [ ] Registration cases at that seam: the pre-Astro-7 fallback adds exactly one entry, an unsupported processor throws at startup, and a replaced processor throws at `config:done`.
-- [ ] Changing a tex input file still changes the registered plugin's hashed options.
-- [ ] Demo site with the `markdown` block in `astro.config.mjs` restored: `tex compile` blocks render as diagrams in the browser, and `remarkMath` appears once in the final `unified` processor.
-- [ ] Demo site with the `markdown` block removed: `astro dev` fails at startup naming the processor.
-- [ ] `npm test` and `npm run lib:build` pass.
+- [x] Registration goes only through the helper. There's no `updateConfig` call that copies existing remark plugins.
+- [x] The core has no knowledge of `unified` or Sätteri, and the remark adapter only walks the tree and splices the core's HTML in.
+- [x] The existing LaTeX compile tests that call the transformer directly move up to the spec's seam: run the config hooks against a real `unified()` processor, then render through it. Tests that need TeX stay skipped when it's missing.
+- [x] At that seam, under `unified`: compiled tex diagram, tex compile error with the right `file:line` (frontmatter included), "last `blockid` wins", ledger recording, and the build failing at `astro:build:done` with every tex compile error.
+- [x] Registration cases at that seam: the pre-Astro-7 fallback adds exactly one entry, an unsupported processor throws at startup, and a replaced processor throws at `config:done`.
+- [x] Changing a tex input file still changes the registered plugin's hashed options.
+- [x] Demo site with the `markdown` block in `astro.config.mjs` restored: `tex compile` blocks render as diagrams in the browser, and `remarkMath` appears once in the final `unified` processor.
+- [x] Demo site with the `markdown` block removed: `astro dev` fails at startup naming the processor.
+- [x] `npm test` and `npm run lib:build` pass.
 
 ## Background
 
