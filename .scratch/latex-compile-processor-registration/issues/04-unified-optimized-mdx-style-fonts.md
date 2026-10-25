@@ -1,6 +1,6 @@
 # 04: Compiled tex diagrams lose their fonts in optimized MDX on `unified`
 
-**Status:** needs-triage
+**Status:** resolved
 
 **Blocked by:** None
 
@@ -12,6 +12,12 @@ The test `keeps the compiled tex diagram's font CSS in an optimized mdx doc` in 
 
 **Done when:**
 
-- [ ] On `unified`, an optimized MDX doc keeps the compiled tex diagram's `@font-face` CSS in a `<style>` element, not in an attribute.
-- [ ] The skipped test runs, and passes, under both processors.
-- [ ] Browser check on the demo site: compiled tex diagrams in an MDX page use their fonts on `unified`.
+- [x] On `unified`, an optimized MDX doc keeps the compiled tex diagram's `@font-face` CSS in a `<style>` element, not in an attribute.
+- [x] The skipped test runs, and passes, under both processors.
+- [x] Browser check on the demo site: compiled tex diagrams in an MDX page use their fonts on `unified`.
+
+## Comments
+
+- Fix: the remark adapter now splices prebuilt hast (from the new shared `prebuilt-hast.ts`, moved out of the Sätteri adapter) into MDX docs, so each `<style>` gets the same empty comment child. The comment can't go into the raw HTML string, because HTML parses everything inside `<style>` as text.
+- `.md` docs still get the raw `html` node on `unified`, the same as the raw string on Sätteri. That keeps the inlined `<svg>` markup identical across processors, and `.md` isn't affected by the optimized-MDX bug.
+- Browser check (dev, `unified`, temp `.mdx` page): the `<style>` holds the `@font-face` CSS with no `set:html` attribute, all tex fonts load, and there are no console errors or warnings. `tex-test.md` still renders 28 compiled tex diagrams.

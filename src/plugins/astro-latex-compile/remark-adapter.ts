@@ -1,4 +1,4 @@
-import type { Code, Html, Parent, Root } from "mdast";
+import type { Code, Html, Paragraph, Parent, Root } from "mdast";
 import { SKIP, visit } from "unist-util-visit";
 import type { VFile } from "vfile";
 import {
@@ -6,10 +6,12 @@ import {
   texCompileBlockFromCodeNode,
   type TLatexCompileCore,
 } from "./core.js";
+import { prebuiltHastNode } from "./prebuilt-hast.js";
 
 /**
  * The remark attacher for the `unified` processor: finds each `tex compile`
- * block and splices in the HTML the core rendered for it.
+ * block and splices in the HTML the core rendered for it, raw in a Markdown
+ * doc and prebuilt hast in an MDX doc.
  */
 export function createRemarkLatexCompile(core: TLatexCompileCore) {
   return function remarkLatexCompile() {
@@ -31,12 +33,15 @@ export function createRemarkLatexCompile(core: TLatexCompileCore) {
         blockEntries.map(({ node }) => texCompileBlockFromCodeNode(node)),
       );
 
+      const isMdxDoc = file.extname === ".mdx";
       // Splice in reverse order so earlier splices don't shift the indices of
       // later blocks sharing the same parent.
       for (let i = blockEntries.length - 1; i >= 0; i--) {
         const { index, parent } = blockEntries[i];
-        const htmlNode: Html = { type: "html", value: blockHtmls[i] };
-        parent.children.splice(index, 1, htmlNode);
+        const blockNode: Html | Paragraph = isMdxDoc
+          ? prebuiltHastNode(blockHtmls[i])
+          : { type: "html", value: blockHtmls[i] };
+        parent.children.splice(index, 1, blockNode);
       }
     };
   };

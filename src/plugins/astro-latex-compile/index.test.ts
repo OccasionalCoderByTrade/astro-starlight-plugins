@@ -371,9 +371,7 @@ describe.each(processorFactories)(
         expect(mdxModule).not.toMatch(/components\.(p|em)\b/);
       });
 
-      // TODO: unified's optimized MDX moves the `<style>` into an attribute
-      // too, and the remark adapter doesn't work around it yet.
-      it.skipIf(processorName === "unified")(
+      it(
         "keeps the compiled tex diagram's font CSS in an optimized mdx doc",
         async () => {
           const site = await createSite(createProcessor());
