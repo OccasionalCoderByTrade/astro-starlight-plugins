@@ -10,10 +10,10 @@ import {
   astroLatexCompile,
   astroLocalLinks,
   expressiveCodeEmphasis,
-  remarkGfmSlug,
   starlightDomPatches,
   starlightIndexSourcedSidebar,
   astroServeDocsFiles,
+  astroVscodeHeadingIds,
 } from "./src";
 
 // Common Config Items
@@ -42,7 +42,6 @@ const STARLIGHT_SOURCED_SIDEBAR_CONFIG = starlightIndexSourcedSidebar({
 export default defineConfig({
   markdown: {
     remarkPlugins: [
-      remarkGfmSlug, // assign heading IDs using GFM slug algorithm (matches VS Code)
       remarkMath, // adds support for math
     ],
     rehypePlugins: [
@@ -74,6 +73,7 @@ export default defineConfig({
         youtube: true,
       },
     }),
+    astroVscodeHeadingIds(), // heading ids that match VS Code's `#fragment` links
     astroLocalLinks(), // validate local links and rewrite relative ones to root-absolute
     starlight({
       title: SITE_NAME,
