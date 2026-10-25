@@ -1,6 +1,6 @@
 # Spec: LaTeX compile registers into the active Markdown processor
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 ## Problem Statement
 
