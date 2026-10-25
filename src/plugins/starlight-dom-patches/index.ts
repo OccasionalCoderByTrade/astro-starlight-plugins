@@ -1,8 +1,6 @@
 import { fileURLToPath } from "node:url";
 import type { AstroIntegration } from "astro";
-
-const css = String.raw;
-const js = String.raw;
+import { pluginStylesImportScript } from "../utils/plugin-styles.js";
 
 export interface DomPatchesOptions {
   /** Hide line number gutters on single-line code blocks. @default false */
@@ -37,92 +35,6 @@ export interface DomPatchesOptions {
    */
   wrapDetailsContent?: boolean;
 }
-
-type ConditionalCssEntry = { enabled?: string; disabled?: string };
-
-const CONDITIONAL_CSS: Partial<
-  Record<keyof DomPatchesOptions, ConditionalCssEntry>
-> = {
-  offerTabbedContent: {
-    enabled: css`
-      /* Suppress the default crossfade for the named panel transition. */
-      ::view-transition-old(tabbed-panel),
-      ::view-transition-new(tabbed-panel) {
-        animation: none;
-        mix-blend-mode: normal;
-      }
-
-      /* Slide animation — only when the user has no motion preference. */
-      @media (prefers-reduced-motion: no-preference) {
-        :root[data-tab-direction="next"]::view-transition-old(tabbed-panel) {
-          animation: tabbed-slide-out-to-left 250ms ease both;
-        }
-        :root[data-tab-direction="next"]::view-transition-new(tabbed-panel) {
-          animation: tabbed-slide-in-from-right 250ms ease both;
-        }
-        :root[data-tab-direction="prev"]::view-transition-old(tabbed-panel) {
-          animation: tabbed-slide-out-to-right 250ms ease both;
-        }
-        :root[data-tab-direction="prev"]::view-transition-new(tabbed-panel) {
-          animation: tabbed-slide-in-from-left 250ms ease both;
-        }
-      }
-
-      @keyframes tabbed-slide-out-to-left {
-        to {
-          transform: translateX(-30%);
-          opacity: 0;
-        }
-      }
-      @keyframes tabbed-slide-in-from-right {
-        from {
-          transform: translateX(30%);
-          opacity: 0;
-        }
-      }
-      @keyframes tabbed-slide-out-to-right {
-        to {
-          transform: translateX(30%);
-          opacity: 0;
-        }
-      }
-      @keyframes tabbed-slide-in-from-left {
-        from {
-          transform: translateX(-30%);
-          opacity: 0;
-        }
-      }
-    `,
-  },
-  limitDetailsElementHeight: {
-    enabled: css`
-      .main-pane details[open] {
-        max-width: 100%;
-      }
-
-      .main-pane details > summary {
-        padding-left: 1.1em;
-      }
-
-      .main-pane details[open] > div.details-wrapper {
-        overflow: auto;
-        max-height: 67vh;
-        padding: 0 1em;
-      }
-
-      .main-pane details[open] p > img {
-        height: auto;
-        width: auto;
-      }
-    `,
-    disabled: css`
-      .main-pane details {
-        padding-left: 1rem;
-        padding-right: 1rem;
-      }
-    `,
-  },
-};
 
 /**
  * Astro integration that injects a client-side script to apply DOM patches
@@ -170,18 +82,23 @@ export function starlightDomPatches(
           );
         }
 
-        for (const [key, entry] of Object.entries(CONDITIONAL_CSS) as [
-          keyof DomPatchesOptions,
-          ConditionalCssEntry,
-        ][]) {
-          const cssString = options[key] ? entry.enabled : entry.disabled;
-          if (cssString) {
-            injectScript(
-              "page",
-              js`{ const styleElement = document.createElement("style"); styleElement.textContent = ${JSON.stringify(cssString)}; document.head.appendChild(styleElement); }`,
-            );
-          }
-        }
+        const stylesheetNames = [
+          offerTabbedContent || offerToggleAllDetails ? "action-panel" : null,
+          offerTabbedContent ? "tabbed-content" : null,
+          limitDetailsElementHeight
+            ? "details-height-limited"
+            : "details-height-unlimited",
+          decorateExternalLinks ? "link-icons" : null,
+        ].filter((stylesheetName) => stylesheetName !== null);
+        injectScript(
+          "page-ssr",
+          pluginStylesImportScript(
+            stylesheetNames.map(
+              (stylesheetName) =>
+                `plugins/starlight-dom-patches/styles/${stylesheetName}`,
+            ),
+          ),
+        );
 
         const scriptPath = JSON.stringify(fileURLToPath(pageScriptUrl));
         const imports = [

@@ -18,7 +18,9 @@ src/
 │   └── tests/        # test harnesses, not a plugin
 ├── content/          # demo/docs site, not shipped
 ├── middleware.ts     # demo site
-└── styles/           # copied to dist/styles on lib:build (shipped as ./styles export)
+├── demo-styles/      # demo site's own styles, not shipped
+└── styles/           # shared SCSS: partials, design tokens, shared components, the utility stylesheet
+scripts/build-styles.ts # compiles every non-partial .scss under src/plugins and src/styles into dist/
 tsup.config.ts        # build entries, kept in sync with package.json exports
 dist/                 # lib build output; app:build also writes here
 ```
@@ -26,6 +28,7 @@ dist/                 # lib build output; app:build also writes here
 - A plugin's exported API is public; changing it is a breaking change. Every plugin must have its own subpath export (`./<name>` in `package.json` matching the `plugins/<name>` tsup entry), see `docs/adr/0013-every-plugin-has-a-subpath-export.md`. Internal sibling modules (page scripts, middleware, routes) get a tsup entry but no export. `src/plugins/tests/subpath-export-drift.test.ts` checks this.
 - New or renamed plugin: update the `tsup.config.ts` `entry`, `package.json` `exports`, `src/index.ts` and `README.md` together.
 - Only move code into `utils/` once 2+ plugins need it. Plugin-specific helpers stay in that plugin's `utils.ts`.
+- Plugins ship their own styles (`docs/adr/0015-plugins-ship-their-own-compiled-styles.md`): SCSS next to the plugin, wrapped in `mixins.plugin-layer`, imported with `injectScript("page-ssr", pluginStylesImportScript([...]))`. Styles move to `src/styles/components/` only once 2+ plugins emit the class. A plugin never uses a class from the utility stylesheet or another plugin; `src/plugins/tests/borrowed-class-drift.test.ts` checks this.
 
 ## Verifying in a browser
 
@@ -39,7 +42,7 @@ When a change affects rendered output or dev-mode behaviour (sidebar, LaTeX, lin
 ## Publishing
 
 1. Bump `version` in `package.json` (or `npm version <patch|minor|major>`). // LLMs shouldn't bump or publish
-2. `npm run lib:build`: compiles SCSS, runs tsup into `dist/`, copies `src/styles` to `dist/styles`.
+2. `npm run lib:build`: generates the Bootstrap utilities partial, runs tsup into `dist/`, then compiles the shipped SCSS into `dist/` as CSS.
 3. `npm pack --dry-run`: check that only `dist/` (plus README, LICENSE, package.json) is included.
 4. `npm publish`: `prepublishOnly` rebuilds the library first.
 

@@ -147,3 +147,25 @@ _Avoid_: link boundary, link range
 **Expressive Code Emphasis Term**:
 A string listed in a code block's `emph` meta, comma-separated, whose every whole-unit occurrence in the block is emphasized. A term edge that is a letter, combining mark, digit or `_` can't sit against another one; an edge that is punctuation can sit against anything. Where two terms' occurrences overlap, the one that starts first wins, and at the same start the longer one.
 _Avoid_: emph word, highlight term, keyword
+
+### Styles
+
+**Plugin styles**:
+The CSS a plugin ships for the markup it emits. It applies whenever the plugin is registered, with nothing for the site to import.
+_Avoid_: plugin CSS, injected styles
+
+**Shared component**:
+A piece of styled markup that two or more plugins emit, so its styles belong to no single plugin.
+_Avoid_: shared class, common component
+
+**Design token**:
+A `--cannoli-*` custom property holding a value shared by plugin styles, plugin scripts and the utility stylesheet, such as an error colour.
+_Avoid_: CSS variable, theme variable, Sass variable
+
+**Utility stylesheet**:
+The package's opt-in stylesheet of utility classes that a site may add to its own styles. No plugin depends on it.
+_Avoid_: shared stylesheet, main stylesheet, `main.scss`, `index.scss`
+
+**Demo site styles**:
+The styling the package's own docs site applies to itself. They are never shipped.
+_Avoid_: Starlight overrides, site theme

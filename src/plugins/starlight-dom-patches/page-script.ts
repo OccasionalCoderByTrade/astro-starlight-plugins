@@ -430,7 +430,7 @@ export function decorateExternalLinks(options: DecorateExternalLinksOptions) {
         return;
 
       const wrapper = document.createElement("span");
-      wrapper.className = "not-content pe-1 align-middle";
+      wrapper.className = "not-content cannoli-link-icon";
 
       const icon = document.createElementNS(
         "http://www.w3.org/2000/svg",
@@ -464,7 +464,7 @@ export function limitDetailsElementHeight() {
 
     if (!summary) {
       const wrapper = document.createElement("div");
-      wrapper.className = "details-wrapper";
+      wrapper.className = "cannoli-details-wrapper";
 
       while (details.children.length > 0) {
         wrapper.appendChild(details.children[0]);
@@ -473,7 +473,7 @@ export function limitDetailsElementHeight() {
       details.appendChild(wrapper);
     } else {
       const wrapper = document.createElement("div");
-      wrapper.className = "details-wrapper";
+      wrapper.className = "cannoli-details-wrapper";
 
       const childrenToWrap = Array.from(details.children).filter(
         (child) => child !== summary,

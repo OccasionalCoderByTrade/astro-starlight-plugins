@@ -82,7 +82,11 @@ export default defineConfig({
         maxHeadingLevel: 6, // include up to h6 in table of contents
       },
       plugins: [STARLIGHT_SOURCED_SIDEBAR_CONFIG],
-      customCss: ["/src/styles/main.scss", "katex/dist/katex.min.css"],
+      customCss: [
+        "/src/styles/utilities.scss",
+        "/src/demo-styles/site.scss",
+        "katex/dist/katex.min.css",
+      ],
       expressiveCode: {
         plugins: [pluginLineNumbers(), expressiveCodeEmphasis()],
         defaultProps: {

@@ -1,0 +1,8 @@
+@use "../../../styles/mixins";
+
+@include mixins.plugin-layer {
+  .cannoli-link-icon {
+    padding-right: 0.25rem;
+    vertical-align: middle;
+  }
+}

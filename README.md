@@ -691,6 +691,24 @@ yarn add starlight-cannoli-plugins
 
 Every plugin has its own subpath (`starlight-cannoli-plugins/<plugin-name>`), as in the usage examples above. Prefer it over the root `starlight-cannoli-plugins` import, which loads every plugin's dependencies, including optional peers like `@expressive-code/core`.
 
+## Styles
+
+Every plugin ships its own styles and adds them to each page when you register it, so you don't need to add anything to `customCss` or install `sass`. Plugin styles sit in a `cannoli` cascade layer, above Starlight's layers and below unlayered CSS, so any rule in your own `customCss` overrides them, whatever its specificity.
+
+The package also has an optional utility stylesheet: Bootstrap's utility classes (`d-flex`, `pe-1`, `align-middle` and so on) plus a few extra ones (`visibility-hidden`, `visible`, `flex-fill`). No plugin depends on it. Add it if you want to use those classes in your own content:
+
+```ts
+// astro.config.mjs
+starlight({
+  customCss: ["starlight-cannoli-plugins/styles/utilities.css"],
+});
+```
+
+**Upgrading from 3.x:**
+
+- `starlight-cannoli-plugins/styles/main.scss` and the rest of the `styles/*` export are gone. Replace `main.scss` in `customCss` with `starlight-cannoli-plugins/styles/utilities.css`, or remove it if you only had it there for the plugins. It no longer includes the Starlight overrides `main.scss` used to carry, such as the TOC highlight, the `<details>` background and the KaTeX/MathJax overflow rules.
+- Undocumented plugin classes now have a `cannoli-` prefix, so update any CSS of yours that targets them: `details-wrapper` is now `cannoli-details-wrapper` (`starlightDomPatches`), and `page-src-*` is now `cannoli-page-src-*` (`astroServeDocsFiles`). Documented classes keep their names.
+
 ## Peer Dependencies
 
 - `astro` ≥ 5.0.0

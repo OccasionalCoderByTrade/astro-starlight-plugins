@@ -1,0 +1,13 @@
+@use "../../styles/mixins";
+
+@include mixins.plugin-layer {
+  .tex-compiled {
+    background-color: transparent;
+    max-width: 100%;
+    height: auto;
+  }
+
+  html[data-theme="dark"] .tex-compiled {
+    filter: invert(1) hue-rotate(var(--cannoli-dark-mode-rotate));
+  }
+}

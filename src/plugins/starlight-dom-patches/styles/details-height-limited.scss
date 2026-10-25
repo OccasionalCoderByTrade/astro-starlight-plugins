@@ -1,0 +1,22 @@
+@use "../../../styles/mixins";
+
+@include mixins.plugin-layer {
+  .main-pane details[open] {
+    max-width: 100%;
+  }
+
+  .main-pane details > summary {
+    padding-left: 1.1em;
+  }
+
+  .main-pane details[open] > div.cannoli-details-wrapper {
+    overflow: auto;
+    max-height: 67vh;
+    padding: 0 1em;
+  }
+
+  .main-pane details[open] p > img {
+    height: auto;
+    width: auto;
+  }
+}

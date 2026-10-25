@@ -1,0 +1,18 @@
+// Design tokens shared by plugin styles, plugin scripts and the utility
+// stylesheet. Plugins that read them import this file (ADR 0015).
+@use "mixins";
+
+@include mixins.plugin-layer {
+  :root {
+    --cannoli-dark-mode-rotate: 178deg;
+    --cannoli-error-low: hsl(0, 70%, 94%);
+    --cannoli-error: hsl(0, 72%, 42%);
+    --cannoli-error-high: hsl(0, 72%, 28%);
+  }
+
+  [data-theme="dark"] {
+    --cannoli-error-low: hsl(0, 55%, 16%);
+    --cannoli-error: hsl(0, 75%, 60%);
+    --cannoli-error-high: hsl(0, 80%, 82%);
+  }
+}

@@ -1,0 +1,8 @@
+@use "../../../styles/mixins";
+
+@include mixins.plugin-layer {
+  .main-pane details {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+}

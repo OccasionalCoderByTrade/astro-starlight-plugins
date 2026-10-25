@@ -2,16 +2,16 @@ import { RAW_DOC_ALTERNATE_LINK_SELECTOR } from "./utils.js";
 
 function showBanner(message: string, variant: "success" | "error"): void {
   const banner = document.createElement("div");
-  banner.className = `page-src-banner page-src-banner--${variant}`;
+  banner.className = `cannoli-page-src-banner cannoli-page-src-banner--${variant}`;
   banner.textContent = message;
   document.body.appendChild(banner);
 
   requestAnimationFrame(() => {
-    banner.classList.add("page-src-banner--visible");
+    banner.classList.add("cannoli-page-src-banner--visible");
   });
 
   setTimeout(() => {
-    banner.classList.remove("page-src-banner--visible");
+    banner.classList.remove("cannoli-page-src-banner--visible");
     banner.addEventListener("transitionend", () => banner.remove(), {
       once: true,
     });
@@ -62,20 +62,23 @@ function createActionBar(
   rawDocUrl: string,
 ): HTMLDivElement {
   const bar = document.createElement("div");
-  bar.className = "page-src-action-bar";
+  bar.className = "cannoli-page-src-action-bar";
 
   // --- dropdown trigger button ---
   const menuBtn = document.createElement("button");
-  menuBtn.className = "page-src-action-bar__btn";
+  menuBtn.className = "cannoli-page-src-action-bar__btn";
   menuBtn.textContent = "⋮";
 
   function setLoading(loading: boolean) {
-    menuBtn.classList.toggle("page-src-action-bar__btn--loading", loading);
+    menuBtn.classList.toggle(
+      "cannoli-page-src-action-bar__btn--loading",
+      loading,
+    );
   }
 
   // --- dropdown menu ---
   const menu = document.createElement("div");
-  menu.className = "page-src-action-bar__menu";
+  menu.className = "cannoli-page-src-action-bar__menu";
 
   const menuItems: { label: string; action: () => void }[] = [];
 
@@ -127,7 +130,7 @@ function createActionBar(
 
   for (const item of menuItems) {
     const btn = document.createElement("button");
-    btn.className = "page-src-action-bar__menu-item";
+    btn.className = "cannoli-page-src-action-bar__menu-item";
     btn.textContent = item.label;
     btn.addEventListener("click", () => {
       item.action();
@@ -137,15 +140,15 @@ function createActionBar(
   }
 
   function openMenu() {
-    menu.classList.add("page-src-action-bar__menu--open");
+    menu.classList.add("cannoli-page-src-action-bar__menu--open");
   }
 
   function closeMenu() {
-    menu.classList.remove("page-src-action-bar__menu--open");
+    menu.classList.remove("cannoli-page-src-action-bar__menu--open");
   }
 
   function isOpen() {
-    return menu.classList.contains("page-src-action-bar__menu--open");
+    return menu.classList.contains("cannoli-page-src-action-bar__menu--open");
   }
 
   menuBtn.addEventListener("click", (e) => {
@@ -161,10 +164,10 @@ function createActionBar(
   bar.appendChild(menuBtn);
   bar.appendChild(menu);
 
-  menuBtn.classList.add("page-src-action-bar__btn--glow");
+  menuBtn.classList.add("cannoli-page-src-action-bar__btn--glow");
   menuBtn.addEventListener(
     "animationend",
-    () => menuBtn.classList.remove("page-src-action-bar__btn--glow"),
+    () => menuBtn.classList.remove("cannoli-page-src-action-bar__btn--glow"),
     { once: true },
   );
 
@@ -179,7 +182,7 @@ export function initPageActionBar(options: ActionBarOptions) {
   if (h1 === null) return;
 
   const wrapper = document.createElement("div");
-  wrapper.className = "page-src-h1-wrapper";
+  wrapper.className = "cannoli-page-src-h1-wrapper";
 
   h1.replaceWith(wrapper);
   wrapper.appendChild(h1);

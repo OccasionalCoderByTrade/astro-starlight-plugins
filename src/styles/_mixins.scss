@@ -1,0 +1,11 @@
+// Wraps plugin styles in the `cannoli` cascade layer: above every Starlight
+// layer and below any unlayered CSS, so a site's `customCss` always wins
+// (ADR 0015). The layer order statement makes that hold whichever file the
+// bundle puts first.
+@mixin plugin-layer {
+  @layer starlight, cannoli;
+
+  @layer cannoli {
+    @content;
+  }
+}

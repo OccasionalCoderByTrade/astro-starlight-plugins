@@ -2,6 +2,7 @@ import fs from "node:fs";
 import { isAbsolute, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { AstroConfig, AstroIntegration } from "astro";
+import { pluginStylesImportScript } from "../utils/plugin-styles.js";
 import { resolveDebugOutput, type DebugOptions } from "./debug-output.js";
 import { createLedger, type TexDiagramLedger } from "./ledger.js";
 import {
@@ -18,30 +19,6 @@ import {
 } from "./transformer.js";
 
 export type { DebugOptions as LatexCompileDebugOptions };
-
-const js = String.raw;
-const DARK_MODE_ROTATE = "178deg";
-
-const INJECTED_CSS = `
-:root {
-  --cannoli-error-low: hsl(0, 70%, 94%);
-  --cannoli-error: hsl(0, 72%, 42%);
-  --cannoli-error-high: hsl(0, 72%, 28%);
-}
-[data-theme="dark"] {
-  --cannoli-error-low: hsl(0, 55%, 16%);
-  --cannoli-error: hsl(0, 75%, 60%);
-  --cannoli-error-high: hsl(0, 80%, 82%);
-}
-.tex-compiled {
-  background-color: transparent;
-  max-width: 100%;
-  height: auto;
-}
-html[data-theme="dark"] .tex-compiled {
-  filter: invert(1) hue-rotate(${DARK_MODE_ROTATE});
-}
-`;
 
 export interface LatexCompileOptions {
   /**
@@ -199,8 +176,11 @@ export function astroLatexCompile(
         if (command !== "build" && command !== "dev") return;
 
         injectScript(
-          "page",
-          js`{ const styleElement = document.createElement("style"); styleElement.textContent = ${JSON.stringify(INJECTED_CSS)}; document.head.appendChild(styleElement); }`,
+          "page-ssr",
+          pluginStylesImportScript([
+            "styles/tokens",
+            "plugins/astro-latex-compile/styles",
+          ]),
         );
 
         if (command === "build") {

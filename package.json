@@ -51,7 +51,7 @@
       "import": "./dist/plugins/expressive-code-emphasis.js",
       "types": "./dist/plugins/expressive-code-emphasis.d.ts"
     },
-    "./styles/*": "./dist/styles/*"
+    "./styles/utilities.css": "./dist/styles/utilities.css"
   },
   "files": [
     "dist"
@@ -75,7 +75,7 @@
     "app:preprocess": "npx sass --quiet --no-source-map src/styles/_bootstrap-utilities-builder.scss src/styles/_bootstrap-utilities.scss",
     "app:help": "astro --help",
     "app:check": "astro check",
-    "lib:build": "npm run app:preprocess && tsup && cp -r src/styles dist/",
+    "lib:build": "npm run app:preprocess && tsup && tsx scripts/build-styles.ts",
     "prepublishOnly": "npm run lib:build",
     "tree:index": "tree -P index.md src/content/docs",
     "tree:depth": "bash scripts/tree-depth.sh",

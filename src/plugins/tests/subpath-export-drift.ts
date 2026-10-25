@@ -25,7 +25,7 @@ export function findSubpathExportDrift(options: {
   }
 
   for (const [exportKey, exportTarget] of Object.entries(packageExports)) {
-    // String targets (e.g. `./styles`) ship copied files, not build entries.
+    // String targets (e.g. `./styles/utilities.css`) ship compiled stylesheets, not build entries.
     if (exportKey === "." || typeof exportTarget !== "object") continue;
     const buildEntry = `plugins/${exportKey.slice("./".length)}`;
     if (!buildEntrySet.has(buildEntry)) {

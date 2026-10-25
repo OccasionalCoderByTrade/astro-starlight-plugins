@@ -1,0 +1,43 @@
+// The panel at the top of the TOC that holds the toggle checkboxes, shared by
+// `offerTabbedContent` and `offerToggleAllDetails`.
+@use "../../../styles/mixins";
+
+@include mixins.plugin-layer {
+  .cannoli-actionable {
+    margin-bottom: 1rem;
+  }
+
+  .toggle-checkbox-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0.2rem 0;
+    cursor: pointer;
+
+    input[type="checkbox"] {
+      position: relative;
+      appearance: none;
+      width: 1.2em;
+      height: 1.2em;
+      border: 2px solid currentColor;
+      border-radius: 2px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background-color 0.2s ease;
+
+      &:checked {
+        background-color: var(--sl-color-accent);
+        border-color: var(--sl-color-accent);
+
+        &::after {
+          content: "✓";
+          color: white;
+          font-size: 0.8em;
+          font-weight: bold;
+        }
+      }
+    }
+  }
+}
