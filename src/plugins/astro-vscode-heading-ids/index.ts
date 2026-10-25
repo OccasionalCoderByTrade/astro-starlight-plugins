@@ -14,6 +14,7 @@ import { remarkVscodeHeadingIds, satteriVscodeHeadingIds } from "./utils.js";
 export function astroVscodeHeadingIds(): AstroIntegration {
   const processorRegistration = createProcessorRegistration({
     pluginName: "astro-vscode-heading-ids",
+    exportName: "astroVscodeHeadingIds",
     remarkPlugin: remarkVscodeHeadingIds,
     satteriPlugin: satteriVscodeHeadingIds,
   });

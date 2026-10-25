@@ -2,6 +2,7 @@ import { readFileSync, writeSync } from "node:fs";
 import { parseFrontmatter } from "@astrojs/markdown-remark";
 import { relative } from "node:path";
 import { MetaOptions } from "@expressive-code/core";
+import type { Code } from "mdast";
 import type { LatexCompileOptions } from "./index.js";
 import { RotatingFileLogger } from "../utils/rotating-file-logger.js";
 import type { DocRender, TexDiagramLedger } from "./ledger.js";
@@ -26,9 +27,11 @@ import { hashTexInputs, type TexInputDir } from "./tex-inputs.js";
 
 const DEBUG_LOG_MAX_SIZE_BYTES = 5 * 1024 * 1024;
 const DEBUG_LOG_BACKUP_COUNT = 3;
+/** Stands in for the doc's path when the processor wasn't given one. */
+const UNKNOWN_DOC_FILE_PATH = "unknown";
 
 /** One tex compile error, as listed when the build fails. */
-export interface TexCompileErrorEntry {
+export interface TTexCompileErrorEntry {
   /** `file:line` of the `tex compile` block, or the doc's path alone. */
   location: string;
   /** The first line of the error's summary. */
@@ -39,7 +42,7 @@ export interface TexCompileErrorEntry {
  * Per-integration state shared by every markdown processor Astro creates, so
  * the ledger survives across processor invocations.
  */
-export interface LatexCompileState {
+export interface TLatexCompileState {
   /**
    * Tools found missing from PATH. Each is logged once; on build, the
    * integration fails the build at `astro:build:done`.
@@ -49,7 +52,7 @@ export interface LatexCompileState {
    * Every tex compile error other than a missing tool, in the order reported.
    * On build, the integration fails the build at `astro:build:done` with them.
    */
-  texCompileErrors: TexCompileErrorEntry[];
+  texCompileErrors: TTexCompileErrorEntry[];
   /** When `true` (dev), a missing tool stops the dev server. */
   exitOnMissingToolchain: boolean;
   /** Owns the output dirs, tracks which doc references which output, and deletes orphans. */
@@ -122,7 +125,9 @@ function inlineSvgHtml(
 
 /** The doc's path relative to the working directory, for messages. */
 function displayFilePath(filePath: string): string {
-  return filePath !== "unknown" ? relative(process.cwd(), filePath) : filePath;
+  return filePath !== UNKNOWN_DOC_FILE_PATH
+    ? relative(process.cwd(), filePath)
+    : filePath;
 }
 
 function errorMessage(err: unknown): string {
@@ -147,13 +152,24 @@ async function writeDebugOutput(
 }
 
 /** One `tex compile` block, as an adapter found it in a doc. */
-export interface TexCompileBlock {
+export interface TTexCompileBlock {
   /** The block's LaTeX source. */
   value: string;
   /** The code fence's meta string, after the language. */
   meta: string | null | undefined;
   /** The fence's 1-based line in the doc body (frontmatter stripped), if known. */
   bodyLine: number | undefined;
+}
+
+/** A `tex compile` block's code node, as the core takes it. */
+export function texCompileBlockFromCodeNode(
+  node: Readonly<Code>,
+): TTexCompileBlock {
+  return {
+    value: node.value,
+    meta: node.meta,
+    bodyLine: node.position?.start.line,
+  };
 }
 
 /** Whether a code block with this language and meta is a `tex compile` block. */
@@ -171,7 +187,7 @@ export function isTexCompileBlock(
  */
 export function createLatexCompileCore(
   options: LatexCompileOptions,
-  state: LatexCompileState,
+  state: TLatexCompileState,
 ) {
   const { ledger } = state;
   const debugLogger = state.debugLogFile
@@ -210,7 +226,7 @@ export function createLatexCompileCore(
   }
 
   /** The block's compiled tex diagram, inlined with its `class` and `alt`. */
-  function compiledDiagramHtml(block: TexCompileBlock, svgMarkup: string) {
+  function compiledDiagramHtml(block: TTexCompileBlock, svgMarkup: string) {
     const metaOptions = new MetaOptions(block.meta ?? "");
     const blockClass = metaOptions.getString("class");
     const extraClasses = (
@@ -227,7 +243,7 @@ export function createLatexCompileCore(
 
   async function compileBlocks(
     filePath: string,
-    blocks: TexCompileBlock[],
+    blocks: TTexCompileBlock[],
     render: DocRender,
   ): Promise<string[]> {
     if (blocks.length === 0) {
@@ -245,16 +261,16 @@ export function createLatexCompileCore(
       if (id !== undefined) lastIndexByBlockId.set(id, i);
     });
 
-    const relFilePath = displayFilePath(filePath);
+    const displayedFilePath = displayFilePath(filePath);
     const frontmatterOffset =
-      filePath !== "unknown" ? getFrontmatterOffset(filePath) : 0;
+      filePath !== UNKNOWN_DOC_FILE_PATH ? getFrontmatterOffset(filePath) : 0;
     // Recomputed per doc: a tex input file added during dev isn't watched, but
     // a doc that re-renders after it was added still hashes it.
     const texInputsHash = hashTexInputs(state.rootDirPath, state.texInputDirs);
 
     const results = await Promise.all(
       blocks.map(async (block, i) => {
-        const lineNumberStr =
+        const displayedLineNumber =
           block.bodyLine !== undefined
             ? String(block.bodyLine + frontmatterOffset)
             : "?";
@@ -263,7 +279,7 @@ export function createLatexCompileCore(
           blockId !== undefined && lastIndexByBlockId.get(blockId) === i
             ? ledger.debugImagePath(filePath, blockId)
             : undefined;
-        const location = `${relFilePath}:${lineNumberStr}`;
+        const location = `${displayedFilePath}:${displayedLineNumber}`;
 
         const parsedMode = parseCompileMode(new MetaOptions(block.meta ?? ""));
         const compileMode = parsedMode.ok
@@ -340,9 +356,9 @@ export function createLatexCompileCore(
      */
     async renderDoc(
       filePath: string | undefined,
-      blocks: TexCompileBlock[],
+      blocks: TTexCompileBlock[],
     ): Promise<string[]> {
-      const docFilePath = filePath || "unknown";
+      const docFilePath = filePath || UNKNOWN_DOC_FILE_PATH;
       const render = ledger.beginDoc(docFilePath);
       try {
         return await compileBlocks(docFilePath, blocks, render);
@@ -362,4 +378,4 @@ export function createLatexCompileCore(
   };
 }
 
-export type LatexCompileCore = ReturnType<typeof createLatexCompileCore>;
+export type TLatexCompileCore = ReturnType<typeof createLatexCompileCore>;

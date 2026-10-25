@@ -1,13 +1,17 @@
 import type { Code, Html, Parent, Root } from "mdast";
 import { SKIP, visit } from "unist-util-visit";
 import type { VFile } from "vfile";
-import { isTexCompileBlock, type LatexCompileCore } from "./core.js";
+import {
+  isTexCompileBlock,
+  texCompileBlockFromCodeNode,
+  type TLatexCompileCore,
+} from "./core.js";
 
 /**
  * The remark attacher for the `unified` processor: finds each `tex compile`
  * block and splices in the HTML the core rendered for it.
  */
-export function createRemarkLatexCompile(core: LatexCompileCore) {
+export function createRemarkLatexCompile(core: TLatexCompileCore) {
   return function remarkLatexCompile() {
     return async function transformer(tree: Root, file: VFile) {
       const blockEntries: { node: Code; index: number; parent: Parent }[] = [];
@@ -24,11 +28,7 @@ export function createRemarkLatexCompile(core: LatexCompileCore) {
 
       const blockHtmls = await core.renderDoc(
         file.path,
-        blockEntries.map(({ node }) => ({
-          value: node.value,
-          meta: node.meta,
-          bodyLine: node.position?.start.line,
-        })),
+        blockEntries.map(({ node }) => texCompileBlockFromCodeNode(node)),
       );
 
       // Splice in reverse order so earlier splices don't shift the indices of

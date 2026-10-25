@@ -3,7 +3,11 @@ import type { Element, ElementContent, Properties } from "hast";
 import type { Code, Paragraph, Root } from "mdast";
 import { parseFragment, type DefaultTreeAdapterTypes } from "parse5";
 import { visit } from "unist-util-visit";
-import { isTexCompileBlock, type LatexCompileCore } from "./core.js";
+import {
+  isTexCompileBlock,
+  texCompileBlockFromCodeNode,
+  type TLatexCompileCore,
+} from "./core.js";
 
 /** What the plugin uses of Sätteri's per-doc visitor context. */
 type TSatteriMdastVisitorContext = {
@@ -39,8 +43,8 @@ function toHastContent(
   if (node.tagName === "style") {
     // Astro's Sätteri MDX pipeline moves a `<style>` whose children are all
     // text into a `set:html` prop, which its static optimizer then writes out
-    // as a literal attribute, leaving the diagram without its fonts. An empty
-    // comment opts out of that move, and nothing reads it.
+    // as a literal attribute, leaving the compiled tex diagram without its
+    // fonts. An empty comment opts out of that move, and nothing reads it.
     children.push({ type: "comment", value: "" });
   }
   return {
@@ -54,7 +58,7 @@ function toHastContent(
 /**
  * The block's HTML as an mdast node that carries its hast. MDX has no raw
  * HTML, and Sätteri re-parses a `raw` string in an MDX doc as MDX, which turns
- * the diagram's CSS and text into Markdown paragraphs.
+ * the compiled tex diagram's CSS and text into Markdown paragraphs.
  */
 function prebuiltHastNode(blockHtml: string): Paragraph {
   const fragmentContent = parseFragment(blockHtml)
@@ -95,7 +99,7 @@ function prebuiltHastNode(blockHtml: string): Paragraph {
  * state is keyed by Sätteri's per-compile `data` bag instead.
  */
 export function createSatteriLatexCompile(
-  core: LatexCompileCore,
+  core: TLatexCompileCore,
   { texInputsHash }: { texInputsHash: string },
 ) {
   const blockHtmlsByDoc = new WeakMap<object, TBlockHtmlByOffset>();
@@ -114,11 +118,7 @@ export function createSatteriLatexCompile(
 
       const blockHtmls = await core.renderDoc(
         context.fileURL ? fileURLToPath(context.fileURL) : undefined,
-        blockNodes.map((node) => ({
-          value: node.value,
-          meta: node.meta,
-          bodyLine: node.position?.start.line,
-        })),
+        blockNodes.map(texCompileBlockFromCodeNode),
       );
 
       const blockHtmlByOffset: TBlockHtmlByOffset = new Map();

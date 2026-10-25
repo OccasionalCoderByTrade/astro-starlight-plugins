@@ -12,8 +12,11 @@ import {
   resolveTexInputDirs,
   type TexInputDir,
 } from "./tex-inputs.js";
-import { createProcessorRegistration } from "../utils/processor-registration.js";
-import { createLatexCompileCore, type TexCompileErrorEntry } from "./core.js";
+import {
+  createProcessorRegistration,
+  type TProcessorRegistration,
+} from "../utils/processor-registration.js";
+import { createLatexCompileCore, type TTexCompileErrorEntry } from "./core.js";
 import { createRemarkLatexCompile } from "./remark-adapter.js";
 import { createSatteriLatexCompile } from "./satteri-adapter.js";
 
@@ -116,7 +119,7 @@ async function clearContentLayerCache(config: AstroConfig): Promise<void> {
 function buildFailureMessage(
   missingTools: Set<string>,
   missingTexInputDirs: TexInputDir[],
-  texCompileErrors: TexCompileErrorEntry[],
+  texCompileErrors: TTexCompileErrorEntry[],
 ): string | undefined {
   const lines: string[] = [];
   if (missingTools.size > 0) {
@@ -150,11 +153,10 @@ export function astroLatexCompile(
   options: LatexCompileOptions,
 ): AstroIntegration {
   const missingTools = new Set<string>();
-  const texCompileErrors: TexCompileErrorEntry[] = [];
+  const texCompileErrors: TTexCompileErrorEntry[] = [];
   let missingTexInputDirs: TexInputDir[] = [];
   let ledger: TexDiagramLedger | undefined;
-  let processorRegistration:
-    ReturnType<typeof createProcessorRegistration> | undefined;
+  let processorRegistration: TProcessorRegistration | undefined;
 
   return {
     name: "astro-latex-compile",
@@ -188,7 +190,7 @@ export function astroLatexCompile(
           command,
         });
         ledger = texDiagramLedger;
-        const core = createLatexCompileCore(options, {
+        const latexCompileCore = createLatexCompileCore(options, {
           missingTools,
           texCompileErrors,
           exitOnMissingToolchain: command === "dev",
@@ -204,8 +206,14 @@ export function astroLatexCompile(
         const texInputsHash = hashTexInputs(rootDirPath, texInputDirs);
         processorRegistration = createProcessorRegistration({
           pluginName: "astro-latex-compile",
-          remarkPlugin: [createRemarkLatexCompile(core), { texInputsHash }],
-          satteriPlugin: createSatteriLatexCompile(core, { texInputsHash }),
+          exportName: "astroLatexCompile",
+          remarkPlugin: [
+            createRemarkLatexCompile(latexCompileCore),
+            { texInputsHash },
+          ],
+          satteriPlugin: createSatteriLatexCompile(latexCompileCore, {
+            texInputsHash,
+          }),
         });
         processorRegistration.register(config, updateConfig);
 
