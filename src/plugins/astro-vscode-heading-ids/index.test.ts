@@ -151,9 +151,14 @@ it("fails at startup on a processor other than unified or satteri", async () => 
   ).rejects.toThrow(/\[astro-vscode-heading-ids\].*"custom".*not supported/);
 });
 
-it("fails at config:done when a later integration replaced the processor", async () => {
-  const { runConfigDone } = await runConfigHooks({ processor: unified() });
-  expect(() => runConfigDone({ processor: unified() })).toThrow(
-    /\[astro-vscode-heading-ids\] An integration listed after astroVscodeHeadingIds replaced `markdown.processor`/,
-  );
-});
+it.each(processorFactories)(
+  "fails at config:done when a later integration replaced the %s processor",
+  async (_processorName, createProcessor) => {
+    const { runConfigDone } = await runConfigHooks({
+      processor: createProcessor(),
+    });
+    expect(() => runConfigDone({ processor: createProcessor() })).toThrow(
+      /\[astro-vscode-heading-ids\] An integration listed after astroVscodeHeadingIds replaced `markdown.processor`/,
+    );
+  },
+);

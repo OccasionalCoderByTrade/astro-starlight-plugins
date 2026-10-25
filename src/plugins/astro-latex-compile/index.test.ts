@@ -294,21 +294,16 @@ describe.each(processorFactories)(
       });
 
       it("fails the build when rendering a doc throws outside any one block", async () => {
-        // A plugin before LaTeX compile leaves a code node with no value, so
-        // its tex compile error can't list the source.
-        const dropCodeValues =
-          () => (tree: { children: { type: string; value?: string }[] }) => {
-            for (const node of tree.children) {
-              if (node.type === "code") delete node.value;
-            }
-          };
-        const site = await createSite(
-          unified({ remarkPlugins: [dropCodeValues] }),
-        );
+        const site = await createSite(createProcessor());
+        // Reporting the block's tex compile error throws, past the point
+        // where a block's own errors are confined to it.
+        vi.mocked(console.error).mockImplementationOnce(() => {
+          throw new Error("stderr is closed");
+        });
 
         await expect(
-          site.renderDoc("broken.md", texCompileBlock("", "x")),
-        ).rejects.toThrow();
+          site.renderDoc("broken.md", texCompileBlock("", NOT_A_LATEX_DOCUMENT)),
+        ).rejects.toThrow(/stderr is closed/);
 
         await expect(site.runBuildDone()).rejects.toThrow(
           /broken\.md: Unexpected error: /,
@@ -541,12 +536,45 @@ describe("registration", () => {
     ).rejects.toThrow(/\[astro-latex-compile\].*"custom".*not supported/);
   });
 
-  it("fails at config:done when a later integration replaced the processor", async () => {
-    const { runConfigDone } = await runConfigSetup({ processor: unified() });
+  it.each(processorFactories)(
+    "fails at config:done when a later integration replaced the %s processor",
+    async (_processorName, createProcessor) => {
+      const { runConfigDone } = await runConfigSetup({
+        processor: createProcessor(),
+      });
 
-    expect(() => runConfigDone({ processor: unified() })).toThrow(
-      /\[astro-latex-compile\] An integration listed after astroLatexCompile replaced `markdown.processor`/,
-    );
+      expect(() => runConfigDone({ processor: createProcessor() })).toThrow(
+        /\[astro-latex-compile\] An integration listed after astroLatexCompile replaced `markdown.processor`/,
+      );
+    },
+  );
+
+  it("runs a site's legacy markdown.remarkPlugins entry once per doc on the unified processor", async () => {
+    let userPluginRunCount = 0;
+    const countingRemarkPlugin = () => () => {
+      userPluginRunCount++;
+    };
+    const processor = unified();
+    const markdownConfig = {
+      processor,
+      remarkPlugins: [countingRemarkPlugin],
+    };
+    // Astro folds legacy `markdown.remarkPlugins` into the unified processor
+    // when it validates the user config, then again for the entries
+    // integrations add through `updateConfig`.
+    processor.options.remarkPlugins.push(countingRemarkPlugin);
+    const { updateConfig, runConfigDone } = await runConfigSetup(markdownConfig);
+    for (const [configUpdate] of updateConfig.mock.calls) {
+      processor.options.remarkPlugins.push(
+        ...(configUpdate.markdown?.remarkPlugins ?? []),
+      );
+    }
+    await runConfigDone(markdownConfig);
+
+    const renderer = await processor.createRenderer({ syntaxHighlight: false });
+    await renderer.render("# One doc\n");
+
+    expect(userPluginRunCount).toBe(1);
   });
 });
 
