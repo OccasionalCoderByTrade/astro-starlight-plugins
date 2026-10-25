@@ -1,10 +1,17 @@
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { parseFrontmatter, unified } from "@astrojs/markdown-remark";
 import { satteri } from "@astrojs/markdown-satteri";
 import type { AstroIntegration } from "astro";
+import { parseFragment, serialize } from "parse5";
 import remarkMath from "remark-math";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { astroLatexCompile, type LatexCompileOptions } from "./index.js";
@@ -33,7 +40,8 @@ const hasToolchain = ["pdflatex", "dvisvgm"].every(
   (tool) => spawnSync(tool, ["--version"]).status === 0,
 );
 
-type TMarkdownProcessor = ReturnType<typeof unified>;
+type TMarkdownProcessor =
+  ReturnType<typeof unified> | ReturnType<typeof satteri>;
 type TConfigSetupOptions = Parameters<
   NonNullable<AstroIntegration["hooks"]["astro:config:setup"]>
 >[0];
@@ -128,6 +136,25 @@ async function createSite(
       });
       return code;
     },
+    /**
+     * Writes `source` to `relativeFilePath`, then compiles it as MDX, returning
+     * the JS module. `optimize` is `@astrojs/mdx`'s option of the same name.
+     */
+    async compileMdxDoc(
+      relativeFilePath: string,
+      source: string,
+      { optimize = false }: { optimize?: boolean } = {},
+    ): Promise<string> {
+      const filePath = join(configHooks.rootDirPath, relativeFilePath);
+      writeFileSync(filePath, source);
+      const { content: body, frontmatter } = parseFrontmatter(source);
+      const mdxRenderer = await processor.createMdxRenderer!(
+        { syntaxHighlight: false },
+        { optimize },
+      );
+      const { code } = await mdxRenderer.process(body, filePath, frontmatter);
+      return code;
+    },
   };
 }
 
@@ -150,11 +177,12 @@ const attributeValues = (markup: string, attribute: string) =>
 
 const processorFactories: [string, () => TMarkdownProcessor][] = [
   ["unified", () => unified({ remarkPlugins: [remarkMath] })],
+  ["satteri", () => satteri()],
 ];
 
 describe.each(processorFactories)(
   "with the %s processor",
-  (_processorName, createProcessor) => {
+  (processorName, createProcessor) => {
     it("shows a tex compile error for an unknown compile mode", async () => {
       const site = await createSite(createProcessor());
 
@@ -191,6 +219,19 @@ describe.each(processorFactories)(
       await expect(site.runBuildDone()).rejects.toThrow(
         /doc\.md:7: .*not a LaTeX document/,
       );
+    });
+
+    it("shows a tex compile error in an mdx doc, at the block's line in the source", async () => {
+      const site = await createSite(createProcessor());
+
+      const mdxModule = await site.compileMdxDoc(
+        "doc.mdx",
+        `---\ntitle: Doc\n---\n${blankLines(1)}${texCompileBlock("", "{x} *y*")}`,
+      );
+
+      expect(mdxModule).toContain("LaTeX Compilation Error");
+      expect(mdxModule).toContain("doc.mdx:5");
+      expect(mdxModule).toContain("{x} *y*");
     });
 
     it("writes the debug tex diagram image only for the last block sharing a blockid", async () => {
@@ -317,6 +358,43 @@ describe.each(processorFactories)(
         expect(html).toMatch(/<text[^>]*>Hello<\/text>/);
       });
 
+      it("inlines the compiled tex diagram in an mdx doc, with its markup kept as is", async () => {
+        const site = await createSite(createProcessor());
+
+        const mdxModule = await site.compileMdxDoc(
+          "doc.mdx",
+          `export const greeting = "hi";\n\n${texCompileBlock(
+            'alt="A greeting"',
+            documentWith("Hello $x^{2}$ *y*"),
+          )}`,
+        );
+
+        expect(mdxModule).toContain("tex-compiled");
+        expect(mdxModule).toContain("A greeting");
+        // The font CSS stays one string, not Markdown paragraphs.
+        expect(mdxModule).toMatch(/(children|"set:html"): "[^"]*@font-face\{/);
+        expect(mdxModule).not.toMatch(/components\.(p|em)\b/);
+      });
+
+      // TODO: unified's optimized MDX moves the `<style>` into an attribute
+      // too, and the remark adapter doesn't work around it yet.
+      it.skipIf(processorName === "unified")(
+        "keeps the compiled tex diagram's font CSS in an optimized mdx doc",
+        async () => {
+          const site = await createSite(createProcessor());
+
+          const mdxModule = await site.compileMdxDoc(
+            "doc.mdx",
+            texCompileBlock("", documentWith("Hello $x$")),
+            { optimize: true },
+          );
+
+          expect(mdxModule).toContain("@font-face{");
+          // Not moved into an attribute, where the browser would never read it.
+          expect(mdxModule).not.toMatch(/<style[^>]*set:html/);
+        },
+      );
+
       it("applies svgClassname, unless the block's class meta overrides it", async () => {
         const site = await createSite(createProcessor(), {
           latexCompileOptions: { svgClassname: "site-diagram" },
@@ -408,6 +486,39 @@ describe.each(processorFactories)(
   },
 );
 
+describe.skipIf(!hasToolchain)("on both processors, with TeX installed", () => {
+  it("inlines the same svg markup", async () => {
+    const doc = texCompileBlock(
+      'class="wide" alt="x < y & \'z\'"',
+      documentWith("Hello $x$"),
+    );
+    // Re-serializing through one HTML parser keeps only differences a browser would see.
+    const canonicalHtml = (html: string) =>
+      serialize(parseFragment(html)).trim();
+
+    const unifiedSite = await createSite(unified());
+    const unifiedHtml = canonicalHtml(
+      await unifiedSite.renderDoc("doc.md", doc),
+    );
+    // dvisvgm's embedded fonts differ between runs, so the Sätteri site reuses
+    // the compiled tex diagram the unified site wrote.
+    const svgDirPath = join(unifiedSite.rootDirPath, "public/tex-svgs");
+    const svgFiles = Object.fromEntries(
+      readdirSync(svgDirPath).map((fileName) => [
+        `public/tex-svgs/${fileName}`,
+        readFileSync(join(svgDirPath, fileName), "utf-8"),
+      ]),
+    );
+    const satteriSite = await createSite(satteri(), { files: svgFiles });
+    const satteriHtml = canonicalHtml(
+      await satteriSite.renderDoc("doc.md", doc),
+    );
+
+    expect(unifiedHtml).toMatch(/^<svg class="tex-compiled wide"/);
+    expect(satteriHtml).toBe(unifiedHtml);
+  });
+});
+
 describe("registration", () => {
   it("adds only itself to markdown.remarkPlugins when there's no processor (before Astro 7)", async () => {
     const { updateConfig, runConfigDone } = await runConfigSetup({
@@ -428,13 +539,6 @@ describe("registration", () => {
     await expect(
       runConfigSetup({ processor: { name: "custom", options: {} } }),
     ).rejects.toThrow(/\[astro-latex-compile\].*"custom".*not supported/);
-  });
-
-  // Until LaTeX compile has a Sätteri adapter.
-  it("fails at startup on the satteri processor", async () => {
-    await expect(runConfigSetup({ processor: satteri() })).rejects.toThrow(
-      /\[astro-latex-compile\].*"satteri".*not supported/,
-    );
   });
 
   it("fails at config:done when a later integration replaced the processor", async () => {
@@ -514,30 +618,33 @@ describe("tex input dirs", () => {
 
   // Astro clears its content store when the JSON of its config changes, and
   // that is what makes cached docs re-render with the new compiled tex diagrams.
-  it("changes the markdown config Astro hashes exactly when a tex input file changes", async () => {
-    const files = { "src/latex/macros.tex": "\\def\\pad{0.12}" };
-    const latexCompileOptions = { texInputDirs: ["src/latex//"] };
-    const markdownConfigJson = async (macros: string) => {
-      const processor = unified();
-      await runConfigSetup(
-        { processor },
-        {
-          command: "dev",
-          latexCompileOptions,
-          files: { "src/latex/macros.tex": macros },
-        },
-      );
-      return JSON.stringify({ processor });
-    };
+  it.each(processorFactories)(
+    "changes the markdown config Astro hashes exactly when a tex input file changes, with the %s processor",
+    async (_processorName, createProcessor) => {
+      const files = { "src/latex/macros.tex": "\\def\\pad{0.12}" };
+      const latexCompileOptions = { texInputDirs: ["src/latex//"] };
+      const markdownConfigJson = async (macros: string) => {
+        const processor = createProcessor();
+        await runConfigSetup(
+          { processor },
+          {
+            command: "dev",
+            latexCompileOptions,
+            files: { "src/latex/macros.tex": macros },
+          },
+        );
+        return JSON.stringify({ processor });
+      };
 
-    const initialMarkdownConfigJson = await markdownConfigJson(
-      files["src/latex/macros.tex"],
-    );
-    expect(await markdownConfigJson(files["src/latex/macros.tex"])).toBe(
-      initialMarkdownConfigJson,
-    );
-    expect(await markdownConfigJson("\\def\\pad{0.2}")).not.toBe(
-      initialMarkdownConfigJson,
-    );
-  });
+      const initialMarkdownConfigJson = await markdownConfigJson(
+        files["src/latex/macros.tex"],
+      );
+      expect(await markdownConfigJson(files["src/latex/macros.tex"])).toBe(
+        initialMarkdownConfigJson,
+      );
+      expect(await markdownConfigJson("\\def\\pad{0.2}")).not.toBe(
+        initialMarkdownConfigJson,
+      );
+    },
+  );
 });

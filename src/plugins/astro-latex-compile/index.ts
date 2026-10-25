@@ -15,6 +15,7 @@ import {
 import { createProcessorRegistration } from "../utils/processor-registration.js";
 import { createLatexCompileCore, type TexCompileErrorEntry } from "./core.js";
 import { createRemarkLatexCompile } from "./remark-adapter.js";
+import { createSatteriLatexCompile } from "./satteri-adapter.js";
 
 export type { DebugOptions as LatexCompileDebugOptions };
 
@@ -145,20 +146,6 @@ function describeTexInputDirs(texInputDirs: TexInputDir[]): string {
     .join(", ");
 }
 
-/**
- * Sätteri has no LaTeX compile adapter yet, so a site on it would render
- * `tex compile` blocks as plain code. Fails startup instead.
- */
-function assertProcessorNotSatteri(config: AstroConfig): void {
-  const { processor } = config.markdown as { processor?: { name: string } };
-  if (processor?.name === "satteri") {
-    throw new Error(
-      '[astro-latex-compile] The configured `markdown.processor` ("satteri") ' +
-        "is not supported yet. Use `unified()` from `@astrojs/markdown-remark`.",
-    );
-  }
-}
-
 export function astroLatexCompile(
   options: LatexCompileOptions,
 ): AstroIntegration {
@@ -188,7 +175,6 @@ export function astroLatexCompile(
           ? resolveDebugOutput(fileURLToPath(createCodegenDir()), options.debug)
           : undefined;
         if (command !== "build" && command !== "dev") return;
-        assertProcessorNotSatteri(config);
 
         const rootDirPath = fileURLToPath(config.root);
         const texInputDirs = resolveTexInputDirs(
@@ -219,7 +205,7 @@ export function astroLatexCompile(
         processorRegistration = createProcessorRegistration({
           pluginName: "astro-latex-compile",
           remarkPlugin: [createRemarkLatexCompile(core), { texInputsHash }],
-          satteriPlugin: undefined,
+          satteriPlugin: createSatteriLatexCompile(core, { texInputsHash }),
         });
         processorRegistration.register(config, updateConfig);
 

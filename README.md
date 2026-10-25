@@ -261,6 +261,10 @@ If either tool is missing from `PATH` when a `tex compile` block needs compiling
 
 Any other tex compile error (a LaTeX error, a block that isn't a LaTeX document, an unknown `mode`, a failed SVG conversion) is logged in full and shown in the page in place of the diagram. `astro build` still renders every page, then fails at the end with a list of every failing block's `file:line` (or just the doc's path, for an error outside any one block), and leaves orphaned tex diagrams in place.
 
+It works with both of Astro's Markdown processors, `unified()` and `satteri()`, and adds itself to whichever one is configured, so `.md` and `.mdx` docs need no extra config. Before Astro 7 it adds itself to `markdown.remarkPlugins`. Its position in `integrations` doesn't matter. `astro dev` and `astro build` fail at startup if `markdown.processor` is some other processor, or if an integration listed after it replaces the processor.
+
+Markdoc (`.mdoc`) doesn't run Markdown processor plugins, so `tex compile` blocks in it stay code blocks.
+
 **Options:**
 
 - `svgOutputDir` (required): Directory where compiled SVG files are written. Resolved against the project root, and must be a subdirectory of Astro's `publicDir` (usually `public/`), or Astro fails to start. Each block's SVG is written here as `<hash>.svg` and reused while the block is unchanged. Pages inline the SVG rather than linking to these files.
