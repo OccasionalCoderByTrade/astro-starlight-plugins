@@ -81,7 +81,6 @@ describe("findSubpathExportDrift", () => {
       packageExports: {
         ".": rootExport,
         "./foo": pluginExport("foo"),
-        "./styles": "./dist/styles/",
         "./styles/*": "./dist/styles/*",
       },
       rootIndexSource: 'export { foo } from "./plugins/foo/index.js";',

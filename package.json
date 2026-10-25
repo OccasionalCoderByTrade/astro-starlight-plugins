@@ -51,7 +51,6 @@
       "import": "./dist/plugins/expressive-code-emphasis.js",
       "types": "./dist/plugins/expressive-code-emphasis.d.ts"
     },
-    "./styles": "./dist/styles/",
     "./styles/*": "./dist/styles/*"
   },
   "files": [
