@@ -23,3 +23,9 @@ The remark plugin may be an `[attacher, options]` tuple, which ticket 02 needs. 
 - [x] Error messages read the same as before, with the plugin name filled in by the helper.
 - [x] No unit tests target the helper directly. It's tested through the integrations (spec, Testing Decisions).
 - [x] `npm test` and `npm run lib:build` pass.
+
+## Comments
+
+- Error wording change, on purpose: heading IDs' "replaced `markdown.processor`" error used to end with "so headings won't get VS Code heading IDs". The helper words it generically for every plugin, "so <exportName> won't run" (here "so astroVscodeHeadingIds won't run"), so both plugins' errors read the same apart from the name (spec story 23). The tests match on the shared prefix, so they didn't need to change.
+- Tuple match: Astro's `validateConfigRefined` re-parses `markdown.remarkPlugins` after `astro:config:setup` and copies each `[attacher, options]` tuple, so before Astro 7 the `config:done` check can't find a tuple by identity, as the ticket asked. It matches a tuple by its attacher (`entry[0] === attacher`) instead. A bare attacher, and anything in `processor.options` (which Astro keeps by reference), is still matched by identity.
+- Review follow-up: the helper now takes an explicit `exportName` option instead of deriving it from `pluginName` with a regex.

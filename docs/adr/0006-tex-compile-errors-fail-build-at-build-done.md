@@ -4,6 +4,8 @@ status: accepted
 
 # Tex compile errors fail the build from `astro:build:done`
 
+> 2026-10-25: since ADR 0017, "the transformer" below is the processor-agnostic core, which both the remark adapter (`unified`) and the Sätteri adapter call. The core records and rethrows as described here, so the rule holds on either processor.
+
 Astro's `glob()` loader, which Starlight's `docsLoader` wraps, renders each Markdown entry inside a try/catch that only logs `Error rendering <entry>: <message>` and stores the entry with no rendered HTML. Remark plugins run inside that render, so throwing from the transformer doesn't fail `astro build`; it ships the page with an empty body and exits 0.
 
 So the transformer doesn't throw for a tex compile error in a block. It shows the error in the page in place of the compiled tex diagram, logs the full report, and records the block's `file:line` in state shared with the integration. A throw from the transformer outside any one block is recorded against the doc and then rethrown. `astro:build:done`, which runs outside the loader, throws one error listing every recorded tex compile error, together with any missing toolchain. It skips the orphan sweep when it throws, since a failed block references no compiled tex diagram and its last good one would be deleted.
