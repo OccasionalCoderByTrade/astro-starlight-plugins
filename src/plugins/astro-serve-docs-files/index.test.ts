@@ -274,18 +274,11 @@ describe("astroServeDocsFiles served path collisions with public/ at startup", (
         (thrown: Error) => thrown,
       );
 
-      expect(error?.message).toContain(
-        join(rootDirPath, "public/guide/page.md"),
-      );
-      expect(error?.message).toContain(
-        join(rootDirPath, "src/content/docs/guide/page.md"),
-      );
-      expect(error?.message).toContain(
-        join(rootDirPath, "public/reference/notes.pdf"),
-      );
-      expect(error?.message).toContain(
-        join(rootDirPath, "src/content/docs/reference/notes.pdf"),
-      );
+      expect(error?.message).toContain("public/guide/page.md");
+      expect(error?.message).toContain("src/content/docs/guide/page.md");
+      expect(error?.message).toContain("public/reference/notes.pdf");
+      expect(error?.message).toContain("src/content/docs/reference/notes.pdf");
+      expect(error?.message).not.toContain(rootDirPath);
       expect(error?.message).not.toContain("other.pdf");
       expect(error?.message).not.toContain("favicon.svg");
       expect(error?.message).toContain(
@@ -424,12 +417,11 @@ describe("astroServeDocsFiles served path collisions with public/ mid-session in
 
     expect(clash.reachedNext).toBe(false);
     expect(clash.response.statusCode).toBe(500);
+    expect(clash.response.body).toContain("public/reference/List Syntax.md");
     expect(clash.response.body).toContain(
-      join(rootDirPath, "public/reference/List Syntax.md"),
+      "src/content/docs/reference/List Syntax.md",
     );
-    expect(clash.response.body).toContain(
-      join(rootDirPath, "src/content/docs/reference/List Syntax.md"),
-    );
+    expect(clash.response.body).not.toContain(rootDirPath);
     expect(clash.response.body).toContain("syncDocsToPublic 3.x");
     expect(
       requestDevServer(devMiddlewares, "/reference/notes.pdf").reachedNext,

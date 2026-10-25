@@ -17,6 +17,7 @@ import {
   serialize,
   type DefaultTreeAdapterTypes,
 } from "parse5";
+import { toDisplayPath } from "../utils/display-path.js";
 import type { ServedFileRule } from "../utils/served-file-rule.js";
 import { SERVE_DOCS_FILES_INTEGRATION_NAME } from "../utils/serve-docs-files-integration.js";
 import { STARLIGHT_CONTENT_CLASS } from "../utils/starlight-selectors.js";
@@ -202,6 +203,7 @@ export function processPage(html: string, options: TProcessPageOptions) {
       throw createPagePathCollisionError(
         docLinkTarget.pagePath,
         docLinkTarget.sourceDocFilePaths,
+        options.site.rootDirPath,
       );
     }
     // what a file-form link is rewritten to, keeping the author's trailing slash or lack of one
@@ -509,6 +511,7 @@ export function buildSourceDocIndex({
  */
 export function formatPagePathCollisionsError(
   sourceDocIndex: TSourceDocIndex,
+  rootDirPath: string,
 ): string | null {
   const collisions = [...sourceDocIndex]
     .filter(([, sourceDocFilePaths]) => sourceDocFilePaths.length > 1)
@@ -521,7 +524,7 @@ export function formatPagePathCollisionsError(
     `${collisions.length === 1 ? "" : "s"}:\n` +
     collisions
       .map(([pagePath, sourceDocFilePaths]) =>
-        formatPagePathCollision(pagePath, sourceDocFilePaths),
+        formatPagePathCollision(pagePath, sourceDocFilePaths, rootDirPath),
       )
       .join("\n")
   );
@@ -531,10 +534,11 @@ export function formatPagePathCollisionsError(
 function createPagePathCollisionError(
   pagePath: string,
   sourceDocFilePaths: string[],
+  rootDirPath: string,
 ): Error {
   return new Error(
     `[astro-local-links] Page path collision: ` +
-      formatPagePathCollision(pagePath, sourceDocFilePaths),
+      formatPagePathCollision(pagePath, sourceDocFilePaths, rootDirPath),
   );
 }
 
@@ -542,11 +546,14 @@ function createPagePathCollisionError(
 function formatPagePathCollision(
   pagePath: string,
   sourceDocFilePaths: string[],
+  rootDirPath: string,
 ): string {
   return (
     `${sourceDocFilePaths.length} source docs share the page path ` +
     `${toPageSitePath(pagePath, true)}. Rename all but one of them:\n` +
-    sourceDocFilePaths.map((filePath) => `    - ${filePath}`).join("\n")
+    sourceDocFilePaths
+      .map((filePath) => `    - ${toDisplayPath(rootDirPath, filePath)}`)
+      .join("\n")
   );
 }
 
@@ -589,6 +596,7 @@ function toDocsRelativePagePath(sitePath: string): string | null {
 export function resolveSourceDoc(
   pathname: string,
   sourceDocIndex: TSourceDocIndex,
+  rootDirPath: string,
 ): string {
   const pagePath = toDocsRelativePagePath(pathname) ?? pathname;
   const sourceDocFilePaths = sourceDocIndex.get(pagePath) ?? [];
@@ -600,7 +608,7 @@ export function resolveSourceDoc(
         `their path with each segment slugified, and none is served at /${pagePath}.`,
     );
   }
-  throw createPagePathCollisionError(pagePath, sourceDocFilePaths);
+  throw createPagePathCollisionError(pagePath, sourceDocFilePaths, rootDirPath);
 }
 
 /**
@@ -611,8 +619,14 @@ export function formatShadowedDocError(
   pathname: string,
   routePattern: string,
   sourceDocIndex: TSourceDocIndex,
+  rootDirPath: string,
 ): string | null {
-  const shadowedDoc = formatShadowedDoc(pathname, routePattern, sourceDocIndex);
+  const shadowedDoc = formatShadowedDoc(
+    pathname,
+    routePattern,
+    sourceDocIndex,
+    rootDirPath,
+  );
   if (!shadowedDoc) return null;
   return (
     `[astro-local-links] ${shadowedDoc}, not Starlight's doc route (${STARLIGHT_DOC_ROUTE}). ` +
@@ -630,6 +644,7 @@ export type TServedPage = { pathname: string; routePattern: string };
 export function formatShadowedDocsError(
   servedPages: TServedPage[],
   sourceDocIndex: TSourceDocIndex,
+  rootDirPath: string,
 ): string | null {
   const shadowedDocs = servedPages
     .filter(({ routePattern }) => routePattern !== STARLIGHT_DOC_ROUTE)
@@ -637,7 +652,7 @@ export function formatShadowedDocsError(
       firstServedPage.pathname.localeCompare(secondServedPage.pathname),
     )
     .map(({ pathname, routePattern }) =>
-      formatShadowedDoc(pathname, routePattern, sourceDocIndex),
+      formatShadowedDoc(pathname, routePattern, sourceDocIndex, rootDirPath),
     )
     .filter((shadowedDoc) => shadowedDoc !== null);
   if (shadowedDocs.length === 0) return null;
@@ -659,13 +674,15 @@ function formatShadowedDoc(
   pathname: string,
   routePattern: string,
   sourceDocIndex: TSourceDocIndex,
+  rootDirPath: string,
 ): string | null {
   if (routePattern === STARLIGHT_404_ROUTE) return null;
   const pagePath = toDocsRelativePagePath(pathname) ?? pathname;
   const sourceDocFilePaths = sourceDocIndex.get(pagePath);
   if (!sourceDocFilePaths) return null;
   return (
-    `${pathname} is the page path of ${sourceDocFilePaths.join(", ")}, ` +
+    `${pathname} is the page path of ` +
+    `${sourceDocFilePaths.map((filePath) => toDisplayPath(rootDirPath, filePath)).join(", ")}, ` +
     `but ${routePattern} served it`
   );
 }
@@ -673,6 +690,7 @@ function formatShadowedDoc(
 /** One error message listing every broken local link, grouped by source doc. */
 export function formatBrokenLinksError(
   pagesBrokenLinks: TPageBrokenLinks[],
+  rootDirPath: string,
 ): string {
   const brokenLinkCount = pagesBrokenLinks.reduce(
     (count, page) => count + page.brokenLinks.length,
@@ -683,7 +701,7 @@ export function formatBrokenLinksError(
   );
   const pageSections = sortedPages.map(
     (page) =>
-      `${page.sourceDocFilePath}\n` +
+      `${toDisplayPath(rootDirPath, page.sourceDocFilePath)}\n` +
       page.brokenLinks
         .map((brokenLink) => `  - ${brokenLink.href}: ${brokenLink.reason}`)
         .join("\n"),
@@ -715,7 +733,11 @@ export function processDocPage(
   settings: TLocalLinksSettings,
   sourceDocIndex: TSourceDocIndex,
 ) {
-  const sourceDocFilePath = resolveSourceDoc(pathname, sourceDocIndex);
+  const sourceDocFilePath = resolveSourceDoc(
+    pathname,
+    sourceDocIndex,
+    settings.site.rootDirPath,
+  );
   const processedPage = processPage(html, {
     sourceDocFilePath,
     sourceDocIndex,

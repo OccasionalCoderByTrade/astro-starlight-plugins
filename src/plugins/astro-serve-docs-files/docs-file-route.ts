@@ -9,6 +9,8 @@ import { SERVE_DOCS_FILES_INTEGRATION_NAME } from "../utils/serve-docs-files-int
 
 /** What the route module needs from the integration, passed as JSON through a virtual module. */
 export type TDocsFileRouteSettings = {
+  /** The project root, which Starlight's `entry.filePath` and error messages are relative to. */
+  rootDirPath: string;
   docsDirPath: string;
   ignorePatterns: string[];
   /** True in dev, where Starlight renders drafts too. */

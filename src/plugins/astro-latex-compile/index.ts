@@ -2,6 +2,7 @@ import fs from "node:fs";
 import { isAbsolute, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { AstroConfig, AstroIntegration } from "astro";
+import { toDisplayPath } from "../utils/display-path.js";
 import { pluginStylesImportScript } from "../utils/plugin-styles.js";
 import { resolveDebugOutput, type DebugOptions } from "./debug-output.js";
 import { createLedger, type TexDiagramLedger } from "./ledger.js";
@@ -88,8 +89,9 @@ function resolveSvgOutputDir(
   config: AstroConfig,
   svgOutputDir: string,
 ): string {
+  const rootDirPath = fileURLToPath(config.root);
   const publicDir = fileURLToPath(config.publicDir);
-  const svgOutputDirPath = resolve(fileURLToPath(config.root), svgOutputDir);
+  const svgOutputDirPath = resolve(rootDirPath, svgOutputDir);
   const publicRelativeSvgDir = relative(publicDir, svgOutputDirPath);
   if (
     publicRelativeSvgDir === "" ||
@@ -98,7 +100,7 @@ function resolveSvgOutputDir(
     isAbsolute(publicRelativeSvgDir)
   ) {
     throw new Error(
-      `[astro-latex-compile] svgOutputDir "${svgOutputDir}" must be a subdirectory of publicDir "${publicDir}".`,
+      `[astro-latex-compile] svgOutputDir "${svgOutputDir}" must be a subdirectory of publicDir "${toDisplayPath(rootDirPath, publicDir)}".`,
     );
   }
   return svgOutputDirPath;
@@ -149,6 +151,23 @@ function describeTexInputDirs(texInputDirs: TexInputDir[]): string {
     .join(", ");
 }
 
+/** Like `describeTexInputDirs`, adding where each was looked for when that reads differently. */
+function describeTexInputDirsWithDisplayPaths(
+  texInputDirs: TexInputDir[],
+  rootDirPath: string,
+): string {
+  return texInputDirs
+    .map((texInputDir) => {
+      const displayDirPath = toDisplayPath(rootDirPath, texInputDir.dirPath);
+      const isSameAsConfigured =
+        texInputDir.configuredPath.replace(/\/+$/, "") === displayDirPath;
+      return isSameAsConfigured
+        ? `"${texInputDir.configuredPath}"`
+        : `"${texInputDir.configuredPath}" (${displayDirPath})`;
+    })
+    .join(", ");
+}
+
 export function astroLatexCompile(
   options: LatexCompileOptions,
 ): AstroIntegration {
@@ -173,12 +192,16 @@ export function astroLatexCompile(
           config,
           options.svgOutputDir,
         );
+        const rootDirPath = fileURLToPath(config.root);
         const debugOutput = options.debug
-          ? resolveDebugOutput(fileURLToPath(createCodegenDir()), options.debug)
+          ? resolveDebugOutput(
+              rootDirPath,
+              fileURLToPath(createCodegenDir()),
+              options.debug,
+            )
           : undefined;
         if (command !== "build" && command !== "dev") return;
 
-        const rootDirPath = fileURLToPath(config.root);
         const texInputDirs = resolveTexInputDirs(
           rootDirPath,
           options.texInputDirs ?? [],
@@ -188,6 +211,7 @@ export function astroLatexCompile(
           debugImageDir: debugOutput?.outputDir,
           removeOrphanedSvgs: options.removeOrphanedSvgs ?? false,
           command,
+          rootDirPath,
         });
         ledger = texDiagramLedger;
         const latexCompileCore = createLatexCompileCore(options, {
@@ -231,7 +255,7 @@ export function astroLatexCompile(
 
         missingTexInputDirs = findMissingTexInputDirs(texInputDirs);
         if (missingTexInputDirs.length > 0) {
-          const message = `[astro-latex-compile] texInputDirs ${describeTexInputDirs(missingTexInputDirs)} not found in "${rootDirPath}".`;
+          const message = `[astro-latex-compile] texInputDirs ${describeTexInputDirsWithDisplayPaths(missingTexInputDirs, rootDirPath)} not found.`;
           // A prod build may be missing a dir that is empty on the dev
           // machine (git drops empty dirs) and still find every compiled tex
           // diagram, so only dev fails here.
@@ -249,7 +273,7 @@ export function astroLatexCompile(
 
         if (debugOutput) {
           console.log(
-            `[astro-latex-compile] debug tex diagram images: ${relative(rootDirPath, debugOutput.outputDir)}`,
+            `[astro-latex-compile] debug tex diagram images: ${toDisplayPath(rootDirPath, debugOutput.outputDir)}`,
           );
         }
 

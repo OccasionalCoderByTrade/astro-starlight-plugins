@@ -23,6 +23,7 @@ async function startLedger(overrides: Partial<TexDiagramLedgerOptions> = {}) {
     debugImageDir: debugDir,
     removeOrphanedSvgs: true,
     command: "dev",
+    rootDirPath: root,
     ...overrides,
   });
   await ledger.start();

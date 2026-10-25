@@ -5,6 +5,7 @@
 import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { AstroIntegrationLogger } from "astro";
+import { toDisplayPath } from "../utils/display-path.js";
 import {
   DOCS_FILE_ROUTE_PATTERN,
   SERVE_DOCS_FILES_INTEGRATION_NAME,
@@ -96,9 +97,11 @@ export function formatRouteCollisionsError(options: {
   assets: TBuildAssets;
   routeConflicts: TRouteConflict[];
   distDirPath: string;
+  rootDirPath: string;
   docsDirPath: string;
 }): string | null {
-  const { assets, routeConflicts, distDirPath, docsDirPath } = options;
+  const { assets, routeConflicts, distDirPath, rootDirPath, docsDirPath } =
+    options;
   const toDistRelativeFilePath = (fileUrl: URL) =>
     relative(distDirPath, fileURLToPath(fileUrl)).split("\\").join("/");
 
@@ -112,7 +115,7 @@ export function formatRouteCollisionsError(options: {
       if (!endpointOutputFilePaths.has(distRelativeFilePath)) continue;
       collisions.push(
         `${distRelativeFilePath} is written by both ${DOCS_FILE_ROUTE_PATTERN} ` +
-          `(serving ${join(docsDirPath, distRelativeFilePath)}) ` +
+          `(serving ${toDisplayPath(rootDirPath, join(docsDirPath, distRelativeFilePath))}) ` +
           `and ${routePattern}`,
       );
     }
@@ -128,7 +131,7 @@ export function formatRouteCollisionsError(options: {
         : winningRoutePattern;
     collisions.push(
       `${pathname} is rendered by both ${DOCS_FILE_ROUTE_PATTERN} ` +
-        `(serving ${join(docsDirPath, pathname)}) and ${otherRoutePattern}, ` +
+        `(serving ${toDisplayPath(rootDirPath, join(docsDirPath, pathname))}) and ${otherRoutePattern}, ` +
         `so Astro left out ${losingRoutePattern}'s output`,
     );
   }

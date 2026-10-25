@@ -17,7 +17,7 @@ import {
   rmSync,
   mkdtempSync,
 } from "node:fs";
-import { basename, dirname, extname, join, relative, resolve } from "node:path";
+import { basename, dirname, extname, join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import sharp from "sharp";
 import { parseLatexErrors } from "./error-parser.js";
@@ -216,10 +216,6 @@ async function runLatex(
           // "Not reading from /dev/null (openin_any = p)".
           `${pdflatexResult.stdout}\n${pdflatexResult.stderr}`,
           { blockFilePath: texFilePath },
-        ).map((err) =>
-          err.filePath !== undefined
-            ? { ...err, filePath: relative(process.cwd(), err.filePath) }
-            : err,
         ),
         source: latexSource,
       },

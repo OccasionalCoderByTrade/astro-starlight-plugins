@@ -1,9 +1,9 @@
 import { readFileSync, writeSync } from "node:fs";
 import { parseFrontmatter } from "@astrojs/markdown-remark";
-import { relative } from "node:path";
 import { MetaOptions } from "@expressive-code/core";
 import type { Code } from "mdast";
 import type { LatexCompileOptions } from "./index.js";
+import { toDisplayPath } from "../utils/display-path.js";
 import { RotatingFileLogger } from "../utils/rotating-file-logger.js";
 import type { DocRender, TexDiagramLedger } from "./ledger.js";
 import {
@@ -123,11 +123,27 @@ function inlineSvgHtml(
   return svgMarkup.replace(/^<svg\b/, `<svg ${rootAttributes}`);
 }
 
-/** The doc's path relative to the working directory, for messages. */
-function displayFilePath(filePath: string): string {
+/** The doc's path as messages print it. */
+function docDisplayPath(rootDirPath: string, filePath: string): string {
   return filePath !== UNKNOWN_DOC_FILE_PATH
-    ? relative(process.cwd(), filePath)
+    ? toDisplayPath(rootDirPath, filePath)
     : filePath;
+}
+
+/** `failure`, with the tex input files its errors name as messages print them. */
+function withDisplayPaths(
+  rootDirPath: string,
+  failure: TexCompileFailure,
+): TexCompileFailure {
+  if (failure.kind !== "latex") return failure;
+  return {
+    ...failure,
+    errors: failure.errors.map((err) =>
+      err.filePath !== undefined
+        ? { ...err, filePath: toDisplayPath(rootDirPath, err.filePath) }
+        : err,
+    ),
+  };
 }
 
 function errorMessage(err: unknown): string {
@@ -261,7 +277,7 @@ export function createLatexCompileCore(
       if (id !== undefined) lastIndexByBlockId.set(id, i);
     });
 
-    const displayedFilePath = displayFilePath(filePath);
+    const displayedFilePath = docDisplayPath(state.rootDirPath, filePath);
     const frontmatterOffset =
       filePath !== UNKNOWN_DOC_FILE_PATH ? getFrontmatterOffset(filePath) : 0;
     // Recomputed per doc: a tex input file added during dev isn't watched, but
@@ -297,6 +313,12 @@ export function createLatexCompileCore(
                 compileMode,
               })
             : parsedMode;
+          if (!outcome.ok) {
+            outcome = {
+              ...outcome,
+              failure: withDisplayPaths(state.rootDirPath, outcome.failure),
+            };
+          }
         } catch (err) {
           outcome = {
             ok: false,
@@ -329,7 +351,9 @@ export function createLatexCompileCore(
               debugImagePath,
               { texInputDirs: state.texInputDirs, compileMode },
             );
-            await debugLogger?.write(`${location}: wrote ${debugImagePath}`);
+            await debugLogger?.write(
+              `${location}: wrote ${toDisplayPath(state.rootDirPath, debugImagePath)}`,
+            );
           });
         }
         return { outcome, location, hash: outcome.hash };
@@ -366,7 +390,7 @@ export function createLatexCompileCore(
         // Astro only logs the rethrown error, so record it to fail the build.
         recordTexCompileError(
           { kind: "unexpected", message: errorMessage(err) },
-          displayFilePath(docFilePath),
+          docDisplayPath(state.rootDirPath, docFilePath),
         );
         throw err;
       } finally {

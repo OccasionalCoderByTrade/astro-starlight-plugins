@@ -1,6 +1,7 @@
 import { parseFrontmatter as astroParseFrontmatter } from "@astrojs/markdown-remark";
 import * as fs from "fs";
 import * as path from "path";
+import { toDisplayPath } from "./display-path.js";
 
 /** The frontmatter fields the plugins read from any source doc. */
 export type TSourceDocFrontmatter = {
@@ -21,11 +22,12 @@ export type TSourceDoc<TFrontmatter extends TSourceDocFrontmatter> = {
 
 /**
  * A source doc's frontmatter and body. `TFrontmatter` names the fields the caller reads; it
- * isn't checked. Throws when the file can't be read or its YAML is malformed.
+ * isn't checked. Throws when the file can't be read or its YAML is malformed. `rootDirPath`
+ * is the project root, which the error message prints `filePath` relative to.
  */
 export function parseSourceDoc<
   TFrontmatter extends TSourceDocFrontmatter = TSourceDocFrontmatter,
->(filePath: string): TSourceDoc<TFrontmatter> {
+>(filePath: string, rootDirPath: string): TSourceDoc<TFrontmatter> {
   const content = fs.readFileSync(filePath, "utf-8");
 
   try {
@@ -33,7 +35,7 @@ export function parseSourceDoc<
     return { frontmatter: frontmatter as TFrontmatter, body };
   } catch (err) {
     throw new Error(
-      `[parseFrontmatter] Failed to parse frontmatter in ${filePath}: ${(err as Error).message}`,
+      `[parseFrontmatter] Failed to parse frontmatter in ${toDisplayPath(rootDirPath, filePath)}: ${(err as Error).message}`,
       { cause: err },
     );
   }
@@ -45,8 +47,8 @@ export function parseSourceDoc<
  */
 export function parseFrontmatter<
   TFrontmatter extends TSourceDocFrontmatter = TSourceDocFrontmatter,
->(filePath: string): TFrontmatter {
-  return parseSourceDoc<TFrontmatter>(filePath).frontmatter;
+>(filePath: string, rootDirPath: string): TFrontmatter {
+  return parseSourceDoc<TFrontmatter>(filePath, rootDirPath).frontmatter;
 }
 
 const MARKDOC_INTEGRATION_NAME = "@astrojs/markdoc";

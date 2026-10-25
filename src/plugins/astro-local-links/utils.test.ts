@@ -409,19 +409,22 @@ describe("formatBrokenLinksError", () => {
       isRawDocLink: true,
     };
 
-    const error = formatBrokenLinksError([
-      {
-        sourceDocFilePath: "/site/src/content/docs/guide/b.md",
-        brokenLinks: [{ href: "./a.md", ...rawDocLinkFields }],
-      },
-      {
-        sourceDocFilePath: "/site/src/content/docs/guide/c.md",
-        brokenLinks: [
-          { href: "./a.md", ...rawDocLinkFields },
-          { href: "./missing", reason: "no source doc or public file" },
-        ],
-      },
-    ]);
+    const error = formatBrokenLinksError(
+      [
+        {
+          sourceDocFilePath: "/site/src/content/docs/guide/b.md",
+          brokenLinks: [{ href: "./a.md", ...rawDocLinkFields }],
+        },
+        {
+          sourceDocFilePath: "/site/src/content/docs/guide/c.md",
+          brokenLinks: [
+            { href: "./a.md", ...rawDocLinkFields },
+            { href: "./missing", reason: "no source doc or public file" },
+          ],
+        },
+      ],
+      "/site",
+    );
 
     expect(error.match(/is a raw doc link/g)).toHaveLength(1);
     expect(error).toMatch(
@@ -432,14 +435,18 @@ describe("formatBrokenLinksError", () => {
   });
 
   it("leaves out the raw doc link explanation when no broken link is one", () => {
-    const error = formatBrokenLinksError([
-      {
-        sourceDocFilePath: "/site/src/content/docs/guide/b.md",
-        brokenLinks: [{ href: "./missing", reason: "no source doc" }],
-      },
-    ]);
+    const error = formatBrokenLinksError(
+      [
+        {
+          sourceDocFilePath: "/site/src/content/docs/guide/b.md",
+          brokenLinks: [{ href: "./missing", reason: "no source doc" }],
+        },
+      ],
+      "/site",
+    );
 
     expect(error).not.toContain("raw doc link");
+    expect(error).toContain("\nsrc/content/docs/guide/b.md\n");
   });
 });
 
@@ -453,29 +460,30 @@ describe("resolveSourceDoc", () => {
     });
     const sourceDocIndex = buildSourceDocIndex(site);
 
-    expect(resolveSourceDoc("/", sourceDocIndex)).toBe(
+    expect(resolveSourceDoc("/", sourceDocIndex, site.rootDirPath)).toBe(
       join(site.docsDirPath, "index.mdx"),
     );
-    expect(resolveSourceDoc("/guide/intro/", sourceDocIndex)).toBe(
-      join(site.docsDirPath, "guide/intro.md"),
-    );
-    expect(resolveSourceDoc("/guide/intro", sourceDocIndex)).toBe(
-      join(site.docsDirPath, "guide/intro.md"),
-    );
-    expect(resolveSourceDoc("/reference/", sourceDocIndex)).toBe(
-      join(site.docsDirPath, "reference/index.md"),
-    );
-    expect(resolveSourceDoc("/notes/my-notes/", sourceDocIndex)).toBe(
-      join(site.docsDirPath, "notes/My Notes.md"),
-    );
+    expect(
+      resolveSourceDoc("/guide/intro/", sourceDocIndex, site.rootDirPath),
+    ).toBe(join(site.docsDirPath, "guide/intro.md"));
+    expect(
+      resolveSourceDoc("/guide/intro", sourceDocIndex, site.rootDirPath),
+    ).toBe(join(site.docsDirPath, "guide/intro.md"));
+    expect(
+      resolveSourceDoc("/reference/", sourceDocIndex, site.rootDirPath),
+    ).toBe(join(site.docsDirPath, "reference/index.md"));
+    expect(
+      resolveSourceDoc("/notes/my-notes/", sourceDocIndex, site.rootDirPath),
+    ).toBe(join(site.docsDirPath, "notes/My Notes.md"));
   });
 
   it("throws when a page has no source doc", () => {
-    const sourceDocIndex = buildSourceDocIndex(makeSite({}));
+    const site = makeSite({});
+    const sourceDocIndex = buildSourceDocIndex(site);
 
-    expect(() => resolveSourceDoc("/gone/", sourceDocIndex)).toThrow(
-      /No source doc for \/gone\//,
-    );
+    expect(() =>
+      resolveSourceDoc("/gone/", sourceDocIndex, site.rootDirPath),
+    ).toThrow(/No source doc for \/gone\//);
   });
 });
 

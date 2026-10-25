@@ -8,8 +8,6 @@ export const SETTINGS_MODULE_ID = "virtual:astro-serve-docs-files/settings";
  * alternate link middleware both read it, since their entrypoints can't take arguments.
  */
 export type TServeDocsFilesModuleSettings = TDocsFileRouteSettings & {
-  /** The project root, which Starlight's `entry.filePath` is relative to. */
-  rootDirPath: string;
   /** Astro's `base`, without a trailing slash: `""` when it's `/`. */
   baseUrlPath: string;
 };

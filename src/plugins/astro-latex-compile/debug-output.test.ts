@@ -2,22 +2,23 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { resolveDebugOutput } from "./debug-output.js";
 
+const rootDirPath = "/site";
 const codegenDir = "/site/.astro/integrations/astro-latex-compile";
 
 describe("resolveDebugOutput", () => {
   it("defaults both paths inside the codegen dir", () => {
-    expect(resolveDebugOutput(codegenDir, true)).toEqual({
+    expect(resolveDebugOutput(rootDirPath, codegenDir, true)).toEqual({
       outputDir: join(codegenDir, "debug-images"),
       logFile: join(codegenDir, "latex-compile.log"),
     });
-    expect(resolveDebugOutput(codegenDir, {})).toEqual(
-      resolveDebugOutput(codegenDir, true),
+    expect(resolveDebugOutput(rootDirPath, codegenDir, {})).toEqual(
+      resolveDebugOutput(rootDirPath, codegenDir, true),
     );
   });
 
   it("resolves given paths against the codegen dir", () => {
     expect(
-      resolveDebugOutput(codegenDir, {
+      resolveDebugOutput(rootDirPath, codegenDir, {
         outputDir: "jpgs/",
         logFile: "logs/debug.log",
       }),
@@ -30,15 +31,15 @@ describe("resolveDebugOutput", () => {
   it.each(["", ".", "./", "/tmp/debug", "..", "../elsewhere", "a/../../b"])(
     "rejects outputDir %j",
     (outputDir) => {
-      expect(() => resolveDebugOutput(codegenDir, { outputDir })).toThrow(
-        /debug\.outputDir .* must be a non-empty relative path inside/,
-      );
+      expect(() =>
+        resolveDebugOutput(rootDirPath, codegenDir, { outputDir }),
+      ).toThrow(/debug\.outputDir .* must be a non-empty relative path inside/);
     },
   );
 
   it("rejects a logFile outside the codegen dir", () => {
     expect(() =>
-      resolveDebugOutput(codegenDir, { logFile: "../debug.log" }),
+      resolveDebugOutput(rootDirPath, codegenDir, { logFile: "../debug.log" }),
     ).toThrow(/debug\.logFile/);
   });
 });

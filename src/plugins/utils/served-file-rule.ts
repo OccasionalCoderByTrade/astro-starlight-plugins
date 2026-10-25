@@ -20,13 +20,20 @@ export type ServedFileRule = (docsRelativeEntryPath: string) => boolean;
  * and a build would write it under a name no request reaches.
  */
 export function createServedFileRule(options: {
+  /** The project root, which errors print paths relative to. */
+  rootDirPath: string;
   docsDirPath: string;
   ignorePatterns: string[];
   serveDrafts: boolean;
   sourceDocExtensions: string[];
 }): ServedFileRule {
-  const { docsDirPath, ignorePatterns, serveDrafts, sourceDocExtensions } =
-    options;
+  const {
+    rootDirPath,
+    docsDirPath,
+    ignorePatterns,
+    serveDrafts,
+    sourceDocExtensions,
+  } = options;
 
   return (docsRelativeEntryPath) => {
     const segments = docsRelativeEntryPath
@@ -47,7 +54,7 @@ export function createServedFileRule(options: {
     const entryPath = resolve(docsDirPath, docsRelativeEntryPath);
     if (sourceDocExtensions.includes(extname(entryPath)) && isFile(entryPath)) {
       // Parsed even when drafts are served, so unparseable frontmatter fails in both modes
-      const isDraft = parseFrontmatter(entryPath).draft === true;
+      const isDraft = parseFrontmatter(entryPath, rootDirPath).draft === true;
       return serveDrafts || !isDraft;
     }
     return true;

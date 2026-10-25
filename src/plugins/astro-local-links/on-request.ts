@@ -37,6 +37,7 @@ export function createOnRequest(
         context.url.pathname,
         context.routePattern,
         buildSourceDocIndex(settings.site),
+        settings.site.rootDirPath,
       );
       if (shadowedDocError) throw new Error(shadowedDocError);
       return response;
@@ -53,7 +54,12 @@ export function createOnRequest(
       buildSourceDocIndex(settings.site),
     );
     if (processedPage.pageBrokenLinks) {
-      throw new Error(formatBrokenLinksError([processedPage.pageBrokenLinks]));
+      throw new Error(
+        formatBrokenLinksError(
+          [processedPage.pageBrokenLinks],
+          settings.site.rootDirPath,
+        ),
+      );
     }
 
     const headers = new Headers(response.headers);

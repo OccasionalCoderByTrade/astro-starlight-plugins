@@ -1,4 +1,5 @@
 import { isAbsolute, relative, resolve, sep } from "node:path";
+import { toDisplayPath } from "../utils/display-path.js";
 
 export interface DebugOptions {
   /**
@@ -28,6 +29,7 @@ export interface DebugOutput {
  * docs/adr/0003-debug-output-lives-in-astro-codegen-dir.md.
  */
 function resolveInside(
+  rootDirPath: string,
   codegenDir: string,
   path: string,
   optionName: string,
@@ -42,20 +44,26 @@ function resolveInside(
     isAbsolute(relativePath)
   ) {
     throw new Error(
-      `[astro-latex-compile] ${optionName} "${path}" must be a non-empty relative path inside "${codegenDir}".`,
+      `[astro-latex-compile] ${optionName} "${path}" must be a non-empty relative path inside "${toDisplayPath(rootDirPath, codegenDir)}".`,
     );
   }
   return resolved;
 }
 
 export function resolveDebugOutput(
+  rootDirPath: string,
   codegenDir: string,
   debug: true | DebugOptions,
 ): DebugOutput {
   const { outputDir = "debug-images", logFile = "latex-compile.log" } =
     debug === true ? {} : debug;
   return {
-    outputDir: resolveInside(codegenDir, outputDir, "debug.outputDir"),
-    logFile: resolveInside(codegenDir, logFile, "debug.logFile"),
+    outputDir: resolveInside(
+      rootDirPath,
+      codegenDir,
+      outputDir,
+      "debug.outputDir",
+    ),
+    logFile: resolveInside(rootDirPath, codegenDir, logFile, "debug.logFile"),
   };
 }

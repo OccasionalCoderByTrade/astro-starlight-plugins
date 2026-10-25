@@ -93,14 +93,15 @@ async function startDevRequestHandler(
  * `name` and `hooks`. Its rule is in dev mode, so it serves drafts.
  */
 function fakeServeDocsFilesIntegration(
-  docsDirPath: string,
+  site: { rootDirPath: string; docsDirPath: string },
   ignorePatterns: string[] = [],
 ) {
   return {
     name: "astro-serve-docs-files",
     hooks: {
       "astro-serve-docs-files:served-file-rule": createServedFileRule({
-        docsDirPath,
+        rootDirPath: site.rootDirPath,
+        docsDirPath: site.docsDirPath,
         ignorePatterns,
         serveDrafts: true,
         sourceDocExtensions: [".md", ".mdx"],
@@ -552,7 +553,7 @@ describe("astroLocalLinks", () => {
     it("accepts docs files the serve integration serves, and files in public/", async () => {
       const site = makeSite(files);
       const handleRequest = await startDevRequestHandler(site.rootDirPath, [
-        fakeServeDocsFilesIntegration(site.docsDirPath, ["**/*.txt"]),
+        fakeServeDocsFilesIntegration(site, ["**/*.txt"]),
       ]);
 
       const content =
@@ -572,7 +573,7 @@ describe("astroLocalLinks", () => {
       async (_, href) => {
         const site = makeSite(files);
         const handleRequest = await startDevRequestHandler(site.rootDirPath, [
-          fakeServeDocsFilesIntegration(site.docsDirPath, ["**/*.txt"]),
+          fakeServeDocsFilesIntegration(site, ["**/*.txt"]),
         ]);
 
         await expect(
@@ -587,7 +588,7 @@ describe("astroLocalLinks", () => {
         "src/content/docs/guide/broken.md": "---\ntitle: [unclosed\n---\n",
       });
       const handleRequest = await startDevRequestHandler(site.rootDirPath, [
-        fakeServeDocsFilesIntegration(site.docsDirPath),
+        fakeServeDocsFilesIntegration(site),
       ]);
 
       const brokenLinksError = handleRequest(

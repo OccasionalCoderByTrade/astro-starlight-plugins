@@ -117,6 +117,7 @@ export function starlightIndexSourcedSidebar(options: TOptions) {
           indexMarker,
           collapsed = true,
         } = options;
+        const rootDirPath = fileURLToPath(astroConfig.root);
         const docsDirPath = fileURLToPath(
           new URL("content/docs/", astroConfig.srcDir),
         );
@@ -126,6 +127,7 @@ export function starlightIndexSourcedSidebar(options: TOptions) {
 
         const { dirPaths, maxGroupLevels } = validateSidebarOptions({
           pluginName: PLUGIN_NAME,
+          rootDirPath,
           docsDirPath,
           directories,
           maxGroupLevels: options.maxGroupLevels,
@@ -136,6 +138,7 @@ export function starlightIndexSourcedSidebar(options: TOptions) {
         const sidebarGroups = dirPaths
           .map((dirPath) =>
             getIndexSourcedSidebarGroup({
+              rootDirPath,
               docsDirPath,
               dirPath,
               maxGroupLevels,

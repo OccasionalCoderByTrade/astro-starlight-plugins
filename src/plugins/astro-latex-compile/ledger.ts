@@ -1,5 +1,6 @@
 import { readdir, rm } from "node:fs/promises";
-import { join, relative } from "node:path";
+import { join } from "node:path";
+import { toDisplayPath } from "../utils/display-path.js";
 import {
   computeDebugImagePath,
   diagramFileName,
@@ -14,6 +15,8 @@ export interface TexDiagramLedgerOptions {
   /** When `false`, compiled tex diagrams are never deleted. */
   removeOrphanedSvgs: boolean;
   command: "dev" | "build";
+  /** Absolute path of the Astro project root, which messages print paths relative to. */
+  rootDirPath: string;
 }
 
 /** What one render of a doc's `tex compile` blocks produced. */
@@ -177,7 +180,7 @@ function diagramRulesFor(options: TexDiagramLedgerOptions): DiagramRules {
 export function createLedger(
   options: TexDiagramLedgerOptions,
 ): TexDiagramLedger {
-  const { svgDir, debugImageDir } = options;
+  const { svgDir, debugImageDir, rootDirPath } = options;
   const diagramRules = diagramRulesFor(options);
   // Build re-renders every doc, so every debug tex diagram image is
   // regenerated; dev keeps the ones cached docs produced earlier.
@@ -211,7 +214,7 @@ export function createLedger(
       ? "only the last one's debug tex diagram image is kept"
       : "each blockid should be unique within a doc";
     console.warn(
-      `[astro-latex-compile] ${relative(process.cwd(), docPath)}: two or more tex compile blocks share a blockid; ${consequence}.`,
+      `[astro-latex-compile] ${toDisplayPath(rootDirPath, docPath)}: two or more tex compile blocks share a blockid; ${consequence}.`,
     );
   }
 
@@ -237,7 +240,7 @@ export function createLedger(
     }
     for (const path of orphanedImages) {
       console.warn(
-        `[astro-latex-compile] Removing orphaned debug tex diagram image: ${path}`,
+        `[astro-latex-compile] Removing orphaned debug tex diagram image: ${toDisplayPath(rootDirPath, path)}`,
       );
     }
     await removeAll([

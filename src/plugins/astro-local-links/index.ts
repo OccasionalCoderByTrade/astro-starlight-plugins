@@ -2,6 +2,7 @@ import type { AstroIntegration } from "astro";
 import { readFile, writeFile } from "node:fs/promises";
 import { relative } from "node:path";
 import { fileURLToPath } from "node:url";
+import { toDisplayPath } from "../utils/display-path.js";
 import type { ServedFileRule } from "../utils/served-file-rule.js";
 import {
   DOCS_FILE_ROUTE_PATTERN,
@@ -133,8 +134,10 @@ export function astroLocalLinks(
         if (!settings.validate && !settings.normalize) return;
 
         const sourceDocIndex = buildSourceDocIndex(settings.site);
-        const pagePathCollisionsError =
-          formatPagePathCollisionsError(sourceDocIndex);
+        const pagePathCollisionsError = formatPagePathCollisionsError(
+          sourceDocIndex,
+          settings.site.rootDirPath,
+        );
         if (pagePathCollisionsError) throw new Error(pagePathCollisionsError);
 
         // Astro only warns when another route takes a source doc's page path, unless
@@ -152,6 +155,7 @@ export function astroLocalLinks(
                 })),
           ),
           sourceDocIndex,
+          settings.site.rootDirPath,
         );
         if (shadowedDocsError) throw new Error(shadowedDocsError);
 
@@ -170,7 +174,7 @@ export function astroLocalLinks(
         ).length;
         if (htmlFileUrls.length === 0 && docRoutePagePathCount > 0) {
           throw new Error(
-            `[astro-local-links] Starlight wrote no doc pages, but ${settings.site.docsDirPath} has ` +
+            `[astro-local-links] Starlight wrote no doc pages, but ${toDisplayPath(settings.site.rootDirPath, settings.site.docsDirPath)} has ` +
               `${docRoutePagePathCount} source docs. Server-rendered Starlight (\`prerender: false\`) ` +
               `isn't supported. If every source doc is a draft, this error is a false alarm.`,
           );
@@ -198,7 +202,9 @@ export function astroLocalLinks(
         );
 
         if (pagesBrokenLinks.length > 0) {
-          throw new Error(formatBrokenLinksError(pagesBrokenLinks));
+          throw new Error(
+            formatBrokenLinksError(pagesBrokenLinks, settings.site.rootDirPath),
+          );
         }
       },
     },

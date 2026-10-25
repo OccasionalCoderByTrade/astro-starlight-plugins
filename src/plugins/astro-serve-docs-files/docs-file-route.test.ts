@@ -26,6 +26,7 @@ function makeRoute(
   }
   mkdirSync(docsDirPath, { recursive: true });
   return createDocsFileRoute({
+    rootDirPath,
     docsDirPath,
     ignorePatterns,
     serveDrafts,

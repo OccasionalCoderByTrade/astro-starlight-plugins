@@ -149,7 +149,10 @@ export function astroServeDocsFiles(
     );
     if (publicServedPathCollisions.length > 0) {
       throw new Error(
-        formatPublicServedPathCollisionsMessage(publicServedPathCollisions),
+        formatPublicServedPathCollisionsMessage(
+          publicServedPathCollisions,
+          routeSettings.rootDirPath,
+        ),
       );
     }
   };
@@ -184,6 +187,7 @@ export function astroServeDocsFiles(
         const docsDirPath = toDirPath(new URL("content/docs/", config.srcDir));
         // Like Starlight, which renders draft pages in dev and drops them from builds
         routeSettings = {
+          rootDirPath: toDirPath(config.root),
           docsDirPath,
           ignorePatterns,
           serveDrafts: command === "dev",
@@ -197,7 +201,6 @@ export function astroServeDocsFiles(
         const resolvedSettingsModuleId = `\0${SETTINGS_MODULE_ID}`;
         // The route and the raw doc alternate link middleware both read this module
         const moduleSettings: TServeDocsFilesModuleSettings = {
-          rootDirPath: toDirPath(config.root),
           // The injected route is served under `base` too
           baseUrlPath: config.base.replace(/\/+$/, ""),
           ...routeSettings,
@@ -266,12 +269,13 @@ export function astroServeDocsFiles(
       "astro:server:setup": ({ server, logger }) => {
         checkServedFiles();
         if (!routeSettings || !publicDirPath) return;
-        const { docsDirPath } = routeSettings;
+        const { rootDirPath, docsDirPath } = routeSettings;
 
         server.middlewares.use(
           createPublicServedPathCollisionMiddleware(
             { docsDirPath, publicDirPath },
             servedFileRule,
+            rootDirPath,
           ),
         );
 
@@ -292,6 +296,7 @@ export function astroServeDocsFiles(
           assets,
           routeConflicts: routeConflictListener?.routeConflicts ?? [],
           distDirPath: fileURLToPath(dir),
+          rootDirPath: routeSettings.rootDirPath,
           docsDirPath: routeSettings.docsDirPath,
         });
         if (routeCollisionsError) throw new Error(routeCollisionsError);

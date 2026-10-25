@@ -1,7 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, relative } from "node:path";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { resolveTexInputDirs } from "./tex-inputs.js";
 import { makeProject } from "./test-project.js";
@@ -184,10 +184,7 @@ describe.skipIf(!hasToolchain)("compileLatexToSvg", () => {
         errors: expect.arrayContaining([
           expect.objectContaining({
             message: "Undefined control sequence.",
-            filePath: relative(
-              process.cwd(),
-              join(rootDirPath, "src/latex/macros.tex"),
-            ),
+            filePath: join(rootDirPath, "src/latex/macros.tex"),
             line: 2,
           }),
         ]),

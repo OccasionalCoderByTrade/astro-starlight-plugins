@@ -3,6 +3,7 @@ import * as path from "node:path";
 import remarkParse from "remark-parse";
 import { unified } from "unified";
 import { visit } from "unist-util-visit";
+import { toDisplayPath } from "../utils/display-path.js";
 import {
   buildSidebarEntry,
   type TSidebarSourceDocFrontmatter,
@@ -65,6 +66,8 @@ export function validateLinkScope(linkScope: unknown): TLinkScope {
 }
 
 export type TIndexSourcedSidebarOptions = {
+  /** Absolute path of the project root, which messages print paths relative to. */
+  rootDirPath: string;
   /** Absolute path of Starlight's docs root (`content/docs/` under Astro's `srcDir`). */
   docsDirPath: string;
   /** Absolute path of the directory whose sidebar index defines the root group. */
@@ -113,8 +116,11 @@ type TResolvedLinkPath = {
 };
 
 /** Throws when the file can't be read or its YAML is malformed. */
-function readSourceDoc(filePath: string): TSourceDoc<TFrontmatter> {
-  return parseSourceDoc<TFrontmatter>(filePath);
+function readSourceDoc(
+  filePath: string,
+  rootDirPath: string,
+): TSourceDoc<TFrontmatter> {
+  return parseSourceDoc<TFrontmatter>(filePath, rootDirPath);
 }
 
 /**
@@ -391,11 +397,8 @@ function warnSkippedLink(
   href: string,
   reason: string,
 ): void {
-  const docsRelativeIndexFilePath = path
-    .relative(options.docsDirPath, options.sidebarIndex.indexFilePath)
-    .replace(/\\/g, "/");
   options.logger.warn(
-    `${LOG_PREFIX} Skipped link "${href}" in ${docsRelativeIndexFilePath}: ${reason}`,
+    `${LOG_PREFIX} Skipped link "${href}" in ${toDisplayPath(options.rootDirPath, options.sidebarIndex.indexFilePath)}: ${reason}`,
   );
 }
 
@@ -428,7 +431,7 @@ function buildSubIndexItems(
   const subIndex: TSidebarIndex = {
     dirPath: target.dirPath,
     indexFilePath: target.indexFilePath,
-    indexDoc: readSourceDoc(target.indexFilePath),
+    indexDoc: readSourceDoc(target.indexFilePath, options.rootDirPath),
   };
   if (isHiddenFromSidebar(subIndex.indexDoc.frontmatter)) return [];
 
@@ -462,7 +465,7 @@ function buildPageItems(
   options: TBuildItemsOptions,
 ): TSidebarItem[] {
   const { filePath } = target;
-  const linkedDoc = readSourceDoc(filePath);
+  const linkedDoc = readSourceDoc(filePath, options.rootDirPath);
   if (isHiddenFromSidebar(linkedDoc.frontmatter)) return [];
 
   return [
@@ -513,11 +516,11 @@ export function getIndexSourcedSidebarGroup(
       .map((extension) => `index${extension}`)
       .join(" or ");
     throw new Error(
-      `${LOG_PREFIX} No sidebar index (${indexFileNames}) for directory: ${dirPath}`,
+      `${LOG_PREFIX} No sidebar index (${indexFileNames}) for directory: ${toDisplayPath(options.rootDirPath, dirPath)}`,
     );
   }
 
-  const indexDoc = readSourceDoc(indexFilePath);
+  const indexDoc = readSourceDoc(indexFilePath, options.rootDirPath);
   if (isHiddenFromSidebar(indexDoc.frontmatter)) return undefined;
 
   const items = buildItems({

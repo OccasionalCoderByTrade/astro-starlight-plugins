@@ -4,6 +4,7 @@
 - You should not merge any changes to main. Changes are made in `dev`, or otherwise in separate local feature branches if needed to then be merged to dev on completion.
 - Run `npm run lib:build` as a sanity check before committing if the code has changed since the previous commit.
 - Be mindful when developing plugins for Starlight to handle md(x) content files more delicately based on their frontmatter `draft`, `sidebar.hidden`, or filename `**/[^_]*.{md,mdx}` semantics (plus `.mdoc` if Markdoc is installed). The `_` rule only applies to filenames, not folders (eg. `_partials/x.md` still becomes a page).
+- File paths in console output and error messages go through `toDisplayPath` (`src/plugins/utils/display-path.ts`): root-relative with `/` separators, absolute when outside the project root. Never relative to `process.cwd()`, which differs under `astro --root`; `src/plugins/tests/working-dir-drift.test.ts` checks this. Option values the user wrote are echoed verbatim.
 - Most plugins will be Astro plugins, but they may not necessarily be intended to work as standalone Astro plugins, since they will assume conventions or implement details that rely on Starlight semantics.
 
 If updating a plugin, or creating a new plugin, make sure to also update README.md in the root of this project to reflect the changes.

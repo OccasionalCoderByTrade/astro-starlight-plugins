@@ -332,7 +332,7 @@ describe("starlightIndexOnlySidebar", () => {
     });
 
     await expect(setup()).rejects.toThrow(
-      `${PLUGIN_PREFIX} directories entry "../outside" is outside the docs root ${docsDirPath}`,
+      `${PLUGIN_PREFIX} directories entry "../outside" is outside the docs root src/content/docs`,
     );
   });
 
@@ -343,7 +343,7 @@ describe("starlightIndexOnlySidebar", () => {
     );
 
     await expect(setup()).rejects.toThrow(
-      `${PLUGIN_PREFIX} Directory not found for directories entry "guides": ${join(docsDirPath, "guides")}`,
+      `${PLUGIN_PREFIX} Directory not found for directories entry "guides": src/content/docs/guides`,
     );
   });
 
@@ -364,7 +364,7 @@ describe("starlightIndexOnlySidebar", () => {
     );
 
     await expect(setup()).rejects.toThrow(
-      `${PLUGIN_PREFIX} No sidebar index (index.md or index.mdx) for directories entry "guides": ${join(docsDirPath, "guides")}`,
+      `${PLUGIN_PREFIX} No sidebar index (index.md or index.mdx) for directories entry "guides": src/content/docs/guides`,
     );
   });
 

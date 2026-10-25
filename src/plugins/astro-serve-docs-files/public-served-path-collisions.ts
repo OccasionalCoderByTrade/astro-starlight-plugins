@@ -1,5 +1,6 @@
 /** Served path collisions between served docs files and files in `public/`. */
 import { resolve } from "node:path";
+import { toDisplayPath } from "../utils/display-path.js";
 import type { ServedFileRule } from "../utils/served-file-rule.js";
 import { SERVE_DOCS_FILES_INTEGRATION_NAME } from "../utils/serve-docs-files-integration.js";
 import { isFile } from "../utils/workspace-utils.js";
@@ -59,11 +60,12 @@ export function findPublicServedPathCollisions(
  */
 export function formatPublicServedPathCollisionsMessage(
   collisions: TPublicServedPathCollision[],
+  rootDirPath: string,
 ): string {
   const collisionList = collisions
     .map(
       ({ docsFilePath, publicFilePath }) =>
-        `  - ${docsFilePath}\n    ${publicFilePath}`,
+        `  - ${toDisplayPath(rootDirPath, docsFilePath)}\n    ${toDisplayPath(rootDirPath, publicFilePath)}`,
     )
     .join("\n");
   return (
@@ -102,6 +104,7 @@ function toRelativeFilePath(requestUrl: string): string | undefined {
 export function createPublicServedPathCollisionMiddleware(
   servedDirPaths: TServedDirPaths,
   isServed: ServedFileRule,
+  rootDirPath: string,
 ) {
   return (request: TDevRequest, response: TDevResponse, next: () => void) => {
     const relativeFilePath = toRelativeFilePath(request.url ?? "");
@@ -120,6 +123,8 @@ export function createPublicServedPathCollisionMiddleware(
     if (!collision) return next();
     response.statusCode = 500;
     response.setHeader("content-type", "text/plain; charset=utf-8");
-    response.end(formatPublicServedPathCollisionsMessage([collision]));
+    response.end(
+      formatPublicServedPathCollisionsMessage([collision], rootDirPath),
+    );
   };
 }

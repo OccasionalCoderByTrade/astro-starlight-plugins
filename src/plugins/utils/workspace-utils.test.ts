@@ -27,7 +27,7 @@ describe("parseFrontmatter", () => {
       "page.md": "---\ntitle: Page\ndraft: true\n---\n\nBody",
     });
 
-    expect(parseFrontmatter(join(rootDirPath, "page.md"))).toEqual({
+    expect(parseFrontmatter(join(rootDirPath, "page.md"), rootDirPath)).toEqual({
       title: "Page",
       draft: true,
     });
@@ -39,14 +39,16 @@ describe("parseFrontmatter", () => {
     });
     const filePath = join(rootDirPath, "broken.md");
 
-    expect(() => parseFrontmatter(filePath)).toThrow(filePath);
-    expect(() => parseFrontmatter(filePath)).toThrow(/\(3:1\)|line 3, column 1/); // markdown-remark 6 | 7 wording
+    expect(() => parseFrontmatter(filePath, rootDirPath)).toThrow(
+      "Failed to parse frontmatter in broken.md:",
+    );
+    expect(() => parseFrontmatter(filePath, rootDirPath)).toThrow(/\(3:1\)|line 3, column 1/); // markdown-remark 6 | 7 wording
   });
 
   it("throws when the file can't be read", () => {
     const rootDirPath = makeFileTree({ "not-a-file.md/": "" });
 
-    expect(() => parseFrontmatter(join(rootDirPath, "not-a-file.md"))).toThrow(
+    expect(() => parseFrontmatter(join(rootDirPath, "not-a-file.md"), rootDirPath)).toThrow(
       /EISDIR/,
     );
   });

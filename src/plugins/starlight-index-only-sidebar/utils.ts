@@ -18,6 +18,8 @@ import { isHiddenFromSidebar } from "../utils/sidebar-visibility.js";
 import { isDir, parseFrontmatter } from "../utils/workspace-utils.js";
 
 export type TIndexOnlySidebarOptions = {
+  /** Absolute path of the project root, which error messages print paths relative to. */
+  rootDirPath: string;
   /** Absolute path of Starlight's docs root (`content/docs/` under Astro's `srcDir`). */
   docsDirPath: string;
   /** Levels of groups allowed, the root group included. `Infinity` for no limit. */
@@ -33,11 +35,15 @@ type TBuildItemsOptions = Required<TIndexOnlySidebarOptions>;
 
 function hasSidebarIndexInSubtree(
   dirPath: string,
-  sourceDocExtensions: string[],
+  options: Pick<
+    TIndexOnlySidebarOptions,
+    "rootDirPath" | "sourceDocExtensions"
+  >,
 ): boolean {
+  const { sourceDocExtensions } = options;
   const indexFilePath = findSidebarIndexFile(dirPath, sourceDocExtensions);
   if (indexFilePath) {
-    const frontmatter = parseFrontmatter(indexFilePath);
+    const frontmatter = parseFrontmatter(indexFilePath, options.rootDirPath);
     return !isHiddenFromSidebar(frontmatter);
   }
 
@@ -45,10 +51,7 @@ function hasSidebarIndexInSubtree(
   for (const entry of entries) {
     if (entry === "assets") continue;
     const entryPath = path.join(dirPath, entry);
-    if (
-      isDir(entryPath) &&
-      hasSidebarIndexInSubtree(entryPath, sourceDocExtensions)
-    ) {
+    if (isDir(entryPath) && hasSidebarIndexInSubtree(entryPath, options)) {
       return true;
     }
   }
@@ -74,8 +77,10 @@ function buildIndexEntry(
   );
   if (!indexFilePath) return undefined;
 
-  const frontmatter =
-    parseFrontmatter<TSidebarSourceDocFrontmatter>(indexFilePath);
+  const frontmatter = parseFrontmatter<TSidebarSourceDocFrontmatter>(
+    indexFilePath,
+    options.rootDirPath,
+  );
   if (isHiddenFromSidebar(frontmatter)) return undefined;
 
   return buildSidebarEntry({
@@ -124,7 +129,7 @@ function buildSidebarItems(
     if (!isDir(entryPath)) continue;
 
     // Skip if this directory has no sidebar index in its subtree
-    if (!hasSidebarIndexInSubtree(entryPath, sourceDocExtensions)) continue;
+    if (!hasSidebarIndexInSubtree(entryPath, options)) continue;
 
     const subItems = buildSidebarItems(
       entryPath,
@@ -190,7 +195,9 @@ export function getIndexOnlySidebarGroup(
   );
   if (
     rootIndexFilePath &&
-    isHiddenFromSidebar(parseFrontmatter(rootIndexFilePath))
+    isHiddenFromSidebar(
+      parseFrontmatter(rootIndexFilePath, options.rootDirPath),
+    )
   ) {
     return undefined;
   }

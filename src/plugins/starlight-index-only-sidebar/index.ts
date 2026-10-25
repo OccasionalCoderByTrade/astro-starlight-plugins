@@ -80,11 +80,13 @@ export function starlightIndexOnlySidebar(
           astroConfig.integrations,
         );
 
+        const rootDirPath = fileURLToPath(astroConfig.root);
         const docsDirPath = fileURLToPath(
           new URL("content/docs/", astroConfig.srcDir),
         );
         const { dirPaths, maxGroupLevels } = validateSidebarOptions({
           pluginName: "starlight-index-only-sidebar",
+          rootDirPath,
           docsDirPath,
           directories,
           maxGroupLevels: pluginOptions.maxGroupLevels,
@@ -93,6 +95,7 @@ export function starlightIndexOnlySidebar(
         const sidebarGroups = dirPaths
           .map((dirPath) =>
             getIndexOnlySidebarGroup(dirPath, {
+              rootDirPath,
               docsDirPath,
               maxGroupLevels,
               dirnameDeterminesLabels,
