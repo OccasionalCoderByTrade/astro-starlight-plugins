@@ -80,6 +80,7 @@
     "prepublishOnly": "npm run lib:build",
     "tree:index": "tree -P index.md src/content/docs",
     "tree:depth": "bash scripts/tree-depth.sh",
+    "vendor:fonts": "node scripts/vendor-source-code-pro.mjs",
     "clean:empty-dirs": "find src/content/docs -type d -empty -delete",
     "test": "vitest run"
   },

@@ -4,7 +4,23 @@ import {
   type AnnotationRenderOptions,
 } from "@expressive-code/core";
 import { h } from "@expressive-code/core/hast";
+import { sourceCodeProFontFaces } from "./fonts.js";
 import { createEmphasisMatcher } from "./utils.js";
+
+// `@font-face` survives Expressive Code's nesting of `baseStyles` under its wrapper class,
+// but `@import` doesn't, so the font is inlined instead of linked from Google.
+const sourceCodeProFontFaceRules = sourceCodeProFontFaces
+  .map(
+    ({ unicodeRange, woff2Base64 }) => `@font-face {
+      font-family: "Source Code Pro";
+      font-style: normal;
+      font-weight: 900;
+      font-display: swap;
+      src: url(data:font/woff2;base64,${woff2Base64}) format("woff2");
+      unicode-range: ${unicodeRange};
+    }`,
+  )
+  .join("\n");
 
 class EmphasisAnnotation extends ExpressiveCodeAnnotation {
   render({ nodesToTransform }: AnnotationRenderOptions) {
@@ -15,8 +31,8 @@ class EmphasisAnnotation extends ExpressiveCodeAnnotation {
 /**
  * Expressive Code plugin that emphasizes the terms listed in a code block's
  * `emph` meta, e.g. ```` ```js emph="foo,bar,()" ````, by wrapping each match
- * in `<span class="fw-supreme">`. The `.fw-supreme` styles ship in the
- * package's `./styles` export.
+ * in `<span class="fw-supreme">`, styled in Source Code Pro at weight 900. The
+ * styles and the font (latin + latin-ext subsets) ship with the plugin.
  *
  * - Terms are comma-separated and trimmed; a term can't contain a comma.
  * - Matching is case-sensitive.
@@ -30,6 +46,15 @@ class EmphasisAnnotation extends ExpressiveCodeAnnotation {
 export function expressiveCodeEmphasis() {
   return definePlugin({
     name: "expressive-code-emphasis",
+    baseStyles: `
+      ${sourceCodeProFontFaceRules}
+
+      .fw-supreme {
+        font-family: "Source Code Pro", ui-monospace, monospace;
+        font-weight: 900;
+        -webkit-text-stroke: 0.1px currentColor;
+      }
+    `,
     hooks: {
       preprocessCode: (context) => {
         const emphMetaValue = context.codeBlock.metaOptions.getString("emph");

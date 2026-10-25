@@ -620,7 +620,7 @@ export default defineConfig({
 
 ### Expressive Code Emphasis
 
-An Expressive Code plugin that highlights specific terms inside code blocks using the `emph` meta attribute. Matched terms are wrapped in a `<span class="fw-supreme">` for custom styling.
+An Expressive Code plugin that highlights specific terms inside code blocks using the `emph` meta attribute. Matched terms are wrapped in a `<span class="fw-supreme">` and set in Source Code Pro at weight 900.
 
 **Features:**
 
@@ -669,7 +669,7 @@ Matching rules:
 - An edge of a term that is a word character can't sit against another word character. A word character is a letter, combining mark (such as the accent in a decomposed `é`), digit or `_`, in any script. An edge that is punctuation can sit against anything, so `()` matches in `foo()`, and `-` matches each dash in `--`.
 - Matches never overlap. The one that starts first wins, and at the same start the longer term wins, so `emph="foo,foo.bar"` emphasizes `foo.bar` as one unit.
 
-The `.fw-supreme` styles (Source Code Pro at weight 900, loaded from Google Fonts) ship as SCSS in the package's `./styles` export. Add `starlight-cannoli-plugins/styles/main.scss` to Starlight's `customCss` (needs `sass` installed) to get them. Without them, the span has no styling.
+The plugin ships its own styles, so there's nothing else to import. The font is self-hosted: Source Code Pro at weight 900 is inlined into Expressive Code's stylesheet (about 38 KB), with no request to Google Fonts. It only covers the latin and latin-ext subsets, so other characters in an emphasized term (Greek or Cyrillic, for example) fall back to the browser's monospace font.
 
 ## Installation
 
