@@ -1,28 +1,25 @@
-# 01: Extract the processor registration into a shared helper, and move heading IDs onto it
+# 01: Shared processor registration helper, with heading IDs moved onto it
 
-**Status:** ready-for-agent
+**What to build:** a prefactor that makes tickets 02 and 03 easy. The "register into the active Markdown processor" logic moves out of `astroVscodeHeadingIds` into a shared helper in the plugins' utils, as ADR 0017 describes. Site owners see no change: VS Code heading IDs behave exactly as before, on either processor.
+
+The helper is `createProcessorRegistration({ pluginName, remarkPlugin, satteriPlugin })`. It returns two functions, and each plugin calls them from its own hooks:
+
+- `register(config, updateConfig)`, from `astro:config:setup`:
+  - `unified`: push the remark plugin into the processor's `remarkPlugins`.
+  - `satteri`: push the mdast plugin into the processor's `mdastPlugins`.
+  - No processor (before Astro 7): `updateConfig` with a `remarkPlugins` list holding only this plugin. Never spread the existing list.
+  - Anything else: throw, naming the plugin and the processor.
+- `assertStillRegistered(config)`, from `astro:config:done`: throw if the plugin is no longer in the active processor's list, or in `markdown.remarkPlugins` before Astro 7.
+
+The remark plugin may be an `[attacher, options]` tuple, which ticket 02 needs. The `config:done` check must find it by identity.
 
 **Blocked by:** None (can start immediately)
 
-**What to build:** move the "register into the active Markdown processor" logic out of `astroVscodeHeadingIds` (`src/plugins/astro-vscode-heading-ids/index.ts`) into `src/plugins/utils/markdown-processor-registration.ts`, so `astroLatexCompile` can use it in ticket 02. ADR 0017 states the rule.
+**Status:** ready-for-agent
 
-Shape:
-
-- `createProcessorRegistration({ pluginName, remarkPlugin, satteriPlugin })` returns:
-  - `register(config, updateConfig)`, called from the plugin's own `astro:config:setup`:
-    - `unified`: push `remarkPlugin` into `processor.options.remarkPlugins`.
-    - `satteri`: push `satteriPlugin` into `processor.options.mdastPlugins`.
-    - No processor (before Astro 7): `updateConfig({ markdown: { remarkPlugins: [remarkPlugin] } })`. Never spread the existing list.
-    - Anything else: throw, naming the plugin and the processor.
-  - `assertStillRegistered(config)`, called from the plugin's own `astro:config:done`: throw if the registered plugin is no longer in the processor's list (or in `markdown.remarkPlugins` before Astro 7).
-- `remarkPlugin` may be a `[attacher, options]` tuple. Ticket 02 needs that to carry `texInputsHash`. The `config:done` check must find the tuple too.
-- Each plugin keeps its own hooks object and only calls these two functions.
-
-`astroVscodeHeadingIds` behaves exactly as before. Its error messages stay the same apart from coming from the helper.
-
-**Tests:**
-
-- Unit tests for the helper: `unified`, `satteri`, no processor (exactly one entry added, existing entries not duplicated), unsupported processor, processor replaced before `config:done`, tuple form.
-- Keep heading IDs' registration tests (`src/plugins/astro-vscode-heading-ids/index.test.ts`) passing against the helper.
-
-**Done when:** `npm test` and `npm run lib:build` pass. ADR 0017 is already written.
+- [ ] `astroVscodeHeadingIds` registers only through the helper. It keeps its own hooks and no longer contains processor branching.
+- [ ] Heading IDs' integration tests pass unchanged in what they assert, under both processors.
+- [ ] Heading IDs' integration tests cover the no-processor fallback (exactly one entry added, existing entries not duplicated), an unsupported processor (startup throw), and a replaced processor (`config:done` throw).
+- [ ] Error messages read the same as before, with the plugin name filled in by the helper.
+- [ ] No unit tests target the helper directly. It's tested through the integrations (spec, Testing Decisions).
+- [ ] `npm test` and `npm run lib:build` pass.
