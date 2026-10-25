@@ -15,11 +15,11 @@ The remark plugin may be an `[attacher, options]` tuple, which ticket 02 needs. 
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] `astroVscodeHeadingIds` registers only through the helper. It keeps its own hooks and no longer contains processor branching.
-- [ ] Heading IDs' integration tests pass unchanged in what they assert, under both processors.
-- [ ] Heading IDs' integration tests cover the no-processor fallback (exactly one entry added, existing entries not duplicated), an unsupported processor (startup throw), and a replaced processor (`config:done` throw).
-- [ ] Error messages read the same as before, with the plugin name filled in by the helper.
-- [ ] No unit tests target the helper directly. It's tested through the integrations (spec, Testing Decisions).
-- [ ] `npm test` and `npm run lib:build` pass.
+- [x] `astroVscodeHeadingIds` registers only through the helper. It keeps its own hooks and no longer contains processor branching.
+- [x] Heading IDs' integration tests pass unchanged in what they assert, under both processors.
+- [x] Heading IDs' integration tests cover the no-processor fallback (exactly one entry added, existing entries not duplicated), an unsupported processor (startup throw), and a replaced processor (`config:done` throw).
+- [x] Error messages read the same as before, with the plugin name filled in by the helper.
+- [x] No unit tests target the helper directly. It's tested through the integrations (spec, Testing Decisions).
+- [x] `npm test` and `npm run lib:build` pass.
