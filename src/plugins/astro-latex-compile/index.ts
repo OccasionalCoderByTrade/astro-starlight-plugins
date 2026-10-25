@@ -12,11 +12,9 @@ import {
   resolveTexInputDirs,
   type TexInputDir,
 } from "./tex-inputs.js";
-import {
-  latexCompileTransformer,
-  type LatexCompileState,
-  type TexCompileErrorEntry,
-} from "./transformer.js";
+import { createProcessorRegistration } from "../utils/processor-registration.js";
+import { createLatexCompileCore, type TexCompileErrorEntry } from "./core.js";
+import { createRemarkLatexCompile } from "./remark-adapter.js";
 
 export type { DebugOptions as LatexCompileDebugOptions };
 
@@ -147,6 +145,20 @@ function describeTexInputDirs(texInputDirs: TexInputDir[]): string {
     .join(", ");
 }
 
+/**
+ * Sätteri has no LaTeX compile adapter yet, so a site on it would render
+ * `tex compile` blocks as plain code. Fails startup instead.
+ */
+function assertProcessorNotSatteri(config: AstroConfig): void {
+  const { processor } = config.markdown as { processor?: { name: string } };
+  if (processor?.name === "satteri") {
+    throw new Error(
+      '[astro-latex-compile] The configured `markdown.processor` ("satteri") ' +
+        "is not supported yet. Use `unified()` from `@astrojs/markdown-remark`.",
+    );
+  }
+}
+
 export function astroLatexCompile(
   options: LatexCompileOptions,
 ): AstroIntegration {
@@ -154,6 +166,8 @@ export function astroLatexCompile(
   const texCompileErrors: TexCompileErrorEntry[] = [];
   let missingTexInputDirs: TexInputDir[] = [];
   let ledger: TexDiagramLedger | undefined;
+  let processorRegistration:
+    ReturnType<typeof createProcessorRegistration> | undefined;
 
   return {
     name: "astro-latex-compile",
@@ -174,6 +188,40 @@ export function astroLatexCompile(
           ? resolveDebugOutput(fileURLToPath(createCodegenDir()), options.debug)
           : undefined;
         if (command !== "build" && command !== "dev") return;
+        assertProcessorNotSatteri(config);
+
+        const rootDirPath = fileURLToPath(config.root);
+        const texInputDirs = resolveTexInputDirs(
+          rootDirPath,
+          options.texInputDirs ?? [],
+        );
+        const texDiagramLedger = createLedger({
+          svgDir: svgOutputDirPath,
+          debugImageDir: debugOutput?.outputDir,
+          removeOrphanedSvgs: options.removeOrphanedSvgs ?? false,
+          command,
+        });
+        ledger = texDiagramLedger;
+        const core = createLatexCompileCore(options, {
+          missingTools,
+          texCompileErrors,
+          exitOnMissingToolchain: command === "dev",
+          ledger: texDiagramLedger,
+          debugLogFile: debugOutput?.logFile,
+          rootDirPath,
+          texInputDirs,
+        });
+
+        // Astro clears its content store when its config's JSON changes. The
+        // plugin's options are part of that JSON, so carrying the hash here
+        // makes docs cached before a tex input file changed render again.
+        const texInputsHash = hashTexInputs(rootDirPath, texInputDirs);
+        processorRegistration = createProcessorRegistration({
+          pluginName: "astro-latex-compile",
+          remarkPlugin: [createRemarkLatexCompile(core), { texInputsHash }],
+          satteriPlugin: undefined,
+        });
+        processorRegistration.register(config, updateConfig);
 
         injectScript(
           "page-ssr",
@@ -187,11 +235,6 @@ export function astroLatexCompile(
           await clearContentLayerCache(config);
         }
 
-        const rootDirPath = fileURLToPath(config.root);
-        const texInputDirs = resolveTexInputDirs(
-          rootDirPath,
-          options.texInputDirs ?? [],
-        );
         missingTexInputDirs = findMissingTexInputDirs(texInputDirs);
         if (missingTexInputDirs.length > 0) {
           const message = `[astro-latex-compile] texInputDirs ${describeTexInputDirs(missingTexInputDirs)} not found in "${rootDirPath}".`;
@@ -204,7 +247,7 @@ export function astroLatexCompile(
 
         if (command === "dev") {
           // Restarts dev when a tex input file changes, which re-runs this hook
-          // with a new texInputsHash below.
+          // with a new texInputsHash.
           for (const filePath of listTexInputFiles(texInputDirs)) {
             addWatchFile(filePath);
           }
@@ -216,43 +259,11 @@ export function astroLatexCompile(
           );
         }
 
-        ledger = createLedger({
-          svgDir: svgOutputDirPath,
-          debugImageDir: debugOutput?.outputDir,
-          removeOrphanedSvgs: options.removeOrphanedSvgs ?? false,
-          command,
-        });
-        await ledger.start();
+        await texDiagramLedger.start();
+      },
 
-        const existingPlugins = Array.isArray(config.markdown?.remarkPlugins)
-          ? config.markdown.remarkPlugins.filter(Boolean)
-          : [];
-
-        const state: LatexCompileState = {
-          missingTools,
-          texCompileErrors,
-          exitOnMissingToolchain: command === "dev",
-          ledger,
-          debugLogFile: debugOutput?.logFile,
-          rootDirPath,
-          texInputDirs,
-        };
-
-        // Astro clears its content store when its config's JSON changes. The
-        // plugin's options are part of that JSON, so carrying the hash here
-        // makes docs cached before a tex input file changed render again.
-        const texInputsHash = hashTexInputs(rootDirPath, texInputDirs);
-        updateConfig({
-          markdown: {
-            remarkPlugins: [
-              ...existingPlugins,
-              [
-                () => latexCompileTransformer(options, state),
-                { texInputsHash },
-              ],
-            ],
-          },
-        });
+      "astro:config:done": ({ config }) => {
+        processorRegistration?.assertStillRegistered(config);
       },
 
       "astro:build:done": async () => {

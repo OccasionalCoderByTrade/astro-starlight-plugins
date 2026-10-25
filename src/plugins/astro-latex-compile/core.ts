@@ -1,9 +1,6 @@
 import { readFileSync, writeSync } from "node:fs";
 import { parseFrontmatter } from "@astrojs/markdown-remark";
 import { relative } from "node:path";
-import { visit, SKIP } from "unist-util-visit";
-import type { Code, Html, Parent, Root } from "mdast";
-import type { VFile } from "vfile";
 import { MetaOptions } from "@expressive-code/core";
 import type { LatexCompileOptions } from "./index.js";
 import { RotatingFileLogger } from "../utils/rotating-file-logger.js";
@@ -66,16 +63,17 @@ export interface LatexCompileState {
 }
 
 /**
- * Astro strips frontmatter before passing markdown to remark, so remark's line
- * numbers are relative to the body. This reads the original file to compute how
- * many lines (frontmatter + blank separator) were removed.
+ * Astro strips frontmatter before passing markdown to the processor, so a
+ * block's line number is relative to the body. This reads the original file
+ * to count how many lines the frontmatter took.
  */
 function getFrontmatterOffset(absoluteFilePath: string): number {
   try {
     const original = readFileSync(absoluteFilePath, "utf-8");
+    // Astro removes `---<rawFrontmatter>---`, and the delimiters hold no
+    // newlines, so the body starts that many lines down.
     const { rawFrontmatter } = parseFrontmatter(original);
-    if (!rawFrontmatter) return 0;
-    return rawFrontmatter.split("\n").length - 1 + 2;
+    return rawFrontmatter.split("\n").length - 1;
   } catch {
     return 0;
   }
@@ -148,7 +146,30 @@ async function writeDebugOutput(
   }
 }
 
-export function latexCompileTransformer(
+/** One `tex compile` block, as an adapter found it in a doc. */
+export interface TexCompileBlock {
+  /** The block's LaTeX source. */
+  value: string;
+  /** The code fence's meta string, after the language. */
+  meta: string | null | undefined;
+  /** The fence's 1-based line in the doc body (frontmatter stripped), if known. */
+  bodyLine: number | undefined;
+}
+
+/** Whether a code block with this language and meta is a `tex compile` block. */
+export function isTexCompileBlock(
+  lang: string | null | undefined,
+  meta: string | null | undefined,
+): boolean {
+  return (lang === "tex" || lang === "latex") && !!meta?.includes("compile");
+}
+
+/**
+ * LaTeX compile's logic, with no knowledge of any Markdown processor. An
+ * adapter finds a doc's `tex compile` blocks and replaces each one with the
+ * HTML `renderDoc` returns for it.
+ */
+export function createLatexCompileCore(
   options: LatexCompileOptions,
   state: LatexCompileState,
 ) {
@@ -188,29 +209,34 @@ export function latexCompileTransformer(
     console.error(report);
   }
 
-  async function renderDoc(tree: Root, filePath: string, render: DocRender) {
-    type NodeEntry = { node: Code; index: number; parent: Parent };
-    const nodes: NodeEntry[] = [];
-
-    visit(tree, "code", (node, index, parent) => {
-      if (
-        (node.lang === "tex" || node.lang === "latex") &&
-        node.meta?.includes("compile") &&
-        parent &&
-        index !== undefined
-      ) {
-        nodes.push({ node, index, parent });
-      }
-      return SKIP;
+  /** The block's compiled tex diagram, inlined with its `class` and `alt`. */
+  function compiledDiagramHtml(block: TexCompileBlock, svgMarkup: string) {
+    const metaOptions = new MetaOptions(block.meta ?? "");
+    const blockClass = metaOptions.getString("class");
+    const extraClasses = (
+      blockClass !== undefined ? blockClass : (options.svgClassname ?? "")
+    )
+      .split(/\s+/)
+      .filter(Boolean);
+    const altText = metaOptions.getString("alt") ?? "LaTeX diagram";
+    return inlineSvgHtml(svgMarkup, {
+      classNames: ["tex-compiled", ...extraClasses],
+      altText,
     });
+  }
 
-    if (nodes.length === 0) {
+  async function compileBlocks(
+    filePath: string,
+    blocks: TexCompileBlock[],
+    render: DocRender,
+  ): Promise<string[]> {
+    if (blocks.length === 0) {
       await ledger.recordDoc(render, { hashes: [], blockIds: [] });
-      return;
+      return [];
     }
 
-    const blockIds = nodes.map(({ node }) =>
-      new MetaOptions(node.meta ?? "").getInteger("blockid"),
+    const blockIds = blocks.map((block) =>
+      new MetaOptions(block.meta ?? "").getInteger("blockid"),
     );
     // Blocks sharing a blockid would write the same debug tex diagram image,
     // so only the last one in the doc writes it.
@@ -226,12 +252,11 @@ export function latexCompileTransformer(
     // a doc that re-renders after it was added still hashes it.
     const texInputsHash = hashTexInputs(state.rootDirPath, state.texInputDirs);
 
-    // Compile all blocks in parallel, collecting results before mutating the tree
     const results = await Promise.all(
-      nodes.map(async ({ node, index, parent }, i) => {
+      blocks.map(async (block, i) => {
         const lineNumberStr =
-          node.position?.start.line !== undefined
-            ? String(node.position.start.line + frontmatterOffset)
+          block.bodyLine !== undefined
+            ? String(block.bodyLine + frontmatterOffset)
             : "?";
         const blockId = blockIds[i];
         const debugImagePath =
@@ -240,7 +265,7 @@ export function latexCompileTransformer(
             : undefined;
         const location = `${relFilePath}:${lineNumberStr}`;
 
-        const parsedMode = parseCompileMode(new MetaOptions(node.meta ?? ""));
+        const parsedMode = parseCompileMode(new MetaOptions(block.meta ?? ""));
         const compileMode = parsedMode.ok
           ? parsedMode.compileMode
           : DEFAULT_COMPILE_MODE;
@@ -250,7 +275,7 @@ export function latexCompileTransformer(
         let outcome: CompileOutcome;
         try {
           outcome = parsedMode.ok
-            ? await compileLatexToSvg(node.value, ledger.svgDir, {
+            ? await compileLatexToSvg(block.value, ledger.svgDir, {
                 texInputDirs: state.texInputDirs,
                 texInputsHash,
                 compileMode,
@@ -271,7 +296,7 @@ export function latexCompileTransformer(
               writeDebugImage(failure, location, debugImagePath),
             );
           }
-          return { index, parent, outcome, location, hash: null };
+          return { outcome, location, hash: null };
         }
 
         if (outcome.wasCompiled) {
@@ -283,7 +308,7 @@ export function latexCompileTransformer(
           const { svgPath } = outcome;
           await writeDebugOutput(location, async () => {
             await writeDebugImageFromDiagram(
-              node.value,
+              block.value,
               svgPath,
               debugImagePath,
               { texInputDirs: state.texInputDirs, compileMode },
@@ -291,66 +316,50 @@ export function latexCompileTransformer(
             await debugLogger?.write(`${location}: wrote ${debugImagePath}`);
           });
         }
-        return { index, parent, outcome, location, hash: outcome.hash };
+        return { outcome, location, hash: outcome.hash };
       }),
     );
 
     await ledger.recordDoc(render, {
-      hashes: results.flatMap((r) => r.hash ?? []),
+      hashes: results.flatMap((result) => result.hash ?? []),
       blockIds: blockIds.flatMap((id) => id ?? []),
     });
 
-    // Apply AST mutations in reverse index order so earlier splices don't shift
-    // the indices of later nodes sharing the same parent.
-    for (let i = results.length - 1; i >= 0; i--) {
-      const { index, parent, outcome, location } = results[i];
-      const { node } = nodes[i];
-
-      if (!outcome.ok) {
-        const errorNode: Html = {
-          type: "html",
-          value: renderHtml(outcome.failure, location, node.value),
-        };
-        parent.children.splice(index, 1, errorNode);
-        continue;
-      }
-
-      const metaOptions = new MetaOptions(node.meta ?? "");
-      const blockClass = metaOptions.getString("class");
-      const extraClasses = (
-        blockClass !== undefined ? blockClass : (options.svgClassname ?? "")
-      )
-        .split(/\s+/)
-        .filter(Boolean);
-      const altText = metaOptions.getString("alt") ?? "LaTeX diagram";
-
-      const svgNode: Html = {
-        type: "html",
-        value: inlineSvgHtml(outcome.svgMarkup, {
-          classNames: ["tex-compiled", ...extraClasses],
-          altText,
-        }),
-      };
-      parent.children.splice(index, 1, svgNode);
-    }
+    return results.map(({ outcome, location }, i) =>
+      outcome.ok
+        ? compiledDiagramHtml(blocks[i], outcome.svgMarkup)
+        : renderHtml(outcome.failure, location, blocks[i].value),
+    );
   }
 
-  return async function transformer(tree: Root, file: VFile) {
-    const filePath = file.path || "unknown";
-    const render = ledger.beginDoc(filePath);
-    try {
-      await renderDoc(tree, filePath, render);
-    } catch (err) {
-      // Astro only logs the rethrown error, so record it to fail the build.
-      recordTexCompileError(
-        { kind: "unexpected", message: errorMessage(err) },
-        displayFilePath(filePath),
-      );
-      throw err;
-    } finally {
-      // A render that throws before recording must still end, or the ledger
-      // holds back orphan deletion for good. A no-op once recorded.
-      await ledger.abandonDoc(render);
-    }
+  return {
+    /**
+     * Compiles a doc's `tex compile` blocks in parallel and records the doc in
+     * the ledger. Returns one HTML string per block, in order: the inlined
+     * compiled tex diagram, or the tex compile error shown in its place.
+     */
+    async renderDoc(
+      filePath: string | undefined,
+      blocks: TexCompileBlock[],
+    ): Promise<string[]> {
+      const docFilePath = filePath || "unknown";
+      const render = ledger.beginDoc(docFilePath);
+      try {
+        return await compileBlocks(docFilePath, blocks, render);
+      } catch (err) {
+        // Astro only logs the rethrown error, so record it to fail the build.
+        recordTexCompileError(
+          { kind: "unexpected", message: errorMessage(err) },
+          displayFilePath(docFilePath),
+        );
+        throw err;
+      } finally {
+        // A render that throws before recording must still end, or the ledger
+        // holds back orphan deletion for good. A no-op once recorded.
+        await ledger.abandonDoc(render);
+      }
+    },
   };
 }
+
+export type LatexCompileCore = ReturnType<typeof createLatexCompileCore>;
