@@ -1,4 +1,4 @@
-Status: ready-for-agent
+Status: resolved
 
 # astroServeDocsFiles: serve docs files without touching `public/`
 

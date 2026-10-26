@@ -2,6 +2,18 @@
 
 A collection of powerful plugins for [Astro Starlight](https://starlight.astro.build/) documentation sites.
 
+## Upgrading from 3.x
+
+4.0.0 has breaking changes in most plugins. Each section below has the details:
+
+- **Sidebars:** entry slugs are page paths, options are validated at startup, and `maxDepthNesting` is renamed `maxGroupLevels`. See [Sidebar breaking changes in 4.0.0](#sidebar-breaking-changes-in-400).
+- **LaTeX Compile:** tex diagrams are inline SVGs, blocks can only `\input` files from `texInputDirs`, tex compile errors fail `astro build`, and a Markdown processor other than `unified()` or `satteri()` fails startup. See [LaTeX Compile](#latex-compile).
+- **`remarkGfmSlug`** is replaced by the `astroVscodeHeadingIds` integration. See [VS Code Heading IDs](#vs-code-heading-ids).
+- **`rehypeValidateLinks` and `astroNormalizePaths`** are replaced by `astroLocalLinks`. See [Local Links](#local-links).
+- **`syncDocsToPublic`** is renamed `astroServeDocsFiles` and no longer copies files into `public/`. See [Serve Docs Files](#serve-docs-files).
+- **Styles:** `styles/main.scss` is gone. Plugins ship their own styles, and the rest is split into two opt-in stylesheets. See [Styles](#styles).
+- Plugins that read frontmatter fail at startup (or the build) when it can't be parsed.
+
 ## Plugins
 
 ### Starlight Index-Only Sidebar

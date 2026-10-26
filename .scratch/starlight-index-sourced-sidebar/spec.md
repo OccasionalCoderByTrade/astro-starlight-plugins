@@ -1,4 +1,4 @@
-Status: ready-for-agent
+Status: resolved
 
 # starlightIndexSourcedSidebar: bring it in line with the rest of the plugins
 
