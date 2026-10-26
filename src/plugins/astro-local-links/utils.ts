@@ -185,6 +185,7 @@ export function processPage(html: string, options: TProcessPageOptions) {
 
     const { pathPart, suffix } = splitHref(href);
     const isRelative = !pathPart.startsWith("/");
+    const hasTrailingSlash = pathPart.endsWith("/");
     const sitePath = isRelative
       ? toSitePath(
           resolve(dirname(options.sourceDocFilePath), pathPart),
@@ -208,7 +209,7 @@ export function processPage(html: string, options: TProcessPageOptions) {
     }
     // what a file-form link is rewritten to, keeping the author's trailing slash or lack of one
     const pageSitePath = docLinkTarget?.isFileForm
-      ? toPageSitePath(docLinkTarget.pagePath, pathPart.endsWith("/"))
+      ? toPageSitePath(docLinkTarget.pagePath, hasTrailingSlash)
       : null;
 
     if (options.validate && isInContent && !isValidationSkipped) {
@@ -238,7 +239,13 @@ export function processPage(html: string, options: TProcessPageOptions) {
       }
     }
 
-    const normalizedSitePath = pageSitePath ?? (isRelative ? sitePath : null);
+    // resolving drops a relative link's trailing slash, so it's added back for the rewrite
+    const relativeSitePath =
+      isRelative && sitePath !== null && hasTrailingSlash && sitePath !== "/"
+        ? `${sitePath}/`
+        : sitePath;
+    const normalizedSitePath =
+      pageSitePath ?? (isRelative ? relativeSitePath : null);
     if (options.normalize && normalizedSitePath !== null) {
       setAttribute(element, attribute, normalizedSitePath + suffix);
       hasChanged = true;

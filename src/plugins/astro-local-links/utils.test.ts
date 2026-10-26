@@ -32,6 +32,56 @@ describe("processPage", () => {
     expect(result.brokenLinks).toEqual([]);
   });
 
+  it("keeps a relative link's trailing slash or lack of one when normalizing it", () => {
+    const site = makeSite({
+      "src/content/docs/index.md": "",
+      "src/content/docs/guide/intro.md": "",
+      "src/content/docs/guide/ref/page.md": "",
+      "public/guide/img/logo.png": "",
+    });
+    const content =
+      `<a href="./ref/page/">a</a>` +
+      `<a href="./ref/page">b</a>` +
+      `<a href="./ref/page/?q=1#usage">c</a>` +
+      `<a href="../">d</a>` +
+      `<a href="./img/">e</a>`;
+
+    const result = processPage(pageHtml(content), {
+      sourceDocFilePath: join(site.docsDirPath, "guide/intro.md"),
+      sourceDocIndex: buildSourceDocIndex(site),
+      site,
+      validate: false,
+      normalize: true,
+    });
+
+    expect(result.html).toContain(`<a href="/guide/ref/page/">a</a>`);
+    expect(result.html).toContain(`<a href="/guide/ref/page">b</a>`);
+    expect(result.html).toContain(`<a href="/guide/ref/page/?q=1#usage">c</a>`);
+    expect(result.html).toContain(`<a href="/">d</a>`);
+    expect(result.html).toContain(`<a href="/guide/img/">e</a>`);
+  });
+
+  it("validates a relative link the same with or without a trailing slash", () => {
+    const site = makeSite({
+      "src/content/docs/guide/intro.md": "",
+      "src/content/docs/guide/ref/page.md": "",
+    });
+
+    const result = processPage(
+      pageHtml(`<a href="./ref/page/">a</a><a href="./ref/missing/">b</a>`),
+      {
+        sourceDocFilePath: join(site.docsDirPath, "guide/intro.md"),
+        sourceDocIndex: buildSourceDocIndex(site),
+        site,
+        ...VALIDATE_AND_NORMALIZE,
+      },
+    );
+
+    expect(result.brokenLinks.map((brokenLink) => brokenLink.href)).toEqual([
+      "./ref/missing/",
+    ]);
+  });
+
   it("leaves hrefs that aren't local links alone", () => {
     const site = makeSite({ "src/content/docs/guide/intro.md": "" });
     const hrefs = [
