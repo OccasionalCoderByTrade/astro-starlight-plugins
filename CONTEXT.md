@@ -27,7 +27,7 @@ A directory, listed in the `texInputDirs` option, that `tex compile` blocks can 
 _Avoid_: include dir, shared dir, external dependency dir
 
 **Tex input file**:
-A file in a tex input dir that a `tex compile` block pulls in, through `\input`, `\include`, `\usepackage`, `\includegraphics` or similar. Changing any tex input file changes every compiled tex diagram.
+A file at any depth under a tex input dir that a `tex compile` block pulls in, through `\input`, `\include`, `\usepackage`, `\includegraphics` or similar. Changing any tex input file changes every compiled tex diagram.
 _Avoid_: external file dependency, shared file, include
 
 **Debug tex diagram image**:

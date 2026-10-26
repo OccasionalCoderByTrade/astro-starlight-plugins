@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { delimiter, dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -29,7 +29,18 @@ describe("hashTexInputs", () => {
 
     // Produced by 3.x `computeTexInputDirsSalt` run from the project root.
     expect(hashOf(rootDirPath, ["src/latex//"])).toBe("916470ea4109d6a4");
-    expect(hashOf(rootDirPath, ["src/latex/"])).toBe("008e896e2ddcecb3");
+  });
+
+  it("counts subdirectories of a non-recursive entry, so editing a file a block reads by subpath recompiles it", () => {
+    const rootDirPath = makeProject(MACROS);
+    const initialHash = hashOf(rootDirPath, ["src/latex/"]);
+
+    writeFileSync(
+      join(rootDirPath, "src/latex/nested/sizes.tex"),
+      "\\def\\pad{0.2}\n",
+    );
+
+    expect(hashOf(rootDirPath, ["src/latex/"])).not.toBe(initialHash);
   });
 
   it("ignores dotfiles, dot-dirs, LaTeX build artifacts and editor backups, which a checkout elsewhere won't have", () => {
@@ -62,6 +73,34 @@ describe("hashTexInputs", () => {
     expect(hashOf(rootDirPath, ["src/latex//"])).not.toBe(initialHash);
   });
 
+  it("follows a symlinked tex input file, since TeX reads through it", () => {
+    const rootDirPath = makeProject(MACROS);
+    const targetFilePath = join(makeProject(), "colors.tex");
+    writeFileSync(targetFilePath, "\\definecolor{accent}{HTML}{336699}\n");
+    symlinkSync(targetFilePath, join(rootDirPath, "src/latex/colors.tex"));
+    const initialHash = hashOf(rootDirPath, ["src/latex/"]);
+
+    writeFileSync(targetFilePath, "\\definecolor{accent}{HTML}{993366}\n");
+
+    expect(hashOf(rootDirPath, ["src/latex/"])).not.toBe(initialHash);
+  });
+
+  it("hashes a symlinked file by the link's path, so a target elsewhere on another machine hashes the same", () => {
+    const [firstRootDirPath, secondRootDirPath] = [
+      makeProject(MACROS),
+      makeProject(MACROS),
+    ];
+    for (const rootDirPath of [firstRootDirPath, secondRootDirPath]) {
+      const targetFilePath = join(makeProject(), "colors.tex");
+      writeFileSync(targetFilePath, "\\definecolor{accent}{HTML}{336699}\n");
+      symlinkSync(targetFilePath, join(rootDirPath, "src/latex/colors.tex"));
+    }
+
+    expect(hashOf(firstRootDirPath, ["src/latex/"])).toBe(
+      hashOf(secondRootDirPath, ["src/latex/"]),
+    );
+  });
+
   it("is the same for the same project checked out anywhere", () => {
     const firstRootDirPath = makeProject(MACROS);
     const secondRootDirPath = makeProject(MACROS);
@@ -81,6 +120,52 @@ describe("listTexInputFiles", () => {
 
     const filePaths = listTexInputFiles(
       resolveTexInputDirs(rootDirPath, ["src/latex//"]),
+    );
+
+    expect(filePaths).toEqual([
+      join(rootDirPath, "src/latex/macros.tex"),
+      join(rootDirPath, "src/latex/nested/sizes.tex"),
+    ]);
+  });
+
+  it("lists files in subdirectories of a non-recursive entry, which a block can still read by subpath", () => {
+    const rootDirPath = makeProject(MACROS);
+
+    const filePaths = listTexInputFiles(
+      resolveTexInputDirs(rootDirPath, ["src/latex/"]),
+    );
+
+    expect(filePaths).toEqual([
+      join(rootDirPath, "src/latex/macros.tex"),
+      join(rootDirPath, "src/latex/nested/sizes.tex"),
+    ]);
+  });
+
+  it("follows a symlinked directory and lists its files under the link's path", () => {
+    const rootDirPath = makeProject(MACROS);
+    const sharedDirPath = makeProject({ "arrows.tex": "\\def\\arrow{->}\n" });
+    symlinkSync(sharedDirPath, join(rootDirPath, "src/latex/shared"));
+
+    const filePaths = listTexInputFiles(
+      resolveTexInputDirs(rootDirPath, ["src/latex/"]),
+    );
+
+    expect(filePaths).toEqual([
+      join(rootDirPath, "src/latex/macros.tex"),
+      join(rootDirPath, "src/latex/nested/sizes.tex"),
+      join(rootDirPath, "src/latex/shared/arrows.tex"),
+    ]);
+  });
+
+  it("doesn't loop on a symlink back to an enclosing directory", () => {
+    const rootDirPath = makeProject(MACROS);
+    symlinkSync(
+      join(rootDirPath, "src/latex"),
+      join(rootDirPath, "src/latex/nested/loop"),
+    );
+
+    const filePaths = listTexInputFiles(
+      resolveTexInputDirs(rootDirPath, ["src/latex/"]),
     );
 
     expect(filePaths).toEqual([

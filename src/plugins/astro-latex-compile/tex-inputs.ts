@@ -4,7 +4,13 @@
  * See docs/adr/0004-tex-input-dirs-are-a-blocks-only-dependencies.md.
  */
 import { createHash } from "node:crypto";
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import {
+  readdirSync,
+  readFileSync,
+  realpathSync,
+  type Stats,
+  statSync,
+} from "node:fs";
 import { delimiter, join, relative, resolve } from "node:path";
 
 export interface TexInputDir {
@@ -12,13 +18,16 @@ export interface TexInputDir {
   configuredPath: string;
   /** Absolute path of the directory. */
   dirPath: string;
-  /** `true` when the entry ends in `//`, searching subdirectories too. */
+  /**
+   * `true` when the entry ends in `//`, so TeX also searches subdirectories
+   * for a bare name. Files at any depth count as tex input files either way.
+   */
   recursive: boolean;
 }
 
 /**
- * Resolves `texInputDirs` entries against the project root. A trailing `/`
- * searches the directory only, `//` searches it recursively.
+ * Resolves `texInputDirs` entries against the project root, noting which
+ * end in `//`.
  */
 export function resolveTexInputDirs(
   rootDirPath: string,
@@ -61,15 +70,38 @@ function isIgnored(entryName: string): boolean {
   );
 }
 
-function collectFiles(dirPath: string, recursive: boolean): string[] {
+/** `stat` follows symlinks, since TeX reads through them. `null` for a dangling link. */
+function statOrNull(entryPath: string): Stats | null {
+  try {
+    return statSync(entryPath);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Files under `dirPath`, listed by their path through any symlinks.
+ * `ancestorRealDirPaths` stops a symlink back to an enclosing dir from
+ * looping forever.
+ */
+function collectFiles(
+  dirPath: string,
+  ancestorRealDirPaths: ReadonlySet<string> = new Set(),
+): string[] {
   const filePaths: string[] = [];
   try {
-    for (const entry of readdirSync(dirPath, { withFileTypes: true })) {
-      if (isIgnored(entry.name)) continue;
-      const entryPath = join(dirPath, entry.name);
-      if (entry.isDirectory() && recursive) {
-        filePaths.push(...collectFiles(entryPath, recursive));
-      } else if (entry.isFile()) {
+    const realDirPath = realpathSync(dirPath);
+    if (ancestorRealDirPaths.has(realDirPath)) return [];
+    const enclosingRealDirPaths = new Set(ancestorRealDirPaths).add(
+      realDirPath,
+    );
+    for (const entryName of readdirSync(dirPath)) {
+      if (isIgnored(entryName)) continue;
+      const entryPath = join(dirPath, entryName);
+      const entryStats = statOrNull(entryPath);
+      if (entryStats?.isDirectory()) {
+        filePaths.push(...collectFiles(entryPath, enclosingRealDirPaths));
+      } else if (entryStats?.isFile()) {
         filePaths.push(entryPath);
       }
     }
@@ -79,11 +111,13 @@ function collectFiles(dirPath: string, recursive: boolean): string[] {
   return filePaths.sort();
 }
 
-/** Every tex input file, in the order they are hashed. */
+/**
+ * Every tex input file, in the order they are hashed. Subdirectories count
+ * even for an entry without `//`: that only limits where TeX looks for a
+ * bare name, and a block can still read `\input{sub/file}`.
+ */
 export function listTexInputFiles(texInputDirs: TexInputDir[]): string[] {
-  return texInputDirs.flatMap(({ dirPath, recursive }) =>
-    collectFiles(dirPath, recursive),
-  );
+  return texInputDirs.flatMap(({ dirPath }) => collectFiles(dirPath));
 }
 
 /**

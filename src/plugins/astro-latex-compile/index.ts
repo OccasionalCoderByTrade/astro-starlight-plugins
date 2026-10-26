@@ -41,12 +41,14 @@ export interface LatexCompileOptions {
   /**
    * Tex input dirs: directories, resolved against the project root, that
    * `tex compile` blocks can pull tex input files from via `\input`,
-   * `\include`, `\usepackage`, `\includegraphics` and similar. Use a trailing
-   * slash for the directory itself, or double trailing slash for recursive
-   * search (e.g. "src/latex/" or "src/latex//"). These are the only files
-   * outside a block that it can read, and only by name: paths, absolute or
-   * relative, don't resolve. Changing any tex input file recompiles
-   * every compiled tex diagram; dotfiles and LaTeX build artifacts don't count.
+   * `\include`, `\usepackage`, `\includegraphics` and similar. End an entry
+   * with `//` to search its subdirectories too, as in `TEXINPUTS` (e.g.
+   * "src/latex//"). These are the only files outside a block that it can
+   * read, and only by a path relative to a tex input dir (`\input{macros}`,
+   * `\input{tikz/arrows}`): `./`, project-relative and absolute paths, `..`
+   * and dotfiles don't resolve. Changing any tex input file, at any depth
+   * and through symlinks, recompiles every compiled tex diagram; dotfiles
+   * and LaTeX build artifacts don't count.
    * A missing dir fails `astro dev` and only warns on `astro build`.
    */
   texInputDirs?: string[];
