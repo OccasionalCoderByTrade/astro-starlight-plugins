@@ -13,7 +13,6 @@ title: "LaTeX Compilation Examples"
 \usepackage{tikz}
 \usetikzlibrary{positioning,arrows.meta}
 \begin{document}
-\Large
 \begin{tikzpicture}[node distance=3cm]
   \node (q0) [circle, draw] {$q_0$};
   \node (q1) [circle, draw, right of=q0] {$q_1$};
@@ -35,7 +34,6 @@ title: "LaTeX Compilation Examples"
 \usepackage{tikz}
 \usetikzlibrary{positioning}
 \begin{document}
-\Large
 \begin{tikzpicture}[node distance=2.5cm]
   \node (start) [circle, draw, fill=lightgray] {Start};
   \node (s1) [circle, draw, right of=start] {$S_1$};
@@ -59,7 +57,6 @@ title: "LaTeX Compilation Examples"
 \documentclass[border=5pt]{standalone}
 \usepackage{tikz}
 \begin{document}
-\Large
 \begin{tikzpicture}[level distance=1.5cm, sibling distance=1cm]
   \node (root) {$A$}
     child { node {$B$}
@@ -80,7 +77,6 @@ title: "LaTeX Compilation Examples"
 \documentclass[border=5pt]{standalone}
 \usepackage{tikz}
 \begin{document}
-\Large
 \begin{tikzpicture}
   \node (a) at (0,0) {A};
   \node (b) at (2,1) {B};
@@ -101,7 +97,6 @@ title: "LaTeX Compilation Examples"
 \documentclass[border=5pt]{standalone}
 \usepackage{tikz}
 \begin{document}
-\Large
 \begin{tikzpicture}
   \node (v1) at (0,0) {1};
   \node (v2) at (2,1) {2};
@@ -125,7 +120,6 @@ title: "LaTeX Compilation Examples"
 \documentclass[border=5pt]{standalone}
 \usepackage{tikz}
 \begin{document}
-\Large
 \begin{tikzpicture}
   \draw [thick] (0,0) rectangle (1,4);
   \node at (0.5, 3.5) {9};
@@ -148,7 +142,6 @@ title: "LaTeX Compilation Examples"
 \usepackage{tikz}
 \usetikzlibrary{shapes.multipart,positioning}
 \begin{document}
-\Large
 \begin{tikzpicture}
   \node [rectangle split, rectangle split parts=2, draw] (n1) {1 \nodepart{two} $\rightarrow$};
   \node [rectangle split, rectangle split parts=2, draw, right=of n1] (n2) {2 \nodepart{two} $\rightarrow$};
@@ -167,7 +160,6 @@ title: "LaTeX Compilation Examples"
 \usepackage{tikz}
 \usetikzlibrary{positioning}
 \begin{document}
-\Large
 \begin{tikzpicture}
   \node (center) [circle, draw, fill=blue!20] {Server};
   \node (c1) [circle, draw, above left of=center] {Client 1};
@@ -193,7 +185,6 @@ title: "LaTeX Compilation Examples"
 \documentclass[border=5pt]{standalone}
 \usepackage{tikz}
 \begin{document}
-\Large
 \begin{tikzpicture}
   \draw [->] (-2,0) -- (2,0) node [right] {$x$};
   \draw [->] (0,-2) -- (0,2) node [above] {$y$};
@@ -210,7 +201,6 @@ title: "LaTeX Compilation Examples"
 \documentclass[border=5pt]{standalone}
 \usepackage{tikz}
 \begin{document}
-\Large
 \begin{tikzpicture}
   \draw [thick] (0,0) circle (1cm);
   \node [circle, fill, inner sep=1.5pt] at (0,0) {};
@@ -231,7 +221,6 @@ title: "LaTeX Compilation Examples"
 \documentclass[border=5pt]{standalone}
 \usepackage{tikz}
 \begin{document}
-\Large
 \begin{tikzpicture}
   \node (a) at (0,0) [circle, fill, inner sep=2pt] {};
   \node (b) at (3,0) [circle, fill, inner sep=2pt] {};
@@ -252,7 +241,6 @@ title: "LaTeX Compilation Examples"
 \documentclass[border=5pt]{standalone}
 \usepackage{tikz}
 \begin{document}
-\Large
 \begin{tikzpicture}
   \draw [thick, ->] (0,0) -- (3,0) node [right] {$x$};
   \draw [thick, ->] (0,0) -- (0,3) node [above] {$y$};
@@ -272,7 +260,6 @@ title: "LaTeX Compilation Examples"
 \documentclass[border=5pt]{standalone}
 \usepackage{tikz}
 \begin{document}
-\Large
 \begin{tikzpicture}
   \draw [->] (-2.5,0) -- (2.5,0) node [right] {$x$};
   \draw [->] (0,-0.5) -- (0,2.5) node [above] {$y$};
@@ -289,7 +276,6 @@ title: "LaTeX Compilation Examples"
 \documentclass[border=5pt]{standalone}
 \usepackage{tikz}
 \begin{document}
-\Large
 \begin{tikzpicture}
   \draw [->] (-0.5,0) -- (3,0);
   \draw [->] (0,-0.5) -- (0,3);
@@ -306,7 +292,6 @@ title: "LaTeX Compilation Examples"
 \documentclass[border=5pt]{standalone}
 \usepackage{tikz}
 \begin{document}
-\Large
 \begin{tikzpicture}
   \draw [->] (0,0) -- (4,0) node [right] {$x$};
   \draw [->] (0,0) -- (0,2) node [above] {$f(x)$};
@@ -329,7 +314,6 @@ title: "LaTeX Compilation Examples"
 \documentclass[border=5pt]{standalone}
 \usepackage{tikz}
 \begin{document}
-\Large
 \begin{tikzpicture}
   \draw [thick, ->] (-1,0) -- (4,0) node [right] {$x_1$};
   \draw [thick, ->] (0,-1) -- (0,4) node [above] {$x_2$};
@@ -346,7 +330,6 @@ title: "LaTeX Compilation Examples"
 \documentclass[border=5pt]{standalone}
 \usepackage{amsmath}
 \begin{document}
-\Large
 $\begin{pmatrix} 1 & 2 \\ 3 & 4 \end{pmatrix}$
 $\begin{bmatrix} 1 & 2 \\ 3 & 4 \end{bmatrix}$
 $\begin{vmatrix} 1 & 2 \\ 3 & 4 \end{vmatrix}$
@@ -360,7 +343,6 @@ $\begin{vmatrix} 1 & 2 \\ 3 & 4 \end{vmatrix}$
 \usepackage{tikz}
 \usepackage{amsmath}
 \begin{document}
-\Large
 \begin{tikzpicture}
   \node at (0,1) {$A = \left(\begin{smallmatrix} 2 & 0 \\ 0 & 1 \end{smallmatrix}\right)$};
 
@@ -379,7 +361,6 @@ $\begin{vmatrix} 1 & 2 \\ 3 & 4 \end{vmatrix}$
 \documentclass[border=5pt]{standalone}
 \usepackage{tikz}
 \begin{document}
-\Large
 \begin{tikzpicture}
   \foreach \i/\h in {1/2, 2/4, 3/3, 4/1, 5/5} {
     \draw [fill=blue!40] (\i-0.4, 0) rectangle (\i+0.4, \h);
@@ -395,7 +376,6 @@ $\begin{vmatrix} 1 & 2 \\ 3 & 4 \end{vmatrix}$
 \documentclass[border=5pt]{standalone}
 \usepackage{tikz}
 \begin{document}
-\Large
 \begin{tikzpicture}[
   level 1/.style={sibling distance=4cm},
   level 2/.style={sibling distance=2cm},
@@ -420,7 +400,6 @@ $\begin{vmatrix} 1 & 2 \\ 3 & 4 \end{vmatrix}$
 \documentclass[border=5pt]{standalone}
 \usepackage{tikz}
 \begin{document}
-\Large
 \begin{tikzpicture}
   \draw [->] (0,0) -- (5,0) node [right] {$n$};
   \draw [->] (0,0) -- (0,4) node [above] {Time};
@@ -442,7 +421,6 @@ $\begin{vmatrix} 1 & 2 \\ 3 & 4 \end{vmatrix}$
 \documentclass[border=5pt]{standalone}
 \usepackage{tikz}
 \begin{document}
-\Large
 \begin{tikzpicture}
   \draw (0,0) circle (1cm) node [left] {A};
   \draw (1.5,0) circle (1cm) node [right] {B};
@@ -459,7 +437,6 @@ $\begin{vmatrix} 1 & 2 \\ 3 & 4 \end{vmatrix}$
 \documentclass[border=5pt]{standalone}
 \usepackage{tikz}
 \begin{document}
-\Large
 \begin{tikzpicture}
   \draw [thick] (0,0) rectangle (4,3) node [above left] {$U$};
 
@@ -480,7 +457,6 @@ $\begin{vmatrix} 1 & 2 \\ 3 & 4 \end{vmatrix}$
 \documentclass[border=5pt]{standalone}
 \usepackage{tikz}
 \begin{document}
-\Large
 \begin{tikzpicture}
   \draw [fill=red!20] (0,0) circle (0.5cm);
   \draw [fill=blue!20] (1.5,0) rectangle (2.5,1);
@@ -500,7 +476,6 @@ $\begin{vmatrix} 1 & 2 \\ 3 & 4 \end{vmatrix}$
 \usepackage{tikz}
 \usetikzlibrary{shapes.geometric,positioning}
 \begin{document}
-\Large
 \begin{tikzpicture}[node distance=2.5cm]
   \node (start) [rectangle, draw, fill=gray!20, rounded corners] {Start};
   \node (process) [rectangle, draw, below=of start] {Process};
@@ -521,7 +496,6 @@ $\begin{vmatrix} 1 & 2 \\ 3 & 4 \end{vmatrix}$
 \documentclass[border=5pt]{standalone}
 \usepackage{tikz}
 \begin{document}
-\Large
 \begin{tikzpicture}
   \draw (0,0) circle (1cm);
   \draw [fill=red!40] (0,0) -- (0,1) arc (90:234:1) -- cycle;
@@ -539,7 +513,6 @@ $\begin{vmatrix} 1 & 2 \\ 3 & 4 \end{vmatrix}$
 \documentclass[border=5pt]{standalone}
 \usepackage{tikz}
 \begin{document}
-\Large
 \begin{tikzpicture}
   \draw [->] (0,0) -- (6,0) node [right] {$x$};
   \draw [->] (0,-1.5) -- (0,1.5) node [above] {$\sin(x)$};
@@ -555,7 +528,6 @@ $\begin{vmatrix} 1 & 2 \\ 3 & 4 \end{vmatrix}$
 \documentclass[border=5pt]{standalone}
 \usepackage{tikz}
 \begin{document}
-\Large
 \begin{tikzpicture}
   \foreach \i in {0,45,90,135,180,225,270,315} {
     \draw [thick] (0,0) -- (\i:2cm);
