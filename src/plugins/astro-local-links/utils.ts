@@ -185,6 +185,7 @@ export function processPage(html: string, options: TProcessPageOptions) {
 
     const { pathPart, suffix } = splitHref(href);
     const isRelative = !pathPart.startsWith("/");
+    const hasTrailingSlash = pathPart.endsWith("/");
     const sitePath = isRelative
       ? toSitePath(
           resolve(dirname(options.sourceDocFilePath), pathPart),
@@ -208,7 +209,7 @@ export function processPage(html: string, options: TProcessPageOptions) {
     }
     // what a file-form link is rewritten to, keeping the author's trailing slash or lack of one
     const pageSitePath = docLinkTarget?.isFileForm
-      ? toPageSitePath(docLinkTarget.pagePath, pathPart.endsWith("/"))
+      ? toPageSitePath(docLinkTarget.pagePath, hasTrailingSlash)
       : null;
 
     if (options.validate && isInContent && !isValidationSkipped) {
@@ -238,7 +239,12 @@ export function processPage(html: string, options: TProcessPageOptions) {
       }
     }
 
-    const normalizedSitePath = pageSitePath ?? (isRelative ? sitePath : null);
+    // resolving drops a relative link's trailing slash, so it's added back for the rewrite
+    const normalizedSitePath =
+      pageSitePath ??
+      (isRelative && sitePath !== null
+        ? withTrailingSlash(sitePath, hasTrailingSlash)
+        : null);
     if (options.normalize && normalizedSitePath !== null) {
       setAttribute(element, attribute, normalizedSitePath + suffix);
       hasChanged = true;
@@ -382,8 +388,15 @@ function findDocLinkTarget(
 
 /** `café-notes`, with a trailing slash → `/caf%C3%A9-notes/`; `` → `/`. */
 function toPageSitePath(pagePath: string, hasTrailingSlash: boolean): string {
-  if (pagePath === "") return "/";
-  return encodeURI(`/${pagePath}${hasTrailingSlash ? "/" : ""}`);
+  return encodeURI(withTrailingSlash(`/${pagePath}`, hasTrailingSlash));
+}
+
+/** `/guide` → `/guide/` when `hasTrailingSlash`; `/` stays `/`. */
+function withTrailingSlash(
+  sitePath: string,
+  hasTrailingSlash: boolean,
+): string {
+  return hasTrailingSlash && sitePath !== "/" ? `${sitePath}/` : sitePath;
 }
 
 /**
