@@ -14,6 +14,7 @@ import {
   writeDebugImage,
   type TexCompileFailure,
 } from "./tex-compile-error.js";
+import { sizeSvgInEm } from "./svg-size.js";
 import {
   COMPILE_MODES,
   compileLatexToSvg,
@@ -110,7 +111,10 @@ function parseCompileMode(
   };
 }
 
-/** Adds the block's attributes to the root `<svg>` of a compiled tex diagram. */
+/**
+ * Adds the block's attributes to the root `<svg>` of a compiled tex diagram,
+ * sized in em.
+ */
 function inlineSvgHtml(
   svgMarkup: string,
   attributes: { classNames: string[]; altText: string },
@@ -120,7 +124,7 @@ function inlineSvgHtml(
     `role="img"`,
     `aria-label="${escapeXml(attributes.altText)}"`,
   ].join(" ");
-  return svgMarkup.replace(/^<svg\b/, `<svg ${rootAttributes}`);
+  return sizeSvgInEm(svgMarkup).replace(/^<svg\b/, `<svg ${rootAttributes}`);
 }
 
 /** The doc's path as messages print it. */

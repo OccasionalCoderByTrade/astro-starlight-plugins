@@ -400,7 +400,7 @@ DVI can't hold every kind of graphic. `\includegraphics` of a PNG, JPEG or PDF f
 ```
 ````
 
-Each compiled tex diagram's ids, classes and fonts are prefixed with its hash, so several can share a page. Wide ones shrink to fit the content column (`max-width: 100%`).
+Each compiled tex diagram's ids, classes and fonts are prefixed with its hash, so several can share a page. Compiled tex diagrams are sized in `em`, so 10pt LaTeX text matches the surrounding body text and follows the reader's browser font size. Wide ones shrink to fit the content column (`max-width: 100%`).
 
 **Migrating to inline SVGs:** every compiled tex diagram's hash changes once, so every block recompiles on the first build. With `removeOrphanedSvgs`, the build removes the old SVGs; otherwise delete them from `svgOutputDir` by hand. If your deploy builds without TeX, run `astro build` locally and commit the new SVGs before deploying.
 

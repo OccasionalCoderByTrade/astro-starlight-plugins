@@ -353,6 +353,19 @@ describe.each(processorFactories)(
         expect(html).toMatch(/<text[^>]*>Hello<\/text>/);
       });
 
+      it("sizes the inlined compiled tex diagram in em", async () => {
+        const site = await createSite(createProcessor());
+
+        const html = await site.renderDoc(
+          "doc.md",
+          texCompileBlock("", documentWith("Hello")),
+        );
+
+        const rootTag = html.match(/^<svg\b[^>]*>/)?.[0] ?? "";
+        expect(rootTag).toMatch(/\swidth=['"][\d.]+em['"]/);
+        expect(rootTag).toMatch(/\sheight=['"][\d.]+em['"]/);
+      });
+
       it("inlines the compiled tex diagram in an mdx doc, with its markup kept as is", async () => {
         const site = await createSite(createProcessor());
 
