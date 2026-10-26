@@ -240,12 +240,11 @@ export function processPage(html: string, options: TProcessPageOptions) {
     }
 
     // resolving drops a relative link's trailing slash, so it's added back for the rewrite
-    const relativeSitePath =
-      isRelative && sitePath !== null && hasTrailingSlash && sitePath !== "/"
-        ? `${sitePath}/`
-        : sitePath;
     const normalizedSitePath =
-      pageSitePath ?? (isRelative ? relativeSitePath : null);
+      pageSitePath ??
+      (isRelative && sitePath !== null
+        ? withTrailingSlash(sitePath, hasTrailingSlash)
+        : null);
     if (options.normalize && normalizedSitePath !== null) {
       setAttribute(element, attribute, normalizedSitePath + suffix);
       hasChanged = true;
@@ -389,8 +388,15 @@ function findDocLinkTarget(
 
 /** `café-notes`, with a trailing slash → `/caf%C3%A9-notes/`; `` → `/`. */
 function toPageSitePath(pagePath: string, hasTrailingSlash: boolean): string {
-  if (pagePath === "") return "/";
-  return encodeURI(`/${pagePath}${hasTrailingSlash ? "/" : ""}`);
+  return encodeURI(withTrailingSlash(`/${pagePath}`, hasTrailingSlash));
+}
+
+/** `/guide` → `/guide/` when `hasTrailingSlash`; `/` stays `/`. */
+function withTrailingSlash(
+  sitePath: string,
+  hasTrailingSlash: boolean,
+): string {
+  return hasTrailingSlash && sitePath !== "/" ? `${sitePath}/` : sitePath;
 }
 
 /**

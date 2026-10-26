@@ -34,17 +34,19 @@ describe("processPage", () => {
 
   it("keeps a relative link's trailing slash or lack of one when normalizing it", () => {
     const site = makeSite({
-      "src/content/docs/index.md": "",
       "src/content/docs/guide/intro.md": "",
       "src/content/docs/guide/ref/page.md": "",
-      "public/guide/img/logo.png": "",
+      "src/content/docs/guide/List Syntax.md": "",
     });
     const content =
       `<a href="./ref/page/">a</a>` +
       `<a href="./ref/page">b</a>` +
       `<a href="./ref/page/?q=1#usage">c</a>` +
       `<a href="../">d</a>` +
-      `<a href="./img/">e</a>`;
+      `<a href="./img/">e</a>` +
+      `<a href=".">f</a>` +
+      `<a href="./">g</a>` +
+      `<a href="./List%20Syntax/">h</a>`;
 
     const result = processPage(pageHtml(content), {
       sourceDocFilePath: join(site.docsDirPath, "guide/intro.md"),
@@ -59,6 +61,9 @@ describe("processPage", () => {
     expect(result.html).toContain(`<a href="/guide/ref/page/?q=1#usage">c</a>`);
     expect(result.html).toContain(`<a href="/">d</a>`);
     expect(result.html).toContain(`<a href="/guide/img/">e</a>`);
+    expect(result.html).toContain(`<a href="/guide">f</a>`);
+    expect(result.html).toContain(`<a href="/guide/">g</a>`);
+    expect(result.html).toContain(`<a href="/guide/list-syntax/">h</a>`);
   });
 
   it("validates a relative link the same with or without a trailing slash", () => {
