@@ -12,9 +12,12 @@ import {
  * classes, which carry over, can't resize, cap or move it: a `w-50` or
  * `min-vw-100` would resolve against the viewport, an `mw-100` would cap the
  * zoom, an `m-0` would stop centering it and a `flex-shrink-1` would squeeze it.
+ * A class's CSS `zoom` is already in the on-page size the clone starts from, so
+ * applying it again would scale the clone twice.
  * Auto margins center a small diagram without cutting off a scrolled large one.
  */
 const ZOOMED_DIAGRAM_BOX_STYLE = {
+  zoom: "1",
   "min-width": "0",
   "min-height": "0",
   "max-width": "none",
