@@ -58,9 +58,9 @@
 
   .tex-zoom-view {
     flex-direction: column;
-    width: fit-content;
-    max-width: 95vw;
-    max-height: 90vh;
+    // A fixed size, so the toolbar stays put while the diagram zooms.
+    width: 95vw;
+    height: 90vh;
     // Starlight's reset drops the browser's `margin: auto` that centers a modal dialog.
     margin: auto;
     padding: 0;

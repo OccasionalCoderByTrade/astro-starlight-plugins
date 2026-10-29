@@ -29,20 +29,15 @@ describe("zoom levels", () => {
     ).toBe(400);
   });
 
-  it("keeps the center in place when the viewport resizes with the diagram and has padding", () => {
-    // At 2x, 16px padding: the 300px viewport's center sits at (50 + 150 - 16) / 2 = 92px of the 1x diagram.
-    // At 4x that is 368px into the diagram, 384px into the content; centered in a 400px viewport.
+  it("keeps the center in place when the viewport has padding", () => {
+    // At 2x, 16px padding: the 400px viewport's center sits at (100 + 200 - 16) / 2 = 142px of the 1x diagram.
+    // At 4x that is 568px into the diagram, 584px into the content; centered in the viewport.
     expect(
       scrollOffsetAfterZoom(
-        {
-          scrollOffset: 50,
-          viewportSize: 300,
-          newViewportSize: 400,
-          padding: 16,
-        },
+        { scrollOffset: 100, viewportSize: 400, padding: 16 },
         { fromZoom: 2, toZoom: 4 },
       ),
-    ).toBe(184);
+    ).toBe(384);
   });
 
   it("never scrolls before the start of the diagram", () => {

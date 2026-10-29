@@ -26,26 +26,22 @@ export function zoomOut(zoomLevel: number): number {
 /**
  * The scroll offset along one axis that keeps the point at the center of the
  * visible area in place when the zoom level changes. `viewportSize` is the
- * scroll container's size before the change, and `newViewportSize` after it,
- * when the container grows or shrinks with the diagram. `padding` is the
- * container's padding before the diagram. The browser clamps an offset past
+ * scroll container's size, and `padding` its padding before the diagram. The browser clamps an offset past
  * the end; this clamps one before the start.
  */
 export function scrollOffsetAfterZoom(
   {
     scrollOffset,
     viewportSize,
-    newViewportSize = viewportSize,
     padding,
   }: {
     scrollOffset: number;
     viewportSize: number;
-    newViewportSize?: number;
     padding: number;
   },
   { fromZoom, toZoom }: { fromZoom: number; toZoom: number },
 ): number {
   const centerAtBaseSize =
     (scrollOffset + viewportSize / 2 - padding) / fromZoom;
-  return Math.max(centerAtBaseSize * toZoom + padding - newViewportSize / 2, 0);
+  return Math.max(centerAtBaseSize * toZoom + padding - viewportSize / 2, 0);
 }

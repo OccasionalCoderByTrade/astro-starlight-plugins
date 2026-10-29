@@ -158,13 +158,11 @@ function setZoomLevel(zoomView: ZoomView, zoomLevel: number): void {
   zoomView.zoomLevel = zoomLevel;
   diagram.style.width = `${baseSize.width * zoomLevel}px`;
   diagram.style.height = `${baseSize.height * zoomLevel}px`;
-  // The dialog shrink-wraps the diagram, so the viewport may have resized too.
   viewport.scrollTo(
     scrollOffsetAfterZoom(
       {
         scrollOffset: scrollBefore.left,
         viewportSize: scrollBefore.width,
-        newViewportSize: viewport.clientWidth,
         padding: parseFloat(viewportStyle.paddingLeft),
       },
       zoomChange,
@@ -173,7 +171,6 @@ function setZoomLevel(zoomView: ZoomView, zoomLevel: number): void {
       {
         scrollOffset: scrollBefore.top,
         viewportSize: scrollBefore.height,
-        newViewportSize: viewport.clientHeight,
         padding: parseFloat(viewportStyle.paddingTop),
       },
       zoomChange,
