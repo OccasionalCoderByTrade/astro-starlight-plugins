@@ -415,7 +415,7 @@ Each compiled tex diagram's ids, classes and fonts are prefixed with its hash, s
 
 #### Zoom view
 
-With `zoom: true`, or `zoom` on a block, the compiled tex diagram gets a small zoom button above its top-right corner, in the gap between the diagram and the content before it (above the right edge of the content column in browsers without CSS `anchor-scope`). Every compiled tex diagram, zoom or not, gets a slightly wider top gap (`--sl-content-gap-y` plus `0.25rem`) to make room for it. It shows on hover and on keyboard focus, and always on touch devices. The button opens a modal with a copy of the diagram, at the size it has on the page:
+With `zoom: true`, or `zoom` on a block, the compiled tex diagram gets a small zoom button above its top-right corner, in the gap between the diagram and the content before it (above the right edge of the content column in browsers without CSS `anchor-scope`). The button shows on hover and on keyboard focus, and always on touch devices. The button opens a modal with a copy of the diagram, at the size it has on the page:
 
 - `−` and `+` zoom from 1× to 8×, in 1.25× steps, and the percentage between them resets to 1×. The keys `-`, `+` (or `=`) and `0` do the same.
 - A diagram larger than the modal scrolls inside it. In `dvi` mode its text stays selectable.
@@ -434,7 +434,7 @@ With `zoom: true`, or `zoom` on a block, the compiled tex diagram gets a small z
 ```
 ````
 
-The diagram is wrapped in a `<div class="tex-zoom-frame">` that spans the content column, so the `<svg>` and its `class=` lay out as before. Labels are in English.
+The diagram is wrapped in a `<div class="tex-zoom-frame">` that spans the content column, so the `<svg>` and its `class=` lay out as before. To make room for the button, every compiled tex diagram, zoom or not, gets a top margin of `--sl-content-gap-y` (`1rem` without Starlight) plus `0.25rem`, even as the first child of its container. Labels are in English.
 
 **Migrating to inline SVGs:** every compiled tex diagram's hash changes once, so every block recompiles on the first build. With `removeOrphanedSvgs`, the build removes the old SVGs; otherwise delete them from `svgOutputDir` by hand. If your deploy builds without TeX, run `astro build` locally and commit the new SVGs before deploying.
 

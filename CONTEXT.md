@@ -25,7 +25,7 @@ The route a `tex compile` block takes to become a compiled tex diagram, set per 
 _Avoid_: engine, output format, render mode
 
 **Tex diagram zoom view**:
-A modal that shows an enlarged copy of one compiled tex diagram, opened from a button on the diagram, with the diagram's alt text as a caption when the author wrote one. Off unless the site or the block turns it on.
+A modal that shows an enlarged copy of one compiled tex diagram, opened from a button at the diagram's corner, with the diagram's alt text as a caption when the author wrote one. Off unless the site or the block turns it on.
 _Avoid_: lightbox, viewer, popup, image zoom
 
 **Orphaned tex diagram**:
