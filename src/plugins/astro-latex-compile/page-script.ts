@@ -86,6 +86,7 @@ function createZoomView(): ZoomView {
     label: ZOOM_LABELS.close,
     text: "×",
   });
+  closeButton.classList.add("tex-zoom-view__button--close");
   closeButton.autofocus = true;
   toolbar.append(zoomOutButton, resetButton, zoomInButton, closeButton);
 

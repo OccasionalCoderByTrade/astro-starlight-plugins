@@ -191,6 +191,11 @@ $tex-diagram-gap: calc(var(--sl-content-gap-y, 1rem) + 0.25rem);
     font-variant-numeric: tabular-nums;
   }
 
+  // Sets close apart from the zoom controls.
+  .tex-zoom-view__button--close {
+    margin-left: 0.75rem;
+  }
+
   .tex-zoom-view__viewport {
     display: flex;
     flex: 1 1 auto;
