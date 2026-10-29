@@ -50,6 +50,26 @@
     }
   }
 
+  // The frame spans the content width, so a `w-50` diagram's percentage
+  // resolves against it; the button anchors to the diagram's own corner
+  // instead. Without `anchor-scope`, every button would share one anchor, so
+  // such browsers keep the button at the frame's corner.
+  @supports (anchor-scope: all) {
+    .tex-zoom-frame {
+      anchor-scope: --tex-diagram;
+    }
+
+    .tex-zoom-frame > .tex-compiled {
+      anchor-name: --tex-diagram;
+    }
+
+    .tex-zoom-button {
+      position-anchor: --tex-diagram;
+      top: anchor(top);
+      right: anchor(right);
+    }
+  }
+
   html:has(.tex-zoom-view[open]) {
     overflow: hidden;
     // Keeps the page from shifting sideways as its scrollbar goes away.
