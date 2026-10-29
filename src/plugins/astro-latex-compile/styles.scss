@@ -208,13 +208,7 @@ $tex-diagram-gap: calc(var(--sl-content-gap-y, 1rem) + 0.25rem);
     padding: 4rem 1.5rem;
     overflow: auto;
     overscroll-behavior: contain;
-
-    .tex-compiled {
-      // Auto margins center a small diagram without cutting off a scrolled large one.
-      margin: auto;
-      max-width: none;
-      flex-shrink: 0;
-    }
+    // The diagram's box is set inline, see ZOOMED_DIAGRAM_BOX_STYLE in page-script.ts.
   }
 
   .tex-zoom-view__caption {

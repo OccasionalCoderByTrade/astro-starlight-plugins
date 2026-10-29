@@ -7,6 +7,22 @@ import {
   zoomOut,
 } from "./zoom-levels.js";
 
+/**
+ * Set inline with `important` on the zoom view's clone, so the block's own
+ * classes, which carry over, can't resize, cap or move it: a `w-50` or
+ * `min-vw-100` would resolve against the viewport, an `mw-100` would cap the
+ * zoom, an `m-0` would stop centering it and a `flex-shrink-1` would squeeze it.
+ * Auto margins center a small diagram without cutting off a scrolled large one.
+ */
+const ZOOMED_DIAGRAM_BOX_STYLE = {
+  "min-width": "0",
+  "min-height": "0",
+  "max-width": "none",
+  "max-height": "none",
+  margin: "auto",
+  "flex-shrink": "0",
+};
+
 const CAPTION_ID = "tex-zoom-view-caption";
 
 type ZoomAction = "in" | "out" | "reset";
@@ -158,8 +174,19 @@ function setZoomLevel(zoomView: ZoomView, zoomLevel: number): void {
   };
 
   zoomView.zoomLevel = zoomLevel;
-  diagram.style.width = `${baseSize.width * zoomLevel}px`;
-  diagram.style.height = `${baseSize.height * zoomLevel}px`;
+  // `important` beats a block class's own `!important` size, such as
+  // Bootstrap's `w-50`, which would resolve against the viewport instead.
+  // ZOOMED_DIAGRAM_BOX_STYLE does the same for the rest of the clone's box.
+  diagram.style.setProperty(
+    "width",
+    `${baseSize.width * zoomLevel}px`,
+    "important",
+  );
+  diagram.style.setProperty(
+    "height",
+    `${baseSize.height * zoomLevel}px`,
+    "important",
+  );
   viewport.scrollTo(
     scrollOffsetAfterZoom(
       {
@@ -207,6 +234,9 @@ function openZoomView(zoomView: ZoomView, zoomFrame: HTMLElement): void {
   // Ids stay as they are: the original's identical definitions are on the page (ADR 0019).
   const clonedDiagram = diagram.cloneNode(true) as SVGSVGElement;
   clonedDiagram.setAttribute("aria-hidden", "true");
+  for (const [property, value] of Object.entries(ZOOMED_DIAGRAM_BOX_STYLE)) {
+    clonedDiagram.style.setProperty(property, value, "important");
+  }
   // Kept until the next open, so the closing animation still shows it.
   zoomView.viewport.replaceChildren(clonedDiagram);
   zoomView.diagram = clonedDiagram;
