@@ -1,5 +1,8 @@
 @use "../../styles/mixins";
 
+// The gap above a compiled tex diagram, which its zoom button rises into.
+$tex-diagram-gap: calc(var(--sl-content-gap-y, 1rem) + 0.25rem);
+
 @include mixins.plugin-layer {
   .tex-compiled {
     background-color: transparent;
@@ -18,24 +21,24 @@
     position: relative;
   }
 
-  // The zoom button rises into the gap above its diagram, so it covers no
-  // more than the diagram's top border. Every diagram gets the wider gap, so
-  // turning zoom on or off never moves the page.
-  * + .tex-zoom-frame,
-  * + .tex-compiled {
-    margin-top: calc(var(--sl-content-gap-y, 1rem) + 0.25rem);
+  // The zoom button rises into the gap above its compiled tex diagram, so it
+  // covers no more than the diagram's top border. Every compiled tex diagram
+  // gets the gap, first child or not, so turning zoom on or off never moves
+  // the page and the button never lands on the content above.
+  .tex-zoom-frame,
+  .tex-compiled:not(.tex-zoom-frame > *, .tex-zoom-view *) {
+    margin-top: $tex-diagram-gap;
   }
 
   .tex-zoom-button {
-    --tex-zoom-button-size: 1.5rem;
     position: absolute;
-    top: calc(var(--tex-zoom-button-size) * -1 + 0.25rem);
+    top: calc(#{$tex-diagram-gap} * -1);
     right: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    width: var(--tex-zoom-button-size);
-    height: var(--tex-zoom-button-size);
+    width: 1.5rem;
+    height: 1.5rem;
     // Starlight's gap between content blocks would push the button down too.
     margin: 0;
     padding: 0;
@@ -76,7 +79,7 @@
 
     .tex-zoom-button {
       position-anchor: --tex-diagram;
-      top: calc(anchor(top) - var(--tex-zoom-button-size) + 0.25rem);
+      top: calc(anchor(top) - #{$tex-diagram-gap});
       right: anchor(right);
     }
   }
