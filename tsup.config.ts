@@ -11,6 +11,8 @@ export default defineConfig({
     "plugins/astro-vscode-heading-ids":
       "src/plugins/astro-vscode-heading-ids/index.ts",
     "plugins/astro-latex-compile": "src/plugins/astro-latex-compile/index.ts",
+    "plugins/astro-latex-compile/page-script":
+      "src/plugins/astro-latex-compile/page-script.ts",
     "plugins/astro-normalize-paths":
       "src/plugins/astro-normalize-paths/index.ts",
     "plugins/astro-local-links": "src/plugins/astro-local-links/index.ts",

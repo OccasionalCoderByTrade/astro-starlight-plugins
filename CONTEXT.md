@@ -18,6 +18,10 @@ _Avoid_: tex SVG, compiled SVG, diagram
 The route a `tex compile` block takes to become a compiled tex diagram, set per block with `mode=`. `dvi` (the default) keeps the compiled tex diagram's text as real, selectable text. `pdf` turns all text into shapes, but accepts graphics that `dvi` can't, such as PNG or PDF images.
 _Avoid_: engine, output format, render mode
 
+**Tex diagram zoom view**:
+A modal that shows an enlarged copy of one compiled tex diagram, opened from a button on the diagram, with the diagram's alt text as a caption when the author wrote one. Off unless the site or the block turns it on.
+_Avoid_: lightbox, viewer, popup, image zoom
+
 **Orphaned tex diagram**:
 A compiled tex diagram that no `tex compile` block references anymore.
 _Avoid_: orphaned SVG, stale SVG (the `removeOrphanedSvgs` option keeps its name for compatibility)

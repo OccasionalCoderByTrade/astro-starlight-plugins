@@ -195,6 +195,32 @@ describe.each(processorFactories)(
       expect(html).toContain("mode=svg");
     });
 
+    it("shows a tex compile error for a zoom meta that isn't true or false", async () => {
+      const site = await createSite(createProcessor());
+
+      const html = await site.renderDoc(
+        "doc.md",
+        texCompileBlock("zoom=maybe", documentWith("Hello")),
+      );
+
+      expect(html).not.toContain("<svg");
+      expect(html).toContain("zoom=maybe");
+    });
+
+    it("shows a tex compile error without a zoom button, even when the site turns zoom on", async () => {
+      const site = await createSite(createProcessor(), {
+        latexCompileOptions: { zoom: true },
+      });
+
+      const html = await site.renderDoc(
+        "doc.md",
+        texCompileBlock("zoom mode=svg", documentWith("Hello")),
+      );
+
+      expect(html).toContain("mode=svg");
+      expect(html).not.toContain("tex-zoom");
+    });
+
     it("shows a tex compile error for a mode meta with no value", async () => {
       const site = await createSite(createProcessor());
 
@@ -302,7 +328,10 @@ describe.each(processorFactories)(
         });
 
         await expect(
-          site.renderDoc("broken.md", texCompileBlock("", NOT_A_LATEX_DOCUMENT)),
+          site.renderDoc(
+            "broken.md",
+            texCompileBlock("", NOT_A_LATEX_DOCUMENT),
+          ),
         ).rejects.toThrow(/stderr is closed/);
 
         await expect(site.runBuildDone()).rejects.toThrow(
@@ -384,22 +413,19 @@ describe.each(processorFactories)(
         expect(mdxModule).not.toMatch(/components\.(p|em)\b/);
       });
 
-      it(
-        "keeps the compiled tex diagram's font CSS in an optimized mdx doc",
-        async () => {
-          const site = await createSite(createProcessor());
+      it("keeps the compiled tex diagram's font CSS in an optimized mdx doc", async () => {
+        const site = await createSite(createProcessor());
 
-          const mdxModule = await site.compileMdxDoc(
-            "doc.mdx",
-            texCompileBlock("", documentWith("Hello $x$")),
-            { optimize: true },
-          );
+        const mdxModule = await site.compileMdxDoc(
+          "doc.mdx",
+          texCompileBlock("", documentWith("Hello $x$")),
+          { optimize: true },
+        );
 
-          expect(mdxModule).toContain("@font-face{");
-          // Not moved into an attribute, where the browser would never read it.
-          expect(mdxModule).not.toMatch(/<style[^>]*set:html/);
-        },
-      );
+        expect(mdxModule).toContain("@font-face{");
+        // Not moved into an attribute, where the browser would never read it.
+        expect(mdxModule).not.toMatch(/<style[^>]*set:html/);
+      });
 
       it("applies svgClassname, unless the block's class meta overrides it", async () => {
         const site = await createSite(createProcessor(), {
@@ -433,6 +459,100 @@ describe.each(processorFactories)(
         expect(html).toMatch(
           /aria-label="x (<|&lt;|&#x3C;) y (&amp;|&#x26;) ('|&#x27;)z('|&#x27;)"/,
         );
+      });
+
+      describe("zoom", () => {
+        it("wraps the compiled tex diagram with a zoom button when the site turns zoom on", async () => {
+          const site = await createSite(createProcessor(), {
+            latexCompileOptions: { zoom: true },
+          });
+
+          const html = await site.renderDoc(
+            "doc.md",
+            texCompileBlock("", documentWith("Hello")),
+          );
+
+          expect(html).toMatch(
+            /^<div class="tex-zoom-frame"><svg class="tex-compiled"/,
+          );
+          expect(html).toMatch(
+            /<\/svg><button type="button" class="tex-zoom-button" aria-label="Zoom diagram"[^>]*>.*<\/button><\/div>\s*$/s,
+          );
+        });
+
+        it("captions the zoom view with the alt text only when the block sets one", async () => {
+          const site = await createSite(createProcessor(), {
+            latexCompileOptions: { zoom: true },
+          });
+
+          const captionedHtml = await site.renderDoc(
+            "captioned.md",
+            texCompileBlock("alt=\"x < y & 'z'\"", documentWith("Hello")),
+          );
+          const uncaptionedHtml = await site.renderDoc(
+            "uncaptioned.md",
+            texCompileBlock("", documentWith("Hello")),
+          );
+
+          // The processor may re-serialize the attribute, so any valid escaping counts.
+          expect(captionedHtml).toMatch(
+            /^<div class="tex-zoom-frame" data-caption="x (<|&lt;|&#x3C;) y (&amp;|&#x26;) ('|&#x27;)z('|&#x27;)">/,
+          );
+          expect(uncaptionedHtml).toMatch(/^<div class="tex-zoom-frame">/);
+        });
+
+        it("leaves the zoom view uncaptioned for an empty alt", async () => {
+          const site = await createSite(createProcessor(), {
+            latexCompileOptions: { zoom: true },
+          });
+
+          const html = await site.renderDoc(
+            "doc.md",
+            texCompileBlock('alt=""', documentWith("Hello")),
+          );
+
+          expect(html).toMatch(/^<div class="tex-zoom-frame">/);
+        });
+
+        it("keeps the zoom button in an mdx doc", async () => {
+          const site = await createSite(createProcessor(), {
+            latexCompileOptions: { zoom: true },
+          });
+
+          const mdxModule = await site.compileMdxDoc(
+            "doc.mdx",
+            texCompileBlock('alt="A greeting"', documentWith("Hello")),
+          );
+
+          expect(mdxModule).toContain("tex-zoom-frame");
+          expect(mdxModule).toContain("tex-zoom-button");
+          expect(mdxModule).toMatch(/"data-caption": "A greeting"/);
+        });
+
+        it("lets a block's zoom meta override the site's zoom option", async () => {
+          const zoomOffSite = await createSite(createProcessor());
+          const zoomOnSite = await createSite(createProcessor(), {
+            latexCompileOptions: { zoom: true },
+          });
+
+          const zoomedHtml = await zoomOffSite.renderDoc(
+            "doc.md",
+            texCompileBlock("zoom", documentWith("Hello")),
+          );
+          const explicitlyZoomedHtml = await zoomOffSite.renderDoc(
+            "explicit.md",
+            texCompileBlock("zoom=true", documentWith("Hello")),
+          );
+          const unzoomedHtml = await zoomOnSite.renderDoc(
+            "doc.md",
+            texCompileBlock("zoom=false", documentWith("Hello")),
+          );
+
+          expect(zoomedHtml).toMatch(/^<div class="tex-zoom-frame">/);
+          expect(explicitlyZoomedHtml).toMatch(/^<div class="tex-zoom-frame">/);
+          expect(unzoomedHtml).toMatch(/^<svg class="tex-compiled"/);
+          expect(unzoomedHtml).not.toContain("tex-zoom-button");
+        });
       });
 
       it("draws text as shapes for a block in pdf compile mode", async () => {
@@ -574,7 +694,8 @@ describe("registration", () => {
     // when it validates the user config, then again for the entries
     // integrations add through `updateConfig`.
     processor.options.remarkPlugins.push(countingRemarkPlugin);
-    const { updateConfig, runConfigDone } = await runConfigSetup(markdownConfig);
+    const { updateConfig, runConfigDone } =
+      await runConfigSetup(markdownConfig);
     for (const [configUpdate] of updateConfig.mock.calls) {
       processor.options.remarkPlugins.push(
         ...(configUpdate.markdown?.remarkPlugins ?? []),

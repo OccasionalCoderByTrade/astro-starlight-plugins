@@ -3,6 +3,7 @@ import { isAbsolute, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { AstroConfig, AstroIntegration } from "astro";
 import { toDisplayPath } from "../utils/display-path.js";
+import { siblingModuleUrl } from "../utils/sibling-module-url.js";
 import { pluginStylesImportScript } from "../utils/plugin-styles.js";
 import { resolveDebugOutput, type DebugOptions } from "./debug-output.js";
 import { createLedger, type TexDiagramLedger } from "./ledger.js";
@@ -19,7 +20,10 @@ import {
 } from "../utils/processor-registration.js";
 import { createLatexCompileCore, type TTexCompileErrorEntry } from "./core.js";
 import { createRemarkLatexCompile } from "./remark-adapter.js";
-import { createSatteriLatexCompile } from "./satteri-adapter.js";
+import {
+  createSatteriLatexCompile,
+  type TLatexCompileCacheKeys,
+} from "./satteri-adapter.js";
 
 export type { DebugOptions as LatexCompileDebugOptions };
 
@@ -75,6 +79,14 @@ export interface LatexCompileOptions {
    * @default false
    */
   removeOrphanedSvgs?: boolean;
+  /**
+   * When `true`, every compiled tex diagram gets a zoom button that opens the
+   * tex diagram zoom view: a modal with an enlarged copy of the diagram and
+   * its `alt` as a caption. Individual blocks can override this with a
+   * `zoom` or `zoom=false` meta tag.
+   * @default false
+   */
+  zoom?: boolean;
 }
 
 const DATA_STORE_FILE = "data-store.json";
@@ -227,19 +239,18 @@ export function astroLatexCompile(
         });
 
         // Astro clears its content store when its config's JSON changes. The
-        // plugin's options are part of that JSON, so carrying the hash here
-        // makes docs cached before a tex input file changed render again.
-        const texInputsHash = hashTexInputs(rootDirPath, texInputDirs);
+        // plugin's options are part of that JSON, so carrying the hash and
+        // `zoom` here makes docs cached before a tex input file or `zoom`
+        // changed render again.
+        const cacheKeys: TLatexCompileCacheKeys = {
+          texInputsHash: hashTexInputs(rootDirPath, texInputDirs),
+          zoom: options.zoom ?? false,
+        };
         processorRegistration = createProcessorRegistration({
           pluginName: "astro-latex-compile",
           exportName: "astroLatexCompile",
-          remarkPlugin: [
-            createRemarkLatexCompile(latexCompileCore),
-            { texInputsHash },
-          ],
-          satteriPlugin: createSatteriLatexCompile(latexCompileCore, {
-            texInputsHash,
-          }),
+          remarkPlugin: [createRemarkLatexCompile(latexCompileCore), cacheKeys],
+          satteriPlugin: createSatteriLatexCompile(latexCompileCore, cacheKeys),
         });
         processorRegistration.register(config, updateConfig);
 
@@ -249,6 +260,20 @@ export function astroLatexCompile(
             "styles/tokens",
             "plugins/astro-latex-compile/styles",
           ]),
+        );
+        // Always on: a block's `zoom` meta can turn zoom on when the option is off.
+        const pageScriptPath = JSON.stringify(
+          fileURLToPath(
+            siblingModuleUrl(
+              import.meta.url,
+              "astro-latex-compile",
+              "page-script",
+            ),
+          ),
+        );
+        injectScript(
+          "page",
+          `import { initTexZoomView } from ${pageScriptPath};\ninitTexZoomView();`,
         );
 
         if (command === "build") {
@@ -267,7 +292,7 @@ export function astroLatexCompile(
 
         if (command === "dev") {
           // Restarts dev when a tex input file changes, which re-runs this hook
-          // with a new texInputsHash.
+          // with a new tex inputs hash.
           for (const filePath of listTexInputFiles(texInputDirs)) {
             addWatchFile(filePath);
           }

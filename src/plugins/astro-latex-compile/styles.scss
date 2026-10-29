@@ -10,4 +10,170 @@
   html[data-theme="dark"] .tex-compiled {
     filter: invert(1) hue-rotate(var(--cannoli-dark-mode-rotate));
   }
+
+  // Tex diagram zoom view, see docs/adr/0019-tex-diagram-zoom-view-clones-the-inline-svg.md.
+  // Colors fall back to system colors on a site without Starlight.
+
+  .tex-zoom-frame {
+    position: relative;
+  }
+
+  .tex-zoom-button {
+    position: absolute;
+    top: 0;
+    right: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    border: 1px solid var(--sl-color-hairline, GrayText);
+    border-radius: 6px;
+    background: var(--sl-color-bg, Canvas);
+    color: var(--sl-color-text, CanvasText);
+    font-size: 1.1rem;
+    cursor: zoom-in;
+    // Hidden with opacity, not display, so it stays in the tab order.
+    opacity: 0;
+    transition: opacity 0.15s ease;
+  }
+
+  .tex-zoom-frame:hover .tex-zoom-button,
+  .tex-zoom-button:focus-visible {
+    opacity: 1;
+  }
+
+  @media (hover: none) {
+    .tex-zoom-button {
+      opacity: 1;
+    }
+  }
+
+  html:has(.tex-zoom-view[open]) {
+    overflow: hidden;
+    // Keeps the page from shifting sideways as its scrollbar goes away.
+    scrollbar-gutter: stable;
+  }
+
+  .tex-zoom-view {
+    flex-direction: column;
+    width: fit-content;
+    max-width: 95vw;
+    max-height: 90vh;
+    // Starlight's reset drops the browser's `margin: auto` that centers a modal dialog.
+    margin: auto;
+    padding: 0;
+    border: 1px solid var(--sl-color-hairline, GrayText);
+    border-radius: 8px;
+    background: var(--sl-color-bg, Canvas);
+    color: var(--sl-color-text, CanvasText);
+    overflow: hidden;
+    // Fades and grows in, and back out on close. `overlay` and `display` keep
+    // the dialog on screen until the close transition ends; a browser without
+    // `overlay` (Firefox) closes it at once.
+    opacity: 0;
+    transform: scale(0.96);
+    transition:
+      opacity 0.15s ease,
+      transform 0.15s ease,
+      overlay 0.15s allow-discrete,
+      display 0.15s allow-discrete;
+
+    &[open] {
+      display: flex;
+      opacity: 1;
+      transform: none;
+    }
+
+    &::backdrop {
+      background-color: rgb(0 0 0 / 0);
+      transition:
+        background-color 0.15s ease,
+        overlay 0.15s allow-discrete,
+        display 0.15s allow-discrete;
+    }
+
+    &[open]::backdrop {
+      background-color: rgb(0 0 0 / 0.6);
+    }
+  }
+
+  @starting-style {
+    .tex-zoom-view[open] {
+      opacity: 0;
+      transform: scale(0.96);
+    }
+
+    .tex-zoom-view[open]::backdrop {
+      background-color: rgb(0 0 0 / 0);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .tex-zoom-view,
+    .tex-zoom-view[open] {
+      transform: none;
+    }
+  }
+
+  .tex-zoom-view__toolbar {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.25rem;
+    padding: 0.5rem;
+    border-bottom: 1px solid var(--sl-color-hairline, GrayText);
+  }
+
+  .tex-zoom-view__button {
+    min-width: 2rem;
+    height: 2rem;
+    padding: 0 0.4rem;
+    border: 1px solid var(--sl-color-hairline, GrayText);
+    border-radius: 6px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-size: 1rem;
+    line-height: 1;
+    cursor: pointer;
+
+    &[aria-disabled="true"] {
+      opacity: 0.4;
+      cursor: default;
+    }
+  }
+
+  .tex-zoom-view__button--level {
+    min-width: 4rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .tex-zoom-view__viewport {
+    display: flex;
+    flex: 1 1 auto;
+    min-height: 0;
+    padding: 1rem;
+    overflow: auto;
+    overscroll-behavior: contain;
+
+    .tex-compiled {
+      // Auto margins center a small diagram without cutting off a scrolled large one.
+      margin: auto;
+      max-width: none;
+      flex-shrink: 0;
+    }
+  }
+
+  .tex-zoom-view__caption {
+    margin: 0;
+    padding: 0.5rem 1rem 0.75rem;
+    border-top: 1px solid var(--sl-color-hairline, GrayText);
+    font-size: var(--sl-text-sm, 0.875rem);
+    text-align: center;
+
+    &[hidden] {
+      display: none;
+    }
+  }
 }

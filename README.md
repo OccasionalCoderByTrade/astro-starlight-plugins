@@ -249,6 +249,7 @@ Automatically compiles fenced `tex compile` and `latex compile` code blocks to S
 
 - Compiles LaTeX/TikZ code blocks to SVG automatically
 - Inlines each compiled tex diagram into the page, with its text selectable and searchable (see [Compile mode](#compile-mode))
+- Optional zoom button that opens the diagram in a modal with zoom controls (see [Zoom view](#zoom-view))
 - Caches compiled SVGs by content hash (no recompilation if unchanged)
 - Comprehensive error reporting with line numbers and formatted LaTeX source
 - Fails `astro build` on any tex compile error, listing where each one happened; `astro dev` only shows the error in the page
@@ -287,6 +288,7 @@ Markdoc (`.mdoc`) doesn't run Markdown processor plugins, so `tex compile` block
   - An error inside one of these files is reported with that file's path and line, e.g. `Error (src/latex/macros.tex:2): Undefined control sequence.`
   - If you build in an environment without TeX, relying on committed SVGs, commit the files in these directories too. A build hashes them to find the right SVGs.
   - A directory that doesn't exist fails `astro dev` at startup. `astro build` only warns, since git doesn't keep empty directories, and names the directory if the build then fails because TeX is missing.
+- `zoom` (optional, default: `false`): When `true`, every compiled tex diagram gets a zoom button that opens its [zoom view](#zoom-view). Individual blocks can override this with a `zoom` or `zoom=false` meta tag.
 - `debug` (optional): `true`, or `{ outputDir?, logFile? }`. When set, a debug tex diagram image (a JPEG copy of each compiled tex diagram) is written to `debug.outputDir` as a flat file list (no mirrored folder structure). Both paths are relative to the integration's codegen dir, `.astro/integrations/astro-latex-compile/`, and default to `debug-images/` and `latex-compile.log`; an empty path, an absolute path, or one that leads outside that dir fails at startup. The resolved image dir is logged when Astro starts. Only blocks that carry a `blockid=<n>` meta tag produce a debug tex diagram image — blocks without it are ignored. The filename format is `<originating-file>--<blockid>-<8-char-dir-checksum>.jpg` (e.g. `tex-test--5-a1b2c3d4.jpg`), where the checksum is an MD5 hash of the originating file's directory, namespacing files so that same-named files from different directories don't collide. Debug tex diagram images are deleted automatically when their block is removed, its `blockid` changes, or its content changes, and every debug tex diagram image in `debug.outputDir` is cleared at the start of a build. If two blocks in one doc share a `blockid`, a warning is logged (even with `debug` off) and only the last block's debug tex diagram image is kept. Every debug tex diagram image (re)write is also appended to `debug.logFile`, which rotates automatically once it grows too large (rolling backups `<logFile>-1.log`, `<logFile>-2.log`, etc.). Compiled tex diagrams are unaffected — the debug output is complementary and intended for local inspection. Its type is exported as `LatexCompileDebugOptions`.
 
 ```ts
@@ -375,6 +377,7 @@ The following attributes can be added to the opening fence:
 - `class="..."`: CSS classes applied to the resulting `<svg>` element (space-separated). The `tex-compiled` class is always included.
 - `alt="..."`: Accessible label for the resulting `<svg>` element, set as `role="img"` and `aria-label`. Defaults to `"LaTeX diagram"` if omitted.
 - `mode=dvi` or `mode=pdf`: The block's [compile mode](#compile-mode). Defaults to `dvi`.
+- `zoom` or `zoom=false`: Turns the [zoom view](#zoom-view) on or off for this block, overriding the `zoom` option. `zoom=true` works too; any other value is a tex compile error.
 
 ````markdown
 ```tex compile class="bg-white rounded-1" alt="A commutative diagram"
@@ -406,6 +409,29 @@ DVI can't hold every kind of graphic. `\includegraphics` of a PNG, JPEG or PDF f
 ````
 
 Each compiled tex diagram's ids, classes and fonts are prefixed with its hash, so several can share a page. Compiled tex diagrams are sized in `em`, so 10pt LaTeX text matches the surrounding body text and follows the reader's browser font size. Wide ones shrink to fit the content column (`max-width: 100%`).
+
+#### Zoom view
+
+With `zoom: true`, or `zoom` on a block, the compiled tex diagram gets a small zoom button at the top-right of the content column. It shows on hover and on keyboard focus, and always on touch devices. The button opens a modal with a copy of the diagram, at the size it has on the page:
+
+- `−` and `+` zoom from 1× to 8×, in 1.25× steps, and the percentage between them resets to 1×. The keys `-`, `+` (or `=`) and `0` do the same.
+- A diagram larger than the modal scrolls inside it. In `dvi` mode its text stays selectable.
+- The block's `alt` shows as a caption under the diagram. A block without its own `alt` has no caption.
+- `×`, Esc or a click outside the modal closes it.
+
+````markdown
+```tex compile zoom alt="A binary tree"
+\documentclass[border=5pt]{standalone}
+\usepackage{tikz}
+\begin{document}
+\begin{tikzpicture}
+  \node {A} child {node {B}} child {node {C}};
+\end{tikzpicture}
+\end{document}
+```
+````
+
+The diagram is wrapped in a `<div class="tex-zoom-frame">` that spans the content column, so the `<svg>` and its `class=` lay out as before. Labels are in English.
 
 **Migrating to inline SVGs:** every compiled tex diagram's hash changes once, so every block recompiles on the first build. With `removeOrphanedSvgs`, the build removes the old SVGs; otherwise delete them from `svgOutputDir` by hand. If your deploy builds without TeX, run `astro build` locally and commit the new SVGs before deploying.
 

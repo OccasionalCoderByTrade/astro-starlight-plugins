@@ -12,6 +12,7 @@ import {
   createServedFileRule,
   type ServedFileRule,
 } from "../utils/served-file-rule.js";
+import { siblingModuleUrl } from "../utils/sibling-module-url.js";
 import {
   DOCS_FILE_ROUTE_PATTERN,
   SERVE_DOCS_FILES_INTEGRATION_NAME,
@@ -79,27 +80,6 @@ export type AstroServeDocsFilesIntegration = AstroIntegration & {
 /** A dir URL from Astro's config as a file path, without a trailing separator. */
 function toDirPath(dirUrl: URL): string {
   return fileURLToPath(dirUrl).replace(/[\\/]+$/, "");
-}
-
-/**
- * Where a module shipped next to this file lives: `.ts` in this repo, or a separate build
- * entry in `dist/` reached from either this plugin's own entry or the root entry's chunk.
- */
-function siblingModuleUrl(moduleName: string): URL {
-  const currentFilePath = fileURLToPath(import.meta.url);
-  if (currentFilePath.endsWith(".ts")) {
-    return new URL(`./${moduleName}.ts`, import.meta.url);
-  }
-  if (currentFilePath.endsWith("astro-serve-docs-files.js")) {
-    return new URL(
-      `./astro-serve-docs-files/${moduleName}.js`,
-      import.meta.url,
-    );
-  }
-  return new URL(
-    `./plugins/astro-serve-docs-files/${moduleName}.js`,
-    import.meta.url,
-  );
 }
 
 /**
@@ -225,12 +205,20 @@ export function astroServeDocsFiles(
         });
         injectRoute({
           pattern: DOCS_FILE_ROUTE_PATTERN,
-          entrypoint: siblingModuleUrl("route"),
+          entrypoint: siblingModuleUrl(
+            import.meta.url,
+            "astro-serve-docs-files",
+            "route",
+          ),
           prerender: true,
         });
         // On every doc page, whether or not the page-action bar is on (ADR 0012)
         addMiddleware({
-          entrypoint: siblingModuleUrl("raw-doc-alternate-link-middleware"),
+          entrypoint: siblingModuleUrl(
+            import.meta.url,
+            "astro-serve-docs-files",
+            "raw-doc-alternate-link-middleware",
+          ),
           order: "post",
         });
 
@@ -240,7 +228,13 @@ export function astroServeDocsFiles(
             pluginStylesImportScript(["plugins/astro-serve-docs-files/styles"]),
           );
           const scriptPath = JSON.stringify(
-            fileURLToPath(siblingModuleUrl("page-script")),
+            fileURLToPath(
+              siblingModuleUrl(
+                import.meta.url,
+                "astro-serve-docs-files",
+                "page-script",
+              ),
+            ),
           );
           const actionBarOptions = JSON.stringify({
             exposePageSrcButton,

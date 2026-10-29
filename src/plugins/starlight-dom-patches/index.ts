@@ -1,6 +1,7 @@
 import { fileURLToPath } from "node:url";
 import type { AstroIntegration } from "astro";
 import { pluginStylesImportScript } from "../utils/plugin-styles.js";
+import { siblingModuleUrl } from "../utils/sibling-module-url.js";
 
 export interface DomPatchesOptions {
   /** Hide line number gutters on single-line code blocks. @default false */
@@ -66,21 +67,11 @@ export function starlightDomPatches(
     name: "starlight-dom-patches",
     hooks: {
       "astro:config:setup": ({ injectScript }) => {
-        const currentFile = fileURLToPath(import.meta.url);
-        let pageScriptUrl: URL;
-        if (currentFile.endsWith(".ts")) {
-          pageScriptUrl = new URL("./page-script.ts", import.meta.url);
-        } else if (currentFile.endsWith("starlight-dom-patches.js")) {
-          pageScriptUrl = new URL(
-            "./starlight-dom-patches/page-script.js",
-            import.meta.url,
-          );
-        } else {
-          pageScriptUrl = new URL(
-            "./plugins/starlight-dom-patches/page-script.js",
-            import.meta.url,
-          );
-        }
+        const pageScriptUrl = siblingModuleUrl(
+          import.meta.url,
+          "starlight-dom-patches",
+          "page-script",
+        );
 
         const stylesheetNames = [
           offerTabbedContent || offerToggleAllDetails ? "action-panel" : null,

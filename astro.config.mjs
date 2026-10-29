@@ -55,6 +55,7 @@ export default defineConfig({
     astroLatexCompile({
       svgOutputDir: "public/static/tex-svgs",
       removeOrphanedSvgs: true,
+      zoom: true,
       // texInputDirs: [],
       debug: true,
     }),

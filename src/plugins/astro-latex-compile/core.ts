@@ -25,11 +25,15 @@ import {
   writeDebugImageFromDiagram,
 } from "./utils.js";
 import { hashTexInputs, type TexInputDir } from "./tex-inputs.js";
+import { ZOOM_LABELS } from "./zoom-labels.js";
 
 const DEBUG_LOG_MAX_SIZE_BYTES = 5 * 1024 * 1024;
 const DEBUG_LOG_BACKUP_COUNT = 3;
 /** Stands in for the doc's path when the processor wasn't given one. */
 const UNKNOWN_DOC_FILE_PATH = "unknown";
+/** A magnifying glass with a plus, drawn in the button's text color. */
+const ZOOM_BUTTON_ICON =
+  '<svg viewBox="0 0 24 24" width="1em" height="1em" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21M10.5 7.5v6M7.5 10.5h6"/></svg>';
 
 /** One tex compile error, as listed when the build fails. */
 export interface TTexCompileErrorEntry {
@@ -112,6 +116,24 @@ function parseCompileMode(
 }
 
 /**
+ * The tex compile error for a `zoom` meta that is neither bare, `true` nor
+ * `false`, if the block has one.
+ */
+function findInvalidZoom(
+  metaOptions: MetaOptions,
+): { ok: false; failure: TexCompileFailure } | undefined {
+  const zoomValue = metaOptions.getString("zoom");
+  if (zoomValue === undefined) return undefined;
+  return {
+    ok: false,
+    failure: {
+      kind: "invalid-block",
+      reason: `Unknown zoom value "zoom=${zoomValue}". Use zoom, zoom=true or zoom=false.`,
+    },
+  };
+}
+
+/**
  * Adds the block's attributes to the root `<svg>` of a compiled tex diagram,
  * sized in em.
  */
@@ -125,6 +147,25 @@ function inlineSvgHtml(
     `aria-label="${escapeXml(attributes.altText)}"`,
   ].join(" ");
   return sizeSvgInEm(svgMarkup).replace(/^<svg\b/, `<svg ${rootAttributes}`);
+}
+
+/**
+ * Wraps an inlined compiled tex diagram with the button that opens its tex
+ * diagram zoom view, which shows `caption` under the diagram. See
+ * docs/adr/0019-tex-diagram-zoom-view-clones-the-inline-svg.md.
+ */
+function zoomFrameHtml(
+  diagramHtml: string,
+  { caption }: { caption: string | undefined },
+): string {
+  const captionAttribute =
+    caption !== undefined ? ` data-caption="${escapeXml(caption)}"` : "";
+  return [
+    `<div class="tex-zoom-frame"${captionAttribute}>`,
+    diagramHtml.trimEnd(),
+    `<button type="button" class="tex-zoom-button" aria-label="${ZOOM_LABELS.openButton}">${ZOOM_BUTTON_ICON}</button>`,
+    `</div>`,
+  ].join("");
 }
 
 /** The doc's path as messages print it. */
@@ -254,11 +295,15 @@ export function createLatexCompileCore(
     )
       .split(/\s+/)
       .filter(Boolean);
-    const altText = metaOptions.getString("alt") ?? "LaTeX diagram";
-    return inlineSvgHtml(svgMarkup, {
+    const blockAltText = metaOptions.getString("alt");
+    const diagramHtml = inlineSvgHtml(svgMarkup, {
       classNames: ["tex-compiled", ...extraClasses],
-      altText,
+      altText: blockAltText ?? "LaTeX diagram",
     });
+    const isZoomable = metaOptions.getBoolean("zoom") ?? options.zoom ?? false;
+    return isZoomable
+      ? zoomFrameHtml(diagramHtml, { caption: blockAltText || undefined })
+      : diagramHtml;
   }
 
   async function compileBlocks(
@@ -301,22 +346,26 @@ export function createLatexCompileCore(
             : undefined;
         const location = `${displayedFilePath}:${displayedLineNumber}`;
 
-        const parsedMode = parseCompileMode(new MetaOptions(block.meta ?? ""));
+        const metaOptions = new MetaOptions(block.meta ?? "");
+        const parsedMode = parseCompileMode(metaOptions);
         const compileMode = parsedMode.ok
           ? parsedMode.compileMode
           : DEFAULT_COMPILE_MODE;
+        const invalidMeta = parsedMode.ok
+          ? findInvalidZoom(metaOptions)
+          : parsedMode;
 
         // Anything thrown here must stay confined to this block: rejecting
         // would lose every block on the page, and Starlight only logs it.
         let outcome: CompileOutcome;
         try {
-          outcome = parsedMode.ok
-            ? await compileLatexToSvg(block.value, ledger.svgDir, {
-                texInputDirs: state.texInputDirs,
-                texInputsHash,
-                compileMode,
-              })
-            : parsedMode;
+          outcome =
+            invalidMeta ??
+            (await compileLatexToSvg(block.value, ledger.svgDir, {
+              texInputDirs: state.texInputDirs,
+              texInputsHash,
+              compileMode,
+            }));
           if (!outcome.ok) {
             outcome = {
               ...outcome,
