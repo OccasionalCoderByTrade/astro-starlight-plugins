@@ -415,7 +415,7 @@ Each compiled tex diagram's ids, classes and fonts are prefixed with its hash, s
 
 #### Zoom view
 
-With `zoom: true`, or `zoom` on a block, the compiled tex diagram gets a small zoom button at the top-right of the content column. It shows on hover and on keyboard focus, and always on touch devices. The button opens a modal with a copy of the diagram, at the size it has on the page:
+With `zoom: true`, or `zoom` on a block, the compiled tex diagram gets a small zoom button at its top-right corner (at the top-right of the content column in browsers without CSS `anchor-scope`). It shows on hover and on keyboard focus, and always on touch devices. The button opens a modal with a copy of the diagram, at the size it has on the page:
 
 - `−` and `+` zoom from 1× to 8×, in 1.25× steps, and the percentage between them resets to 1×. The keys `-`, `+` (or `=`) and `0` do the same.
 - A diagram larger than the modal scrolls inside it. In `dvi` mode its text stays selectable.
