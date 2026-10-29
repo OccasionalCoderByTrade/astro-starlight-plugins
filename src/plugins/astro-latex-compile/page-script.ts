@@ -207,11 +207,8 @@ function openZoomView(zoomView: ZoomView, zoomFrame: HTMLElement): void {
   // Ids stay as they are: the original's identical definitions are on the page (ADR 0019).
   const clonedDiagram = diagram.cloneNode(true) as SVGSVGElement;
   clonedDiagram.setAttribute("aria-hidden", "true");
-  const sheet = document.createElement("div");
-  sheet.className = "tex-zoom-view__sheet";
-  sheet.append(clonedDiagram);
   // Kept until the next open, so the closing animation still shows it.
-  zoomView.viewport.replaceChildren(sheet);
+  zoomView.viewport.replaceChildren(clonedDiagram);
   zoomView.diagram = clonedDiagram;
   zoomView.baseSize = { width, height };
   zoomView.zoomLevel = MIN_ZOOM;

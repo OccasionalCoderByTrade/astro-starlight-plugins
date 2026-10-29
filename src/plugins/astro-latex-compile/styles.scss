@@ -90,8 +90,8 @@ $tex-diagram-gap: calc(var(--sl-content-gap-y, 1rem) + 0.25rem);
     scrollbar-gutter: stable;
   }
 
-  // The zoom view fills the screen with no box of its own: the toolbar,
-  // diagram and caption float over the dimmed page.
+  // The zoom view fills the screen and hides the page, with the toolbar and
+  // caption floating over the diagram.
   .tex-zoom-view {
     // `vw`, not `%`, so it also covers the scrollbar gutter kept by `html` above.
     width: 100vw;
@@ -101,7 +101,7 @@ $tex-diagram-gap: calc(var(--sl-content-gap-y, 1rem) + 0.25rem);
     margin: 0;
     padding: 0;
     border: 0;
-    background: transparent;
+    background: var(--sl-color-bg, Canvas);
     color: var(--sl-color-text, CanvasText);
     overflow: hidden;
     // Fades and grows in, and back out on close. `overlay` and `display` keep
@@ -208,20 +208,12 @@ $tex-diagram-gap: calc(var(--sl-content-gap-y, 1rem) + 0.25rem);
     padding: 4rem 1.5rem;
     overflow: auto;
     overscroll-behavior: contain;
-  }
-
-  // An opaque sheet under the diagram, apart from the dark-mode invert on the
-  // `<svg>` so its color and shadow stay as written.
-  .tex-zoom-view__sheet {
-    // Auto margins center a small diagram without cutting off a scrolled large one.
-    margin: auto;
-    flex-shrink: 0;
-    background: var(--sl-color-bg, Canvas);
-    box-shadow: 0 0 2rem 0.5rem rgb(0 0 0 / 0.6);
 
     .tex-compiled {
-      display: block;
+      // Auto margins center a small diagram without cutting off a scrolled large one.
+      margin: auto;
       max-width: none;
+      flex-shrink: 0;
     }
   }
 
