@@ -112,8 +112,9 @@ function createZoomView(): ZoomView {
   };
 
   dialog.addEventListener("click", (event) => {
-    // A click on the backdrop lands on the dialog itself.
-    if (event.target === dialog) {
+    // The viewport fills the dialog, so a click beside the diagram lands on
+    // it rather than on the backdrop.
+    if (event.target === dialog || event.target === viewport) {
       dialog.close();
       return;
     }
@@ -206,8 +207,11 @@ function openZoomView(zoomView: ZoomView, zoomFrame: HTMLElement): void {
   // Ids stay as they are: the original's identical definitions are on the page (ADR 0019).
   const clonedDiagram = diagram.cloneNode(true) as SVGSVGElement;
   clonedDiagram.setAttribute("aria-hidden", "true");
+  const sheet = document.createElement("div");
+  sheet.className = "tex-zoom-view__sheet";
+  sheet.append(clonedDiagram);
   // Kept until the next open, so the closing animation still shows it.
-  zoomView.viewport.replaceChildren(clonedDiagram);
+  zoomView.viewport.replaceChildren(sheet);
   zoomView.diagram = clonedDiagram;
   zoomView.baseSize = { width, height };
   zoomView.zoomLevel = MIN_ZOOM;
