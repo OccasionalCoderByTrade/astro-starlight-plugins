@@ -30,7 +30,7 @@ class EmphasisAnnotation extends ExpressiveCodeAnnotation {
 
 /**
  * Expressive Code plugin that emphasizes the terms listed in a code block's
- * `emph` meta, e.g. ```` ```js emph="foo,bar,()" ````, by wrapping each match
+ * `emph` meta option, e.g. ```` ```js emph="foo,bar,()" ````, by wrapping each match
  * in `<span class="fw-supreme">`, styled in Source Code Pro at weight 900. The
  * styles and the font (latin + latin-ext subsets) ship with the plugin.
  *

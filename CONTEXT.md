@@ -4,10 +4,16 @@ A collection of Astro integrations and Starlight plugins for documentation sites
 
 ## Language
 
+### Code blocks
+
+**Meta option**:
+One `key`, `key=value` or `key="quoted value"` entry in a fenced code block's meta, the text after the language on the opening fence. A plugin that lets authors set something per block reads it as a meta option.
+_Avoid_: meta tag, meta attribute, block setting, fence flag
+
 ### LaTeX compile
 
 **`tex compile` block**:
-A fenced code block in a Markdown doc, tagged `tex` or `latex` with `compile` in its meta, that holds a complete LaTeX document to be rendered as a diagram. `latex compile` is an accepted spelling in source, but prose always says `tex compile` block.
+A fenced code block in a Markdown doc, tagged `tex` or `latex` with a `compile` meta option, that holds a complete LaTeX document to be rendered as a diagram. `latex compile` is an accepted spelling in source, but prose always says `tex compile` block.
 _Avoid_: LaTeX block, compile block, code block, `latex compile` block (in prose)
 
 **Compiled tex diagram**:
@@ -159,7 +165,7 @@ _Avoid_: link boundary, link range
 ### Expressive Code emphasis
 
 **Expressive Code Emphasis Term**:
-A string listed in a code block's `emph` meta, comma-separated, whose every whole-unit occurrence in the block is emphasized. A term edge that is a letter, combining mark, digit or `_` can't sit against another one; an edge that is punctuation can sit against anything. Where two terms' occurrences overlap, the one that starts first wins, and at the same start the longer one.
+A string listed in a code block's `emph` meta option, comma-separated, whose every whole-unit occurrence in the block is emphasized. A term edge that is a letter, combining mark, digit or `_` can't sit against another one; an edge that is punctuation can sit against anything. Where two terms' occurrences overlap, the one that starts first wins, and at the same start the longer one.
 _Avoid_: emph word, highlight term, keyword
 
 ### Styles

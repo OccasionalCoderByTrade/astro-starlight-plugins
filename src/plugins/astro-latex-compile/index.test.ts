@@ -183,6 +183,18 @@ const processorFactories: [string, () => TMarkdownProcessor][] = [
 describe.each(processorFactories)(
   "with the %s processor",
   (processorName, createProcessor) => {
+    it("leaves a tex block whose meta only mentions compile as a plain code block", async () => {
+      const site = await createSite(createProcessor());
+
+      const html = await site.renderDoc(
+        "doc.md",
+        `\`\`\`tex alt="compiled flow"\n${NOT_A_LATEX_DOCUMENT}\n\`\`\`\n`,
+      );
+
+      expect(html).not.toContain("LaTeX Compilation Error");
+      expect(html).toContain("\\tikz");
+    });
+
     it("shows a tex compile error for an unknown compile mode", async () => {
       const site = await createSite(createProcessor());
 
@@ -193,18 +205,6 @@ describe.each(processorFactories)(
 
       expect(html).not.toContain("<svg");
       expect(html).toContain("mode=svg");
-    });
-
-    it("shows a tex compile error for a zoom meta that isn't true or false", async () => {
-      const site = await createSite(createProcessor());
-
-      const html = await site.renderDoc(
-        "doc.md",
-        texCompileBlock("zoom=maybe", documentWith("Hello")),
-      );
-
-      expect(html).not.toContain("<svg");
-      expect(html).toContain("zoom=maybe");
     });
 
     it("shows a tex compile error without a zoom button, even when the site turns zoom on", async () => {
@@ -219,18 +219,6 @@ describe.each(processorFactories)(
 
       expect(html).toContain("mode=svg");
       expect(html).not.toContain("tex-zoom");
-    });
-
-    it("shows a tex compile error for a mode meta with no value", async () => {
-      const site = await createSite(createProcessor());
-
-      const html = await site.renderDoc(
-        "doc.md",
-        texCompileBlock("mode", documentWith("Hello")),
-      );
-
-      expect(html).not.toContain("<svg");
-      expect(html).toContain("mode=dvi");
     });
 
     it("reports a tex compile error at the block's line in the source, frontmatter included", async () => {
@@ -275,6 +263,21 @@ describe.each(processorFactories)(
       expect(writeDebugImage).toHaveBeenCalledOnce();
       const [, location] = vi.mocked(writeDebugImage).mock.calls[0];
       expect(location).toMatch(/doc\.md:5$/);
+    });
+
+    it("writes the debug tex diagram image of a block with an invalid meta option", async () => {
+      const site = await createSite(createProcessor(), {
+        latexCompileOptions: { debug: true },
+      });
+
+      await site.renderDoc(
+        "doc.md",
+        texCompileBlock("blockid=2 mode=svg", documentWith("Hello")),
+      );
+
+      expect(writeDebugImage).toHaveBeenCalledOnce();
+      const [failure] = vi.mocked(writeDebugImage).mock.calls[0];
+      expect(failure).toMatchObject({ kind: "invalid-block" });
     });
 
     describe("on build", () => {

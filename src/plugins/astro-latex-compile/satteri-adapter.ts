@@ -1,11 +1,8 @@
 import { fileURLToPath } from "node:url";
 import type { Code, Root } from "mdast";
 import { visit } from "unist-util-visit";
-import {
-  isTexCompileBlock,
-  texCompileBlockFromCodeNode,
-  type TLatexCompileCore,
-} from "./core.js";
+import { texCompileBlockFromCodeNode, type TLatexCompileCore } from "./core.js";
+import { isTexCompileBlock } from "./meta-options.js";
 import { prebuiltHastNode } from "./prebuilt-hast.js";
 
 /** What the plugin uses of Sätteri's per-doc visitor context. */

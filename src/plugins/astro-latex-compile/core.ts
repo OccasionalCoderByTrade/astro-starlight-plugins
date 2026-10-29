@@ -1,6 +1,5 @@
 import { readFileSync, writeSync } from "node:fs";
 import { parseFrontmatter } from "@astrojs/markdown-remark";
-import { MetaOptions } from "@expressive-code/core";
 import type { Code } from "mdast";
 import type { LatexCompileOptions } from "./index.js";
 import { toDisplayPath } from "../utils/display-path.js";
@@ -16,15 +15,16 @@ import {
 } from "./tex-compile-error.js";
 import { sizeSvgInEm } from "./svg-size.js";
 import {
-  COMPILE_MODES,
   compileLatexToSvg,
-  type CompileMode,
   type CompileOutcome,
-  DEFAULT_COMPILE_MODE,
   diagramFileName,
   writeDebugImageFromDiagram,
 } from "./utils.js";
 import { hashTexInputs, type TexInputDir } from "./tex-inputs.js";
+import {
+  resolveMetaOptions,
+  type TTexCompileMetaOptions,
+} from "./meta-options.js";
 import { ZOOM_LABELS } from "./zoom-labels.js";
 
 const DEBUG_LOG_MAX_SIZE_BYTES = 5 * 1024 * 1024;
@@ -85,52 +85,6 @@ function getFrontmatterOffset(absoluteFilePath: string): number {
   } catch {
     return 0;
   }
-}
-
-/**
- * The block's compile mode from its `mode` meta, or the tex compile error for
- * an unknown value or a bare `mode` with no value.
- */
-function parseCompileMode(
-  metaOptions: MetaOptions,
-):
-  | { ok: true; compileMode: CompileMode }
-  | { ok: false; failure: TexCompileFailure } {
-  const modeValue = metaOptions.getString("mode");
-  const hasBareModeFlag =
-    modeValue === undefined && metaOptions.getBoolean("mode") !== undefined;
-  if (modeValue === undefined && !hasBareModeFlag) {
-    return { ok: true, compileMode: DEFAULT_COMPILE_MODE };
-  }
-  if ((COMPILE_MODES as readonly string[]).includes(modeValue ?? "")) {
-    return { ok: true, compileMode: modeValue as CompileMode };
-  }
-  const allowedModes = COMPILE_MODES.map((mode) => `mode=${mode}`).join(", ");
-  return {
-    ok: false,
-    failure: {
-      kind: "invalid-block",
-      reason: `Unknown compile mode "mode${modeValue === undefined ? "" : `=${modeValue}`}". Use one of: ${allowedModes}.`,
-    },
-  };
-}
-
-/**
- * The tex compile error for a `zoom` meta that is neither bare, `true` nor
- * `false`, if the block has one.
- */
-function findInvalidZoom(
-  metaOptions: MetaOptions,
-): { ok: false; failure: TexCompileFailure } | undefined {
-  const zoomValue = metaOptions.getString("zoom");
-  if (zoomValue === undefined) return undefined;
-  return {
-    ok: false,
-    failure: {
-      kind: "invalid-block",
-      reason: `Unknown zoom value "zoom=${zoomValue}". Use zoom, zoom=true or zoom=false.`,
-    },
-  };
 }
 
 /**
@@ -233,14 +187,6 @@ export function texCompileBlockFromCodeNode(
   };
 }
 
-/** Whether a code block with this language and meta is a `tex compile` block. */
-export function isTexCompileBlock(
-  lang: string | null | undefined,
-  meta: string | null | undefined,
-): boolean {
-  return (lang === "tex" || lang === "latex") && !!meta?.includes("compile");
-}
-
 /**
  * LaTeX compile's logic, with no knowledge of any Markdown processor. An
  * adapter finds a doc's `tex compile` blocks and replaces each one with the
@@ -287,22 +233,16 @@ export function createLatexCompileCore(
   }
 
   /** The block's compiled tex diagram, inlined with its `class` and `alt`. */
-  function compiledDiagramHtml(block: TTexCompileBlock, svgMarkup: string) {
-    const metaOptions = new MetaOptions(block.meta ?? "");
-    const blockClass = metaOptions.getString("class");
-    const extraClasses = (
-      blockClass !== undefined ? blockClass : (options.svgClassname ?? "")
-    )
-      .split(/\s+/)
-      .filter(Boolean);
-    const blockAltText = metaOptions.getString("alt");
+  function compiledDiagramHtml(
+    metaOptions: TTexCompileMetaOptions,
+    svgMarkup: string,
+  ) {
     const diagramHtml = inlineSvgHtml(svgMarkup, {
-      classNames: ["tex-compiled", ...extraClasses],
-      altText: blockAltText ?? "LaTeX diagram",
+      classNames: ["tex-compiled", ...metaOptions.classNames],
+      altText: metaOptions.altText,
     });
-    const isZoomable = metaOptions.getBoolean("zoom") ?? options.zoom ?? false;
-    return isZoomable
-      ? zoomFrameHtml(diagramHtml, { caption: blockAltText || undefined })
+    return metaOptions.isZoomable
+      ? zoomFrameHtml(diagramHtml, { caption: metaOptions.caption })
       : diagramHtml;
   }
 
@@ -316,9 +256,10 @@ export function createLatexCompileCore(
       return [];
     }
 
-    const blockIds = blocks.map((block) =>
-      new MetaOptions(block.meta ?? "").getInteger("blockid"),
+    const resolvedMetaOptions = blocks.map((block) =>
+      resolveMetaOptions(block.meta, options),
     );
+    const blockIds = resolvedMetaOptions.map((resolved) => resolved.blockId);
     // Blocks sharing a blockid would write the same debug tex diagram image,
     // so only the last one in the doc writes it.
     const lastIndexByBlockId = new Map<number, number>();
@@ -346,26 +287,32 @@ export function createLatexCompileCore(
             : undefined;
         const location = `${displayedFilePath}:${displayedLineNumber}`;
 
-        const metaOptions = new MetaOptions(block.meta ?? "");
-        const parsedMode = parseCompileMode(metaOptions);
-        const compileMode = parsedMode.ok
-          ? parsedMode.compileMode
-          : DEFAULT_COMPILE_MODE;
-        const invalidMeta = parsedMode.ok
-          ? findInvalidZoom(metaOptions)
-          : parsedMode;
+        async function failBlock(failure: TexCompileFailure) {
+          reportFailure(failure, location);
+          if (debugImagePath) {
+            await writeDebugOutput(location, () =>
+              writeDebugImage(failure, location, debugImagePath),
+            );
+          }
+          return {
+            html: renderHtml(failure, location, block.value),
+            hash: null,
+          };
+        }
+
+        const resolved = resolvedMetaOptions[i];
+        if (!resolved.ok) return failBlock(resolved.failure);
+        const { metaOptions } = resolved;
 
         // Anything thrown here must stay confined to this block: rejecting
         // would lose every block on the page, and Starlight only logs it.
         let outcome: CompileOutcome;
         try {
-          outcome =
-            invalidMeta ??
-            (await compileLatexToSvg(block.value, ledger.svgDir, {
-              texInputDirs: state.texInputDirs,
-              texInputsHash,
-              compileMode,
-            }));
+          outcome = await compileLatexToSvg(block.value, ledger.svgDir, {
+            texInputDirs: state.texInputDirs,
+            texInputsHash,
+            compileMode: metaOptions.compileMode,
+          });
           if (!outcome.ok) {
             outcome = {
               ...outcome,
@@ -378,17 +325,7 @@ export function createLatexCompileCore(
             failure: { kind: "unexpected", message: errorMessage(err) },
           };
         }
-
-        if (!outcome.ok) {
-          reportFailure(outcome.failure, location);
-          if (debugImagePath) {
-            const { failure } = outcome;
-            await writeDebugOutput(location, () =>
-              writeDebugImage(failure, location, debugImagePath),
-            );
-          }
-          return { outcome, location, hash: null };
-        }
+        if (!outcome.ok) return failBlock(outcome.failure);
 
         if (outcome.wasCompiled) {
           console.log(
@@ -402,14 +339,20 @@ export function createLatexCompileCore(
               block.value,
               svgPath,
               debugImagePath,
-              { texInputDirs: state.texInputDirs, compileMode },
+              {
+                texInputDirs: state.texInputDirs,
+                compileMode: metaOptions.compileMode,
+              },
             );
             await debugLogger?.write(
               `${location}: wrote ${toDisplayPath(state.rootDirPath, debugImagePath)}`,
             );
           });
         }
-        return { outcome, location, hash: outcome.hash };
+        return {
+          html: compiledDiagramHtml(metaOptions, outcome.svgMarkup),
+          hash: outcome.hash,
+        };
       }),
     );
 
@@ -418,11 +361,7 @@ export function createLatexCompileCore(
       blockIds: blockIds.flatMap((id) => id ?? []),
     });
 
-    return results.map(({ outcome, location }, i) =>
-      outcome.ok
-        ? compiledDiagramHtml(blocks[i], outcome.svgMarkup)
-        : renderHtml(outcome.failure, location, blocks[i].value),
-    );
+    return results.map((result) => result.html);
   }
 
   return {

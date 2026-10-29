@@ -1,11 +1,8 @@
 import type { Code, Html, Paragraph, Parent, Root } from "mdast";
 import { SKIP, visit } from "unist-util-visit";
 import type { VFile } from "vfile";
-import {
-  isTexCompileBlock,
-  texCompileBlockFromCodeNode,
-  type TLatexCompileCore,
-} from "./core.js";
+import { texCompileBlockFromCodeNode, type TLatexCompileCore } from "./core.js";
+import { isTexCompileBlock } from "./meta-options.js";
 import { prebuiltHastNode } from "./prebuilt-hast.js";
 
 /**

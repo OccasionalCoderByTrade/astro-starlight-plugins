@@ -38,7 +38,7 @@ export interface LatexCompileOptions {
   /**
    * Default CSS class(es) applied to every compiled tex diagram's inline
    * `<svg>` element.
-   * Individual blocks can override this with a `class` meta tag value.
+   * Individual blocks can override this with a `class` meta option.
    * The `tex-compiled` class is always present and cannot be overridden.
    */
   svgClassname?: string;
@@ -59,7 +59,7 @@ export interface LatexCompileOptions {
   /**
    * When set, a debug tex diagram image (a JPEG copy of each compiled tex
    * diagram) is written to a flat directory. Only blocks that carry a
-   * `blockid=<n>` meta tag produce one; if several blocks in a doc share a
+   * `blockid=<n>` meta option produce one; if several blocks in a doc share a
    * `blockid`, only the last one's is kept. Filename format: `<originating-file>--<blockid>-<8-char-dir-checksum>.jpg`,
    * where the checksum namespaces files originating from different
    * directories to avoid collisions between files with the same name.
@@ -83,7 +83,7 @@ export interface LatexCompileOptions {
    * When `true`, every compiled tex diagram gets a zoom button that opens the
    * tex diagram zoom view: a modal with an enlarged copy of the diagram and
    * its `alt` as a caption. Individual blocks can override this with a
-   * `zoom` or `zoom=false` meta tag.
+   * `zoom` or `zoom=false` meta option.
    * @default false
    */
   zoom?: boolean;
@@ -261,7 +261,7 @@ export function astroLatexCompile(
             "plugins/astro-latex-compile/styles",
           ]),
         );
-        // Always on: a block's `zoom` meta can turn zoom on when the option is off.
+        // Always on: a block's `zoom` meta option can turn zoom on when the option is off.
         const pageScriptPath = JSON.stringify(
           fileURLToPath(
             siblingModuleUrl(

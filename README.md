@@ -282,14 +282,14 @@ Markdoc (`.mdoc`) doesn't run Markdown processor plugins, so `tex compile` block
 
 - `svgOutputDir` (required): Directory where compiled SVG files are written. Resolved against the project root, and must be a subdirectory of Astro's `publicDir` (usually `public/`), or Astro fails to start. Each block's SVG is written here as `<hash>.svg` and reused while the block is unchanged. Pages inline the SVG rather than linking to these files.
 - `removeOrphanedSvgs` (optional, default: `false`): When `true`, SVG files that are no longer referenced by any `tex compile` block are deleted automatically. On build, every orphaned tex diagram is swept at the end. In dev, docs that weren't edited aren't re-rendered (Astro's content cache stays on to keep dev fast), so the plugin can't see what they reference: only compiled tex diagrams first written during the current dev session are deleted when a block is edited, and older orphaned tex diagrams stay until the next build.
-- `svgClassname` (optional): Default CSS class(es) applied to every compiled tex diagram's inline `<svg>` element. Individual blocks can override this with a `class` meta tag value. The `tex-compiled` class is always present and cannot be overridden.
+- `svgClassname` (optional): Default CSS class(es) applied to every compiled tex diagram's inline `<svg>` element. Individual blocks can override this with a `class` meta option. The `tex-compiled` class is always present and cannot be overridden.
 - `texInputDirs` (optional): Directories, resolved against the project root, that `tex compile` blocks can pull tex input files from with `\input{}`, `\include{}`, `\usepackage{}`, `\includegraphics{}` and similar. End an entry with `//` to search its subdirectories too, as in `TEXINPUTS` ([subdirectory expansion](https://tug.org/texinfohtml/kpathsea.html#Subdirectory-expansion)). Multiple directories are supported, including ones outside the project. Apart from TeX's installed packages, these are the only files a block can read, and only by a path relative to a tex input dir (`\input{macros}`, `\input{tikz/arrows}`). A path starting with `./`, a path relative to the project like `\input{src/latex/macros}`, an absolute path, a path using `..`, or a dotfile doesn't resolve.
   - When any file in these directories or their subdirectories changes, every compiled tex diagram is recompiled, including blocks that don't use that file. In `astro dev` this happens on its own: the dev server restarts and re-renders every doc. A file added while dev is running is only watched after the next restart. Symlinked files and directories are followed. Dotfiles, dot-dirs and LaTeX build artifacts (`.aux`, `.log`, `.synctex.gz`, ...) don't count.
   - An error inside one of these files is reported with that file's path and line, e.g. `Error (src/latex/macros.tex:2): Undefined control sequence.`
   - If you build in an environment without TeX, relying on committed SVGs, commit the files in these directories too. A build hashes them to find the right SVGs.
   - A directory that doesn't exist fails `astro dev` at startup. `astro build` only warns, since git doesn't keep empty directories, and names the directory if the build then fails because TeX is missing.
-- `zoom` (optional, default: `false`): When `true`, every compiled tex diagram gets a zoom button that opens its [zoom view](#zoom-view). Individual blocks can override this with a `zoom` or `zoom=false` meta tag.
-- `debug` (optional): `true`, or `{ outputDir?, logFile? }`. When set, a debug tex diagram image (a JPEG copy of each compiled tex diagram) is written to `debug.outputDir` as a flat file list (no mirrored folder structure). Both paths are relative to the integration's codegen dir, `.astro/integrations/astro-latex-compile/`, and default to `debug-images/` and `latex-compile.log`; an empty path, an absolute path, or one that leads outside that dir fails at startup. The resolved image dir is logged when Astro starts. Only blocks that carry a `blockid=<n>` meta tag produce a debug tex diagram image — blocks without it are ignored. The filename format is `<originating-file>--<blockid>-<8-char-dir-checksum>.jpg` (e.g. `tex-test--5-a1b2c3d4.jpg`), where the checksum is an MD5 hash of the originating file's directory, namespacing files so that same-named files from different directories don't collide. Debug tex diagram images are deleted automatically when their block is removed, its `blockid` changes, or its content changes, and every debug tex diagram image in `debug.outputDir` is cleared at the start of a build. If two blocks in one doc share a `blockid`, a warning is logged (even with `debug` off) and only the last block's debug tex diagram image is kept. Every debug tex diagram image (re)write is also appended to `debug.logFile`, which rotates automatically once it grows too large (rolling backups `<logFile>-1.log`, `<logFile>-2.log`, etc.). Compiled tex diagrams are unaffected — the debug output is complementary and intended for local inspection. Its type is exported as `LatexCompileDebugOptions`.
+- `zoom` (optional, default: `false`): When `true`, every compiled tex diagram gets a zoom button that opens its [zoom view](#zoom-view). Individual blocks can override this with a `zoom` or `zoom=false` meta option.
+- `debug` (optional): `true`, or `{ outputDir?, logFile? }`. When set, a debug tex diagram image (a JPEG copy of each compiled tex diagram) is written to `debug.outputDir` as a flat file list (no mirrored folder structure). Both paths are relative to the integration's codegen dir, `.astro/integrations/astro-latex-compile/`, and default to `debug-images/` and `latex-compile.log`; an empty path, an absolute path, or one that leads outside that dir fails at startup. The resolved image dir is logged when Astro starts. Only blocks that carry a `blockid=<n>` meta option produce a debug tex diagram image — blocks without it are ignored. The filename format is `<originating-file>--<blockid>-<8-char-dir-checksum>.jpg` (e.g. `tex-test--5-a1b2c3d4.jpg`), where the checksum is an MD5 hash of the originating file's directory, namespacing files so that same-named files from different directories don't collide. Debug tex diagram images are deleted automatically when their block is removed, its `blockid` changes, or its content changes, and every debug tex diagram image in `debug.outputDir` is cleared at the start of a build. If two blocks in one doc share a `blockid`, a warning is logged (even with `debug` off) and only the last block's debug tex diagram image is kept. Every debug tex diagram image (re)write is also appended to `debug.logFile`, which rotates automatically once it grows too large (rolling backups `<logFile>-1.log`, `<logFile>-2.log`, etc.). Compiled tex diagrams are unaffected — the debug output is complementary and intended for local inspection. Its type is exported as `LatexCompileDebugOptions`.
 
 ```ts
 astroLatexCompile({
@@ -333,7 +333,7 @@ export default defineConfig({
 
 **Markdown Syntax:**
 
-Use either ` ```tex compile ` or ` ```latex compile ` — both work identically:
+Use either ` ```tex compile ` or ` ```latex compile ` — both work identically. `compile` has to be its own meta option: a `tex` block that only mentions it inside another one (`alt="compiled flow"`), or sets `compile=false`, stays a plain code block.
 
 ````markdown
 ```tex compile
@@ -370,14 +370,17 @@ Each code block must be a complete, self-contained LaTeX document:
 ```
 ````
 
-**Meta Attributes:**
+**Meta options:**
 
-The following attributes can be added to the opening fence:
+The following meta options can be added to the opening fence:
 
-- `class="..."`: CSS classes applied to the resulting `<svg>` element (space-separated). The `tex-compiled` class is always included.
-- `alt="..."`: Accessible label for the resulting `<svg>` element, set as `role="img"` and `aria-label`. Defaults to `"LaTeX diagram"` if omitted.
+- `class="..."`: CSS classes applied to the resulting `<svg>` element (space-separated). The `tex-compiled` class is always included. A bare `class` with no value is a tex compile error.
+- `alt="..."`: Accessible label for the resulting `<svg>` element, set as `role="img"` and `aria-label`. Defaults to `"LaTeX diagram"` if omitted. A bare `alt` with no value is a tex compile error; quote a label that reads `true` or `false`.
 - `mode=dvi` or `mode=pdf`: The block's [compile mode](#compile-mode). Defaults to `dvi`.
 - `zoom` or `zoom=false`: Turns the [zoom view](#zoom-view) on or off for this block, overriding the `zoom` option. `zoom=true` works too; any other value is a tex compile error.
+- `blockid=<n>`: Names the block's debug tex diagram image (see the `debug` option). `<n>` must be a whole number (`0` or more); anything else is a tex compile error.
+
+Giving any of these, or `compile`, more than once is a tex compile error, and one tex compile error lists every invalid meta option on the block. Meta options the plugin doesn't know, such as `title=`, are ignored.
 
 ````markdown
 ```tex compile class="bg-white rounded-1" alt="A commutative diagram"
@@ -676,7 +679,7 @@ export default defineConfig({
 
 ### Expressive Code Emphasis
 
-An Expressive Code plugin that highlights specific terms inside code blocks using the `emph` meta attribute. Matched terms are wrapped in a `<span class="fw-supreme">` and set in Source Code Pro at weight 900.
+An Expressive Code plugin that highlights specific terms inside code blocks using the `emph` meta option. Matched terms are wrapped in a `<span class="fw-supreme">` and set in Source Code Pro at weight 900.
 
 **Features:**
 
@@ -707,7 +710,7 @@ export default defineConfig({
 });
 ```
 
-Then use the `emph` meta attribute on any code block:
+Then use the `emph` meta option on any code block:
 
 ````markdown
 ```js emph="foo,bar,()"
