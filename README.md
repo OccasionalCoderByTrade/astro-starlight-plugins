@@ -415,12 +415,12 @@ Each compiled tex diagram's ids, classes and fonts are prefixed with its hash, s
 
 #### Zoom view
 
-With `zoom: true`, or `zoom` on a block, the compiled tex diagram gets a small zoom button above its top-right corner, in the gap between the diagram and the content before it (above the right edge of the content column in browsers without CSS `anchor-scope`). The button shows on hover and on keyboard focus, and always on touch devices. The button opens a modal with a copy of the diagram, at the size it has on the page:
+With `zoom: true`, or `zoom` on a block, the compiled tex diagram gets a small zoom button above its top-right corner, in the gap between the diagram and the content before it (above the right edge of the content column in browsers without CSS `anchor-scope`). The button shows on hover and on keyboard focus, and always on touch devices. The button opens a full-screen modal over the dimmed page, with a copy of the diagram on an opaque, shadowed sheet, at the size it has on the page. The controls float at the top right and the caption at the bottom:
 
 - `−` and `+` zoom from 1× to 8×, in 1.25× steps, and the percentage between them resets to 1×. The keys `-`, `+` (or `=`) and `0` do the same.
-- A diagram larger than the modal scrolls inside it. In `dvi` mode its text stays selectable.
+- A diagram larger than the screen scrolls. In `dvi` mode its text stays selectable.
 - The block's `alt` shows as a caption under the diagram. A block without its own `alt` has no caption.
-- `×`, Esc or a click outside the modal closes it.
+- `×`, Esc or a click beside the diagram closes it.
 
 ````markdown
 ```tex compile zoom alt="A binary tree"
