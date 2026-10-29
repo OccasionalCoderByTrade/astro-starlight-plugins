@@ -1,7 +1,6 @@
 // @ts-check
 import starlight from "@astrojs/starlight";
 import { pluginLineNumbers } from "@expressive-code/plugin-line-numbers";
-
 import { defineConfig } from "astro/config";
 import addClasses from "rehype-class-names";
 import rehypeKatex from "rehype-katex";
