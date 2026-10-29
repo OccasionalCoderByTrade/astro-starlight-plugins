@@ -18,21 +18,32 @@
     position: relative;
   }
 
+  // The zoom button rises into the gap above its diagram, so it covers no
+  // more than the diagram's top border. Every diagram gets the wider gap, so
+  // turning zoom on or off never moves the page.
+  * + .tex-zoom-frame,
+  * + .tex-compiled {
+    margin-top: calc(var(--sl-content-gap-y, 1rem) + 0.25rem);
+  }
+
   .tex-zoom-button {
+    --tex-zoom-button-size: 1.5rem;
     position: absolute;
-    top: 0;
+    top: calc(var(--tex-zoom-button-size) * -1 + 0.25rem);
     right: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 2rem;
-    height: 2rem;
+    width: var(--tex-zoom-button-size);
+    height: var(--tex-zoom-button-size);
+    // Starlight's gap between content blocks would push the button down too.
+    margin: 0;
     padding: 0;
     border: 1px solid var(--sl-color-hairline, GrayText);
     border-radius: 6px;
     background: var(--sl-color-bg, Canvas);
     color: var(--sl-color-text, CanvasText);
-    font-size: 1.1rem;
+    font-size: 0.9rem;
     cursor: zoom-in;
     // Hidden with opacity, not display, so it stays in the tab order.
     opacity: 0;
@@ -65,7 +76,7 @@
 
     .tex-zoom-button {
       position-anchor: --tex-diagram;
-      top: anchor(top);
+      top: calc(anchor(top) - var(--tex-zoom-button-size) + 0.25rem);
       right: anchor(right);
     }
   }
